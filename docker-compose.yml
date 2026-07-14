@@ -1,0 +1,21 @@
+# Local development stack. Deployed environments use Render (app) plus a
+# managed Postgres (Neon/Supabase) via DATABASE_URL.
+services:
+  api:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg2://trustai:trustai@db:5432/trustai
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret}
+    depends_on: [db]
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trustai
+      POSTGRES_PASSWORD: trustai
+      POSTGRES_DB: trustai
+    volumes: [pgdata:/var/lib/postgresql/data]
+volumes:
+  pgdata:
