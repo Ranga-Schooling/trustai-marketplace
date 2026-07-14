@@ -1,0 +1,115 @@
+/* TrustAI Marketplace — design tokens and base styles.
+   Palette: deep harbor ink for chrome, verdigris for trust/actions,
+   graded amber→rust for risk levels. */
+:root {
+  --ink: #16232b;
+  --ink-soft: #46565f;
+  --paper: #f7f8f6;
+  --card: #ffffff;
+  --line: #dde3e0;
+  --trust: #0e7c66;      /* verdigris — primary action */
+  --trust-dark: #0a5c4c;
+  --risk-low: #0e7c66;
+  --risk-medium: #b0731c;
+  --risk-high: #b03a2e;
+  --radius: 10px;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.shell { max-width: 880px; margin: 0 auto; padding: 0 20px 64px; }
+
+header.topbar {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 20px 0; border-bottom: 1px solid var(--line); margin-bottom: 28px;
+}
+.brand { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; }
+.brand span { color: var(--trust); }
+.topbar nav { display: flex; gap: 16px; align-items: center; }
+
+h1, h2 { font-family: var(--font-display); font-weight: 600; }
+h1 { font-size: 1.7rem; margin: 0 0 6px; }
+.subtle { color: var(--ink-soft); font-size: 0.9rem; }
+
+.card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 22px; margin-bottom: 18px;
+}
+
+form .field { margin-bottom: 14px; }
+label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 0.88rem; }
+input, textarea, select {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 6px; font: inherit; background: #fff;
+}
+input:focus, textarea:focus { outline: 2px solid var(--trust); outline-offset: 1px; }
+textarea { min-height: 110px; resize: vertical; }
+.row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+
+button {
+  background: var(--trust); color: #fff; border: 0; border-radius: 6px;
+  padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer;
+}
+button:hover { background: var(--trust-dark); }
+button:disabled { opacity: 0.55; cursor: wait; }
+button.ghost {
+  background: transparent; color: var(--ink); border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.error {
+  background: #fbeae8; border: 1px solid #e7b8b2; color: var(--risk-high);
+  border-radius: 6px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.9rem;
+}
+
+/* Verdict banner — the one loud element on the page */
+.verdict {
+  display: flex; align-items: center; gap: 14px;
+  border-radius: var(--radius); padding: 16px 20px; color: #fff;
+  margin-bottom: 16px;
+}
+.verdict .word { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.verdict.low { background: var(--risk-low); }
+.verdict.medium { background: var(--risk-medium); }
+.verdict.high { background: var(--risk-high); }
+
+.indicator { border-left: 3px solid var(--line); padding: 6px 12px; margin: 8px 0; }
+.indicator.low { border-color: var(--risk-low); }
+.indicator.medium { border-color: var(--risk-medium); }
+.indicator.high { border-color: var(--risk-high); }
+.indicator .cat { font-weight: 600; font-size: 0.88rem; }
+
+.badge {
+  display: inline-block; font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 2px 8px; border-radius: 999px; color: #fff;
+}
+.badge.low { background: var(--risk-low); }
+.badge.medium { background: var(--risk-medium); }
+.badge.high { background: var(--risk-high); }
+
+.history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer;
+}
+.history-item:hover { background: #f1f4f2; }
+
+.disclaimer {
+  font-size: 0.8rem; color: var(--ink-soft); border-top: 1px solid var(--line);
+  padding-top: 12px; margin-top: 20px;
+}
+
+a.link { color: var(--trust); cursor: pointer; text-decoration: underline; }
+ul.questions { padding-left: 20px; }
+ul.questions li { margin: 4px 0; }
