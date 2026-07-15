@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     app_name: str = "TrustAI Marketplace API"
 
     # SQLite by default for local dev/tests; set DATABASE_URL to a Postgres
-    # DSN (e.g. Neon/Supabase) in deployed environments.
+    # DSN when running with Docker Compose or a managed Postgres service.
+    # Example for Compose: postgresql+psycopg2://trustai:trustai@db:5432/trustai
     database_url: str = "sqlite:///./trustai.db"
 
     # Auth
