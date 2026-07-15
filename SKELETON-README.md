@@ -22,10 +22,11 @@ story ID from `docs/BACKLOG.md`, and every story's Definition of Done is
 | Workstream | Owner | Files | Stories |
 |---|---|---|---|
 | E1 Auth | Ranga | `core/security.py`, auth routes, User columns | US-1.1–1.3 |
-| E2 Listings & DB | Abdallah | Listing/Analysis columns, listing+history routes | US-2.1–2.2, US-4.1 |
+| E2 Listings & DB | Mulima | Listing/Analysis columns, listing+history routes | US-2.1–2.2, US-4.1 |
 | E3 AI Analysis | Ahmed | `services/ai.py` providers + prompt, Analysis columns | US-3.1–3.3 |
-| E5 Frontend | Adrian | `frontend/src/components/*` | UI for the above |
-| E6 QA/DevOps | Samar | test suite guardianship, deploy pipeline | all |
+| E5 Frontend | Adrian, Mulima | `frontend/src/components/*` | UI for the above |
+| E6 QA/DevOps | Ranga, Samar | test suite guardianship, deploy pipeline | all |
+| E7 Full Stack Support | Ahmed, Mulima | backend + frontend assistance | cross-team |
 
 Search the codebase for `TODO(E` to list your work items.
 
