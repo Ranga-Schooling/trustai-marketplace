@@ -5,6 +5,7 @@ services:
     build: ./backend
     ports: ["8000:8000"]
     environment:
+      # Use Compose service name `db` as the Postgres hostname.
       DATABASE_URL: postgresql+psycopg2://trustai:trustai@db:5432/trustai
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
