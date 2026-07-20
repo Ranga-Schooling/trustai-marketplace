@@ -1,0 +1,65 @@
+name: Auto request review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  request-developers:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request review from Developers team
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const author = context.payload.pull_request.user.login;
+            const team = "developers";
+
+            // Request team review so everyone is notified.
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number,
+                team_reviewers: [team],
+              });
+              core.info(`Requested review from @${owner}/${team}`);
+            } catch (error) {
+              core.warning(`Could not request team review: ${error.message}`);
+            }
+
+            // Also assign Developers team members (except the author)
+            // so the PR shows up clearly on their dashboards.
+            const { data: members } = await github.rest.teams.listMembersInOrg({
+              org: owner,
+              team_slug: team,
+            });
+
+            const assignees = members
+              .map((m) => m.login)
+              .filter((login) => login.toLowerCase() !== author.toLowerCase());
+
+            if (assignees.length === 0) {
+              core.info("No assignees to add.");
+              return;
+            }
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: pull_number,
+                assignees,
+              });
+              core.info(`Assigned: ${assignees.join(", ")}`);
+            } catch (error) {
+              core.warning(`Could not add assignees: ${error.message}`);
+            }
