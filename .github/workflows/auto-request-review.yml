@@ -13,53 +13,54 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      - name: Request review from Developers team
+      - name: Assign and request review from collaborators
         uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const pull_number = context.payload.pull_request.number;
-            const author = context.payload.pull_request.user.login;
-            const team = "developers";
+            const author = context.payload.pull_request.user.login.toLowerCase();
 
-            // Request team review so everyone is notified.
-            try {
-              await github.rest.pulls.requestReviewers({
-                owner,
-                repo,
-                pull_number,
-                team_reviewers: [team],
-              });
-              core.info(`Requested review from @${owner}/${team}`);
-            } catch (error) {
-              core.warning(`Could not request team review: ${error.message}`);
-            }
+            // Use repo collaborators with write+ access (Developers group members).
+            // GITHUB_TOKEN cannot always read closed org teams, so we avoid team APIs.
+            const collaborators = await github.paginate(
+              github.rest.repos.listCollaborators,
+              { owner, repo, affiliation: "direct", per_page: 100 }
+            );
 
-            // Also assign Developers team members (except the author)
-            // so the PR shows up clearly on their dashboards.
-            const { data: members } = await github.rest.teams.listMembersInOrg({
-              org: owner,
-              team_slug: team,
-            });
+            const candidates = collaborators
+              .filter((user) => user.permissions?.push || user.permissions?.maintain || user.permissions?.admin)
+              .map((user) => user.login)
+              .filter((login) => login.toLowerCase() !== author);
 
-            const assignees = members
-              .map((m) => m.login)
-              .filter((login) => login.toLowerCase() !== author.toLowerCase());
-
-            if (assignees.length === 0) {
-              core.info("No assignees to add.");
+            if (candidates.length === 0) {
+              core.info("No collaborators available to assign/request.");
               return;
             }
+
+            core.info(`Candidates: ${candidates.join(", ")}`);
 
             try {
               await github.rest.issues.addAssignees({
                 owner,
                 repo,
                 issue_number: pull_number,
-                assignees,
+                assignees: candidates,
               });
-              core.info(`Assigned: ${assignees.join(", ")}`);
+              core.info(`Assigned: ${candidates.join(", ")}`);
             } catch (error) {
               core.warning(`Could not add assignees: ${error.message}`);
+            }
+
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number,
+                reviewers: candidates,
+              });
+              core.info(`Requested reviewers: ${candidates.join(", ")}`);
+            } catch (error) {
+              core.warning(`Could not request reviewers: ${error.message}`);
             }
