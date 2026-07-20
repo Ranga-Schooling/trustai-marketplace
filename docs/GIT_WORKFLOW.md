@@ -184,4 +184,6 @@ Deployment hosting (for example GitHub Pages, Render, or a VPS) will be decided 
 | CI | Must be green |
 | Merge | Squash and merge |
 
+These rules are also enforced by GitHub branch protection on `main` (require pull requests, 1 approving review, green CI, squash and merge, and automatic branch deletion after merge).
+
 ---
