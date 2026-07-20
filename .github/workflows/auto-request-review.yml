@@ -26,7 +26,7 @@ jobs:
             // GITHUB_TOKEN cannot always read closed org teams, so we avoid team APIs.
             const collaborators = await github.paginate(
               github.rest.repos.listCollaborators,
-              { owner, repo, affiliation: "direct", per_page: 100 }
+              { owner, repo, affiliation: "all", per_page: 100 }
             );
 
             const candidates = collaborators
