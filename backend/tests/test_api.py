@@ -68,7 +68,6 @@ def test_health(client):
     assert client.get("/api/health").json() == {"status": "ok"}
 
 
-@pytest.mark.skip(reason="US-1.1/US-1.2: implement register + login (E1)")
 def test_register_login_me(client):
     headers = register_and_login(client)
     me = client.get("/api/auth/me", headers=headers)
@@ -76,7 +75,6 @@ def test_register_login_me(client):
     assert me.json()["email"] == "alice@example.com"
 
 
-@pytest.mark.skip(reason="US-1.1 AC2: duplicate email returns 409 (E1)")
 def test_duplicate_registration_rejected(client):
     register_and_login(client)
     r = client.post("/api/auth/register", json={
@@ -85,7 +83,6 @@ def test_duplicate_registration_rejected(client):
     assert r.status_code == 409
 
 
-@pytest.mark.skip(reason="US-1.2 AC2: bad credentials return 401 (E1)")
 def test_bad_credentials_rejected(client):
     register_and_login(client)
     r = client.post("/api/auth/login", json={
@@ -94,7 +91,6 @@ def test_bad_credentials_rejected(client):
     assert r.status_code == 401
 
 
-@pytest.mark.skip(reason="US-1.3 AC1: analyses endpoints require auth (E1)")
 def test_analyses_requires_auth(client):
     assert client.post("/api/analyses", json=SAFE_LISTING).status_code == 401
     assert client.get("/api/analyses").status_code == 401

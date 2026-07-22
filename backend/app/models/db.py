@@ -14,7 +14,7 @@ Design decisions already agreed (see docs/DESIGN_NOTES.md):
 """
 import datetime as dt
 
-from sqlalchemy import DateTime, ForeignKey, create_engine
+from sqlalchemy import DateTime, ForeignKey, String, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -48,7 +48,10 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
-    # TODO(E1/US-1.1): add email, name, password_hash, role columns
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(20), default="buyer")
 
     listings: Mapped[list["Listing"]] = relationship(back_populates="user")
 
