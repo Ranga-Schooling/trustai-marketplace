@@ -55,10 +55,93 @@ class MockProvider:
     model_name = "mock-heuristics-v1"
 
     def analyze(self, listing: ListingIn) -> tuple[AIAnalysisResult, str]:
-        raise NotImplementedError(
-            "E3/US-3.3: implement keyword/price heuristics returning a valid "
-            "AIAnalysisResult (see fraud-signal list in the module docstring)"
+        from app.schemas.schemas import Recommendation, RiskIndicatorOut, RiskLevel
+
+        text = f"{listing.title} {listing.description}".lower()
+        indicators: list[RiskIndicatorOut] = []
+
+        if any(term in text for term in ("urgent", "today only", "act now")):
+            indicators.append(
+                RiskIndicatorOut(
+                    category="Urgency language",
+                    severity=RiskLevel.medium,
+                    explanation="The listing pressures the buyer to act quickly.",
+                )
+            )
+
+        if any(
+            term in text
+            for term in ("gift card", "wire transfer", "bitcoin", "cryptocurrency")
+        ):
+            indicators.append(
+                RiskIndicatorOut(
+                    category="Off-platform payment",
+                    severity=RiskLevel.high,
+                    explanation="The seller requests a difficult-to-recover payment method.",
+                )
+            )
+
+        if any(term in text for term in ("whatsapp", "telegram", "text me")):
+            indicators.append(
+                RiskIndicatorOut(
+                    category="Off-platform contact",
+                    severity=RiskLevel.medium,
+                    explanation=(
+                        "The seller asks to move communication away from the marketplace."
+                    ),
+                )
+            )
+
+        if listing.price < 50:
+            indicators.append(
+                RiskIndicatorOut(
+                    category="Suspiciously low price",
+                    severity=RiskLevel.medium,
+                    explanation="The asking price is unusually low and should be verified.",
+                )
+            )
+
+        severities = {indicator.severity for indicator in indicators}
+        if RiskLevel.high in severities:
+            risk_level = RiskLevel.high
+            recommendation = Recommendation.avoid
+        elif RiskLevel.medium in severities:
+            risk_level = RiskLevel.medium
+            recommendation = Recommendation.caution
+        else:
+            risk_level = RiskLevel.low
+            recommendation = Recommendation.buy
+
+        if indicators:
+            summary = (
+                f"The listing contains {len(indicators)} potential risk indicator(s). "
+                "Verify the seller and item before proceeding."
+            )
+        else:
+            summary = (
+                "No obvious risk indicators were found, but this does not guarantee "
+                "that the listing is safe."
+            )
+
+        price_assessment = (
+            "The asking price appears unusually low and needs independent verification."
+            if listing.price < 50
+            else "The asking price cannot be verified without comparable market data."
         )
+
+        result = AIAnalysisResult(
+            summary=summary,
+            risk_level=risk_level,
+            risk_indicators=indicators,
+            price_assessment=price_assessment,
+            seller_questions=[
+                "Can you provide proof of ownership or purchase?",
+                "Can I inspect the item before making payment?",
+                "Will you accept payment through the marketplace's protected method?",
+            ],
+            recommendation=recommendation,
+        )
+        return result, result.model_dump_json()
 
 
 class GroqProvider:
