@@ -96,7 +96,6 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
-@pytest.mark.skip(reason="US-3.1: benign listing -> low risk, buy (E3)")
 def test_low_risk_listing_gets_buy(client):
     headers = register_and_login(client)
     r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
@@ -107,7 +106,6 @@ def test_low_risk_listing_gets_buy(client):
     assert len(body["seller_questions"]) >= 1
 
 
-@pytest.mark.skip(reason="US-3.1: scam signals -> high risk, avoid (E3)")
 def test_high_risk_listing_gets_avoid(client):
     headers = register_and_login(client)
     r = client.post("/api/analyses", json=SCAM_LISTING, headers=headers)
