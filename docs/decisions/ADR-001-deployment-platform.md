@@ -73,6 +73,41 @@ The decision is intended to:
 - Render configuration and ownership must be documented so the deployment is not dependent on one person's memory.
 - The repository and application architecture must remain portable in case another provider is needed later.
 
+## Deployment Details
+
+### Frontend (React)
+- **Platform**: Render Static Site
+- **Source**: React application built from `frontend/` directory
+- **Build Command**: `npm install && npm run build`
+- **Deployment**: Automatically triggered on main branch push via GitHub integration
+- **URL**: Provided by Render (custom domain configurable)
+
+### Backend (FastAPI)
+- **Platform**: Render Web Service
+- **Source**: Python FastAPI application in `backend/` directory  
+- **Runtime**: Python 3.11+
+- **Dependencies**: Installed from `backend/requirements.txt`
+- **Environment**: Configuration via environment variables (see `backend/app/core/config.py`)
+- **Deployment**: Automatically triggered on main branch push via GitHub integration
+- **Port**: Configured to listen on `0.0.0.0:8000`
+
+### Database (PostgreSQL)
+- **Platform**: Render Managed PostgreSQL
+- **Version**: PostgreSQL 15 or higher
+- **Backups**: Automated daily backups with 7-day retention
+- **Connection**: Backend connects via DATABASE_URL environment variable
+- **Migrations**: Alembic migrations run automatically via backend startup
+- **Monitoring**: Render dashboard provides CPU, memory, and query performance metrics
+
+### CI/CD Integration
+- **Trigger**: GitHub Actions runs on push to `main` branch
+- **Workflow**: `.github/workflows/release.yml`
+- **Deployment Automation**: 
+  - Pull requests must pass all CI checks before merge
+  - Main branch changes automatically trigger Render deployments
+  - GitHub Releases created automatically via semantic-release
+- **Configuration**: Environment variables managed in Render dashboard (never committed to repo)
+
 ## Ownership
 
 - Product and architecture decision: Ahmed Al-Mandalawi
