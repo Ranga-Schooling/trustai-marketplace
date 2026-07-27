@@ -106,7 +106,19 @@ The decision is intended to:
   - Pull requests must pass all CI checks before merge
   - Main branch changes automatically trigger Render deployments
   - GitHub Releases created automatically via semantic-release
+- **Authentication**: Workflow uses a dedicated `RELEASE_BOT_TOKEN` secret for release pushes and tag creation
+- **Branch Protection**: The release bot or GitHub App must be granted bypass permission so semantic-release can push automated version and changelog updates
 - **Configuration**: Environment variables managed in Render dashboard (never committed to repo)
+
+## GitHub Release Bot Setup
+
+To support fully automated releases on protected `main`:
+
+- Create a GitHub App or machine user with repo write permission.
+- Install the app or authorize the user on this repository.
+- Configure the branch protection rule for `main` so the app/user can bypass required status checks for automated release commits.
+- Add the bot token as a repository secret named `RELEASE_BOT_TOKEN`.
+- The release workflow will use this token for checkout and semantic-release push operations.
 
 ## Ownership
 
