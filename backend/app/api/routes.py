@@ -20,7 +20,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.security import get_current_user
+from app.core.security import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 from app.models.db import User, get_db
 from app.schemas.schemas import (
     AnalysisOut,
@@ -45,20 +50,35 @@ def health() -> dict:
 @router.post("/auth/register", response_model=UserOut, status_code=201)
 def register(body: UserRegister, db: Session = Depends(get_db)):
     """[US-1.1] Create a user; 409 on duplicate email (store emails lowercased)."""
-    raise NotImplementedError("E1/US-1.1")
+    email = body.email.lower()
+    if db.query(User).filter(User.email == email).first() is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    user = User(email=email, name=body.name, password_hash=hash_password(body.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/auth/login", response_model=TokenResponse)
 def login(body: UserLogin, db: Session = Depends(get_db)):
     """[US-1.2] Verify credentials, return a bearer token; 401 on failure
     without revealing which field was wrong."""
-    raise NotImplementedError("E1/US-1.2")
+    invalid_credentials = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+    )
+    user = db.query(User).filter(User.email == body.email.lower()).first()
+    if user is None or not verify_password(body.password, user.password_hash):
+        raise invalid_credentials
+
+    return TokenResponse(access_token=create_access_token(user.id))
 
 
 @router.get("/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     """[US-1.3] Return the authenticated user's profile."""
-    raise NotImplementedError("E1/US-1.3")
+    return user
 
 
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)

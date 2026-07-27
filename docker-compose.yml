@@ -11,6 +11,13 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret}
     depends_on: [db]
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment:
+      # Reach the api container by its Compose service name, not localhost.
+      API_PROXY_TARGET: http://api:8000
+    depends_on: [api]
   db:
     image: postgres:16-alpine
     environment:

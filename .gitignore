@@ -61,6 +61,9 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
+# Local SQLite dev/test DBs (default DATABASE_URL fallback, test fixtures)
+backend/*.db
+
 # Flask stuff:
 instance/
 .webassets-cache
@@ -219,3 +222,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node
+**node_modules**
+
+# Databases
+*.db
