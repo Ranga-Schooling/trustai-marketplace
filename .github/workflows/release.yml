@@ -16,8 +16,8 @@ jobs:
         id: github_app_token
         with:
           app_id: ${{ secrets.RELEASE_APP_ID }}
-          installation_retrieval_mode: id
-          installation_retrieval_payload: ${{ secrets.RELEASE_APP_INSTALLATION_ID }}
+          installation_retrieval_mode: repository
+          installation_retrieval_payload: ${{ github.repository }}
           private_key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
