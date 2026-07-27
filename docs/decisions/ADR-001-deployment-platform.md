@@ -73,6 +73,53 @@ The decision is intended to:
 - Render configuration and ownership must be documented so the deployment is not dependent on one person's memory.
 - The repository and application architecture must remain portable in case another provider is needed later.
 
+## Deployment Details
+
+### Frontend (React)
+- **Platform**: Render Static Site
+- **Source**: React application built from `frontend/` directory
+- **Build Command**: `npm install && npm run build`
+- **Deployment**: Automatically triggered on main branch push via GitHub integration
+- **URL**: Provided by Render (custom domain configurable)
+
+### Backend (FastAPI)
+- **Platform**: Render Web Service
+- **Source**: Python FastAPI application in `backend/` directory  
+- **Runtime**: Python 3.11+
+- **Dependencies**: Installed from `backend/requirements.txt`
+- **Environment**: Configuration via environment variables (see `backend/app/core/config.py`)
+- **Deployment**: Automatically triggered on main branch push via GitHub integration
+- **Port**: Configured to listen on `0.0.0.0:8000`
+
+### Database (PostgreSQL)
+- **Platform**: Render Managed PostgreSQL
+- **Version**: PostgreSQL 15 or higher
+- **Backups**: Automated daily backups with 7-day retention
+- **Connection**: Backend connects via DATABASE_URL environment variable
+- **Migrations**: Alembic migrations run automatically via backend startup
+- **Monitoring**: Render dashboard provides CPU, memory, and query performance metrics
+
+### CI/CD Integration
+- **Trigger**: GitHub Actions runs on push to `main` branch
+- **Workflow**: `.github/workflows/release.yml`
+- **Deployment Automation**: 
+  - Pull requests must pass all CI checks before merge
+  - Main branch changes automatically trigger Render deployments
+  - GitHub Releases created automatically via semantic-release
+- **Authentication**: Workflow uses a dedicated `RELEASE_BOT_TOKEN` secret for release pushes and tag creation
+- **Branch Protection**: The release bot or GitHub App must be granted bypass permission so semantic-release can push automated version and changelog updates
+- **Configuration**: Environment variables managed in Render dashboard (never committed to repo)
+
+## GitHub Release Bot Setup
+
+To support fully automated releases on protected `main`:
+
+- Create a GitHub App or machine user with repo write permission.
+- Install the app or authorize the user on this repository.
+- Configure the branch protection rule for `main` so the app/user can bypass required status checks for automated release commits.
+- Add the bot token as a repository secret named `RELEASE_BOT_TOKEN`.
+- The release workflow will use this token for checkout and semantic-release push operations.
+
 ## Ownership
 
 - Product and architecture decision: Ahmed Al-Mandalawi
