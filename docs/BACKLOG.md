@@ -60,8 +60,17 @@ retry without retyping everything.
 - AC2: On AI failure the API returns 502 with a message stating the listing was saved.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
+**US-2.3 — Submit a listing URL and get suggested details**
+As a buyer, I want to paste just a listing URL and have the title and
+description suggested for me, so I don't have to retype them by hand.
+- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description; the user still reviews and edits before submitting.
+- AC2: Non-HTTP(S) URLs, and URLs resolving to a private/loopback/link-local address, are rejected (SSRF guardrail) with a 422.
+- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06).
+- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py`, `POST /api/listings/preview`, test `test_url_preview_returns_suggested_fields`.
+
 Tasks completed: Listing ORM model · input schema with currency normalization ·
-description length guard · submission form UI with inline errors.
+description length guard · submission form UI with inline errors · URL fetch
+preview endpoint with SSRF guardrails (US-2.3).
 
 ---
 
@@ -158,6 +167,6 @@ misled into treating heuristic output as a guarantee.
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.3, 2.1–2.2, 3.1–3.3, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.3, 2.1–2.3, 3.1–3.3, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
-| Could (future) | PDF export, URL auto-fetch, browser extension, reverse image search |
+| Could (future) | PDF export, browser extension, reverse image search |

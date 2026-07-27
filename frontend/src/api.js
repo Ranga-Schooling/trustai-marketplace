@@ -45,6 +45,7 @@ export const api = {
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   me: () => request('/auth/me'),
   createAnalysis: (data) => request('/analyses', { method: 'POST', body: JSON.stringify(data) }),
+  previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),
 };

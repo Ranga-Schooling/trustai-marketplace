@@ -96,6 +96,48 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
+def test_url_preview_requires_auth(client):
+    r = client.post("/api/listings/preview", json={"url": "https://example.com/item/1"})
+    assert r.status_code == 401
+
+
+def test_url_preview_returns_suggested_fields(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    from app.schemas.schemas import ListingPreviewOut
+
+    def fake_fetch(url):
+        return ListingPreviewOut(
+            url=url,
+            title="IKEA Billy bookcase, white",
+            description="Used bookcase in good condition.",
+            source="example.com",
+        )
+
+    monkeypatch.setattr(routes, "fetch_listing_preview", fake_fetch)
+
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "https://example.com/item/1"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "IKEA Billy bookcase, white"
+    assert body["source"] == "example.com"
+
+
+def test_url_preview_rejects_private_address(client):
+    headers = register_and_login(client)
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "http://127.0.0.1:8000/whatever"},
+        headers=headers,
+    )
+    assert r.status_code == 422
+
+
 @pytest.mark.skip(reason="US-3.1: benign listing -> low risk, buy (E3)")
 def test_low_risk_listing_gets_buy(client):
     headers = register_and_login(client)
