@@ -1,91 +1,86 @@
-// E5 Frontend (owner: Adrian) — US-1.1/US-1.2 auth screens.
-// Contract: api.register({email, name, password}), api.login({email, password})
-// -> {access_token}; store via setToken(), then api.me() -> user object.
 import { useState } from 'react';
-import { api, setToken } from '../api';
+import { ApiError, api, setToken } from '../api';
 
 export default function AuthForm({ onSignedIn }) {
-  const [mode, setMode] = useState('login'); // login | register
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState('signin');
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
-    setBusy(true);
+  function updateField(event) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
-      if (mode === 'register') {
-        await api.register({ email, name, password });
+      if (mode === 'signup') {
+        await api.register({
+          email: form.email.trim().toLowerCase(),
+          name: form.name.trim(),
+          password: form.password,
+        });
       }
-      const { access_token } = await api.login({ email, password });
-      setToken(access_token);
+
+      const tokenResponse = await api.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+
+      setToken(tokenResponse.access_token);
       const user = await api.me();
       onSignedIn(user);
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof ApiError ? err.message : 'Unable to complete that action.');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   }
 
-  function switchMode(nextMode) {
-    setMode(nextMode);
-    setError(null);
-  }
-
   return (
-    <div className="card" style={{ maxWidth: 440, margin: '0 auto' }}>
-      <h1>{mode === 'login' ? 'Sign in' : 'Create your account'}</h1>
+    <div className="card auth-card">
+      <div className="auth-toggle" role="tablist" aria-label="Authentication mode">
+        <button type="button" className={mode === 'signin' ? 'pill active' : 'pill'} onClick={() => setMode('signin')}>
+          Sign in
+        </button>
+        <button type="button" className={mode === 'signup' ? 'pill active' : 'pill'} onClick={() => setMode('signup')}>
+          Create account
+        </button>
+      </div>
+
+      <h1>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
       <p className="subtle">
-        {mode === 'login'
-          ? "New here? "
-          : 'Already have an account? '}
-        <a className="link" onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}>
-          {mode === 'login' ? 'Create an account' : 'Sign in instead'}
-        </a>
+        {mode === 'signin'
+          ? 'Use your credentials to re-open your private analysis history.'
+          : 'Join TrustAI to review marketplace listings with structured guidance.'}
       </p>
 
-      {error && <div className="error">{error}</div>}
-
       <form onSubmit={handleSubmit}>
-        {mode === 'register' && (
+        {error ? <div className="error">{error}</div> : null}
+
+        {mode === 'signup' ? (
           <div className="field">
-            <label htmlFor="name">Name</label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+            <label htmlFor="name">Your name</label>
+            <input id="name" name="name" value={form.name} onChange={updateField} required />
           </div>
-        )}
+        ) : null}
+
         <div className="field">
           <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input id="email" name="email" type="email" value={form.email} onChange={updateField} required />
         </div>
+
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
+          <input id="password" name="password" type="password" value={form.password} onChange={updateField} minLength="8" required />
         </div>
-        <button type="submit" disabled={busy}>
-          {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+
+        <button type="submit" disabled={loading}>
+          {loading ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
       </form>
     </div>
