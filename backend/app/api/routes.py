@@ -109,8 +109,8 @@ def create_analysis(
     db.add(listing)
     db.commit()
     db.refresh(listing)
-    provider = get_provider()
     try:
+        provider = get_provider()
         result, raw_response = provider.analyze(body)
     except AnalysisFailure as exc:
         raise HTTPException(

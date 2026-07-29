@@ -40,6 +40,16 @@ from app.schemas.schemas import (
 
 settings = get_settings()
 
+# Fixed currency thresholds keep MockProvider deterministic for tests.
+# This mock intentionally does not perform live exchange-rate conversion.
+PRICE_THRESHOLDS = {
+    "USD": 50,
+    "CAD": 65,
+    "EUR": 45,
+    "GBP": 40,
+}
+DEFAULT_PRICE_THRESHOLD = 50
+
 SYSTEM_PROMPT = """You are a marketplace listing risk analyst. Assess only the
 information supplied in the listing and do not invent facts or market data.
 
@@ -126,7 +136,11 @@ class MockProvider:
                 )
             )
 
-        if listing.price < 50:
+        threshold = PRICE_THRESHOLDS.get(
+            listing.currency,
+            DEFAULT_PRICE_THRESHOLD,
+        )
+        if listing.price < threshold:
             indicators.append(
                 RiskIndicatorOut(
                     category="Suspiciously low price",
@@ -159,7 +173,7 @@ class MockProvider:
 
         price_assessment = (
             "The asking price appears unusually low and needs independent verification."
-            if listing.price < 50
+            if listing.price < threshold
             else "The asking price cannot be verified without comparable market data."
         )
 
@@ -185,7 +199,7 @@ class GroqProvider:
 
     def __init__(self) -> None:
         if not settings.groq_api_key:
-            raise RuntimeError("GROQ_API_KEY is not set")
+            raise AnalysisFailure("GROQ_API_KEY is not configured")
         self.model_name = settings.groq_model
 
     def analyze(self, listing: ListingIn) -> tuple[AIAnalysisResult, str]:
@@ -237,6 +251,7 @@ class GroqProvider:
                     raise AnalysisFailure(
                         "Groq could not produce a valid analysis after two attempts"
                     ) from exc
+                # Let the loop naturally advance to the second (and final) retry.
 
 
 def get_provider() -> AIProvider:
