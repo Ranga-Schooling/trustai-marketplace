@@ -59,6 +59,30 @@ schema (Compose/Neon/Supabase) going forward. Not yet wired up: running
 `alembic upgrade head` automatically on deploy/container start — a candidate
 for the Sprint 3 DevOps pass.
 
+**MockProvider heuristics.** Deterministic keyword/price signals, not a
+model: urgency language ("urgent", "today only", "act now"), off-platform
+payment requests (gift card/wire transfer/crypto — high severity, the
+hardest scam pattern to reverse), off-platform contact requests (WhatsApp/
+Telegram), and a per-currency low-price threshold (`PRICE_THRESHOLDS`,
+falling back to a default for unlisted currencies) rather than one global
+number, since "suspiciously low" means something different at ZAR vs. USD
+scale. Any high-severity indicator forces `avoid`; this keeps the mock a
+stable, zero-network fixture for tests/CI while doubling as a literal,
+readable list of the fraud signals the product targets.
+
+**Test env isolation via conftest.py.** `app/core/config.get_settings()`
+is `@lru_cache`'d, so whichever test module's imports call it first wins
+for the whole pytest session. `test_api.py` used to set `DATABASE_URL`/
+`AI_PROVIDER`/`JWT_SECRET` at its own module top, which only works if
+pytest happens to collect it before any other test file — adding
+`test_ai_provider.py` (alphabetically earlier) broke that assumption and
+the whole suite silently pointed at whatever `DATABASE_URL` was already
+in the developer's shell. Moved the env setup into `tests/conftest.py`
+(which pytest always imports before test modules) and made it an
+unconditional assignment, not `setdefault` — the point is to guarantee
+an isolated test config regardless of the ambient environment, not to
+merely fill in gaps.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
