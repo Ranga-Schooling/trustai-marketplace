@@ -49,6 +49,7 @@ process evidence (Git history, decision records), not just working code.
 
 ## Run / verify
 
-- Backend tests: `cd backend && python -m pytest tests/ -v`
-  (expected baseline: 1 passed, rest skipped).
+- Backend tests: `cd backend && python -m pytest tests/ -v --cov=app --cov-report=term-missing`
+  (baseline varies as stories land; CI enforces `--cov-fail-under=85` as a
+  floor, not a target — see docs/DESIGN_NOTES.md).
 - Full stack: `docker compose up --build`.
