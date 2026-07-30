@@ -2,12 +2,23 @@
 
 This project uses **semantic-release** on `main` for automated versioning and release management during active development.
 
-## Development Versioning
+## Versioning
 
-The project starts at version **0.1.0** and follows **semantic versioning** with 0.x.y numbering until feature-complete:
+The project starts at **1.0.0** and follows standard **semantic versioning**
+from there:
 
-- `0.1.0`, `0.2.0`, `0.3.0`, ... (development releases)
-- Later graduates to `1.0.0+` for production-ready stable releases
+- `1.0.0`, `1.1.0`, `1.2.0`, ... (`feat:` → minor)
+- `1.0.1`, `1.0.2`, ... (`fix:` → patch)
+- `2.0.0`, ... (`BREAKING CHANGE:` → major)
+
+This project originally planned to start at `0.1.0` and stay in `0.x.y`
+during active development, but semantic-release does not support an initial
+release below `1.0.0` — with no prior tag, its first release is always
+`1.0.0` regardless of commit type ([semantic-release
+FAQ](https://semantic-release.org/support/faq/)). Rather than fight the
+tool with a custom initial-version override, the project accepted `1.0.0`
+as its actual starting point (see [ADR-002](decisions/ADR-002-branch-protection-ruleset.md)
+for the related branch-protection work that unblocked the first release).
 
 ## How It Works
 
@@ -15,9 +26,9 @@ The project starts at version **0.1.0** and follows **semantic versioning** with
 
 All commits must follow [conventional commit](https://www.conventionalcommits.org/) format:
 
-- `feat:` → minor version bump (e.g., `0.1.0` → `0.2.0`)
-- `fix:` → patch version bump (e.g., `0.2.0` → `0.2.1`)
-- `BREAKING CHANGE:` → major version bump (e.g., `0.2.0` → `1.0.0`)
+- `feat:` → minor version bump (e.g., `1.0.0` → `1.1.0`)
+- `fix:` → patch version bump (e.g., `1.1.0` → `1.1.1`)
+- `BREAKING CHANGE:` → major version bump (e.g., `1.1.0` → `2.0.0`)
 - `chore:`, `docs:`, `style:`, `test:` → no version bump (if only these)
 
 ### Merge Workflow
@@ -32,7 +43,7 @@ When commits are merged to `main`, GitHub Actions automatically:
 3. Updates `package.json` version
 4. Generates `CHANGELOG.md` from commit messages
 5. Creates a GitHub Release with auto-generated notes
-6. Tags the commit with the version (e.g., `v0.2.0`)
+6. Tags the commit with the version (e.g., `v1.1.0`)
 7. Commits version bump + changelog back to `main`
 
 ## Workflow Examples
@@ -44,7 +55,7 @@ git checkout -b feat/new-risk-analysis
 # Make changes with "feat: add risk score analysis" commits
 git push origin feat/new-risk-analysis
 # Create PR, review, merge
-# → GitHub Actions automatically creates v0.2.0 release
+# → GitHub Actions automatically creates a minor release (e.g., v1.1.0)
 ```
 
 ### Example 2: Fixing a Bug
@@ -54,7 +65,7 @@ git checkout -b fix/critical-timeout
 # Make fix with "fix: resolve AI provider timeout" commit
 git push origin fix/critical-timeout
 # Create PR, review, merge
-# → GitHub Actions automatically creates v0.2.1 patch release
+# → GitHub Actions automatically creates a patch release (e.g., v1.1.1)
 ```
 
 ### Example 3: Breaking Changes
@@ -67,13 +78,12 @@ feat: redesign analysis API
 BREAKING CHANGE: /analyze endpoint now requires authentication
 ```
 
-This triggers a major version bump (e.g., `0.2.0` → `1.0.0`).
+This triggers a major version bump (e.g., `1.1.0` → `2.0.0`).
 
 ## Important Notes
 
 - **No manual versioning**: Never edit `package.json` version manually. Let semantic-release handle it.
 - **Every push to `main` may trigger a release**: Make sure all commits follow conventional format.
-- **Prerelease strategy**: Once the app is production-ready, merge the commit that bumps to `1.0.0+` to transition out of 0.x.y versioning.
 - **Changelog**: Review `CHANGELOG.md` after each release—it's auto-generated but should read clearly.
 
 ## For Contributors
@@ -90,9 +100,10 @@ This triggers a major version bump (e.g., `0.2.0` → `1.0.0`).
 
 ## GitHub Token Permissions
 
-The workflow requires `contents: write` to:
-- Create releases and tags
-- Commit version + changelog updates back to `main`
-
-This uses the default `GITHUB_TOKEN` and requires no additional secrets.
+The workflow needs to push the version-bump commit and tag directly to
+protected `main`, which the default `GITHUB_TOKEN` cannot do. It instead
+authenticates as the `trustai-release-bot` GitHub App (`tibdex/github-app-token`
+in `release.yml`, secrets `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY`),
+which is the only actor allowed to bypass `main`'s ruleset — see
+[ADR-002](decisions/ADR-002-branch-protection-ruleset.md).
 
