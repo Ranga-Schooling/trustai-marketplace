@@ -5,7 +5,7 @@ agreed API contract (they generate the OpenAPI docs at /docs that the
 frontend builds against). Keep the signatures; implement the bodies.
 
 Ownership:
-- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3
+- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
 
@@ -15,6 +15,9 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   the listing was saved. [US-2.2]
 - History queries are scoped to the authenticated user; fetching another
   user's analysis by id returns 404, not 403. [US-1.3 AC2]
+- PATCH /auth/me is additive to the frozen register/login contract
+  (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
+  consistent with the existing minimal-auth stance. [US-1.4]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -35,6 +38,7 @@ from app.schemas.schemas import (
     UserLogin,
     UserOut,
     UserRegister,
+    UserUpdate,
 )
 
 router = APIRouter()
@@ -78,6 +82,33 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 @router.get("/auth/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     """[US-1.3] Return the authenticated user's profile."""
+    return user
+
+
+@router.patch("/auth/me", response_model=UserOut)
+def update_me(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[US-1.4] Update the authenticated user's name and/or email.
+    400 if neither field is provided; 409 on duplicate email (store emails
+    lowercased, matching register)."""
+    if body.name is None and body.email is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+
+    if body.email is not None:
+        new_email = body.email.lower()
+        if new_email != user.email:
+            if db.query(User).filter(User.email == new_email).first() is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+            user.email = new_email
+
+    if body.name is not None:
+        user.name = body.name
+
+    db.commit()
+    db.refresh(user)
     return user
 
 

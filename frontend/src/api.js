@@ -44,6 +44,7 @@ export const api = {
   register: (data) => request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   me: () => request('/auth/me'),
+  updateProfile: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   createAnalysis: (data) => request('/analyses', { method: 'POST', body: JSON.stringify(data) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),

@@ -96,6 +96,41 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
+def test_update_profile_requires_auth(client):
+    r = client.patch("/api/auth/me", json={"name": "New Name"})
+    assert r.status_code == 401
+
+
+def test_update_profile_name(client):
+    headers = register_and_login(client)
+    r = client.patch("/api/auth/me", json={"name": "Alice Updated"}, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["name"] == "Alice Updated"
+
+    me = client.get("/api/auth/me", headers=headers)
+    assert me.json()["name"] == "Alice Updated"
+
+
+def test_update_profile_email(client):
+    headers = register_and_login(client)
+    r = client.patch("/api/auth/me", json={"email": "alice2@example.com"}, headers=headers)
+    assert r.status_code == 200
+    assert r.json()["email"] == "alice2@example.com"
+
+
+def test_update_profile_duplicate_email_rejected(client):
+    register_and_login(client, "alice@example.com")
+    headers = register_and_login(client, "bob@example.com")
+    r = client.patch("/api/auth/me", json={"email": "alice@example.com"}, headers=headers)
+    assert r.status_code == 409
+
+
+def test_update_profile_requires_a_field(client):
+    headers = register_and_login(client)
+    r = client.patch("/api/auth/me", json={}, headers=headers)
+    assert r.status_code == 400
+
+
 @pytest.mark.skip(reason="US-3.1: benign listing -> low risk, buy (E3)")
 def test_low_risk_listing_gets_buy(client):
     headers = register_and_login(client)
