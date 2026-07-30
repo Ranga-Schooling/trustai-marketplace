@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.0.0...v1.1.0) (2026-07-30)
+
+
+### Features
+
+* Wireframes and skeleton frontend UI ([#23](https://github.com/Ranga-Schooling/trustai-marketplace/issues/23)) ([24b0f51](https://github.com/Ranga-Schooling/trustai-marketplace/commit/24b0f5128d03cab37c481589ef9f35b2e2d59e59))
+
 ## 1.0.0 (2026-07-27)
 
 
