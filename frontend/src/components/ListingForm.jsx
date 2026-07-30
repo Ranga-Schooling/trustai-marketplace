@@ -1,162 +1,107 @@
-// E5 Frontend — US-2.1 listing submission + US-2.3 URL fetch preview.
-// Contract: api.createAnalysis({title, price:Number, currency, source,
-// description, url|null}) -> AnalysisOut. 422 -> show field errors;
-// 502 -> tell the user the listing was saved and to retry.
-// api.previewListingUrl(url) -> {title, description, source} suggestions
-// (US-2.3); the user still reviews/edits before submitting — this never
-// bypasses the ListingIn/POST /analyses contract.
 import { useState } from 'react';
-import { api } from '../api';
+import { ApiError, api } from '../api';
+
+const initialState = {
+  title: '',
+  price: '',
+  currency: 'USD',
+  source: 'Marketplace',
+  description: '',
+  url: '',
+};
 
 const CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP'];
 
 export default function ListingForm({ onResult }) {
-  const [url, setUrl] = useState('');
-  const [title, setTitle] = useState('');
-  const [price, setPrice] = useState('');
-  const [currency, setCurrency] = useState('ZAR');
-  const [source, setSource] = useState('');
-  const [description, setDescription] = useState('');
+  const [form, setForm] = useState(initialState);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const [fetchingUrl, setFetchingUrl] = useState(false);
-  const [fetchError, setFetchError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
-
-  async function handleFetchUrl() {
-    if (!url.trim()) return;
-    setFetchError(null);
-    setFetchingUrl(true);
-    try {
-      const preview = await api.previewListingUrl(url.trim());
-      if (preview.title) setTitle(preview.title);
-      if (preview.description) setDescription(preview.description);
-      if (preview.source) setSource(preview.source);
-    } catch (err) {
-      setFetchError(err.message);
-    } finally {
-      setFetchingUrl(false);
-    }
+  function updateField(event) {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setSubmitError(null);
-    setSubmitting(true);
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
       const analysis = await api.createAnalysis({
-        title,
-        price: Number(price),
-        currency,
-        source,
-        description,
-        url: url.trim() || null,
+        ...form,
+        price: Number(form.price),
+        currency: form.currency.toUpperCase(),
+        url: form.url.trim() ? form.url.trim() : null,
       });
       onResult(analysis);
     } catch (err) {
-      setSubmitError(
-        err.status === 502
-          ? `${err.message} You can retry the analysis without resubmitting.`
-          : err.message
-      );
+      setError(err instanceof ApiError ? err.message : 'Unable to analyze that listing right now.');
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
   return (
-    <div className="card">
-      <h1>Analyze a listing</h1>
-      <p className="subtle">
-        Paste a listing URL to fetch suggested details, or fill in the fields
-        yourself.
-      </p>
+    <div className="content-grid">
+      <section className="card hero-card compact">
+        <p className="eyebrow">New review</p>
+        <h1>Evaluate a marketplace listing</h1>
+        <p className="subtle">
+          Share the listing basics and let TrustAI produce a structured recommendation that highlights the strongest warning signs.
+        </p>
+        <ul className="check-list">
+          <li>Title, price, and marketplace context</li>
+          <li>Short description of the listing</li>
+          <li>Optional URL for supporting context</li>
+        </ul>
+      </section>
 
-      {fetchError && <div className="error">{fetchError}</div>}
-      {submitError && <div className="error">{submitError}</div>}
+      <section className="card">
+        <h2>Listing details</h2>
+        <form onSubmit={handleSubmit}>
+          {error ? <div className="error">{error}</div> : null}
 
-      <div className="field">
-        <label htmlFor="url">Listing URL (optional)</label>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input
-            id="url"
-            type="url"
-            placeholder="https://example.com/item/123"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-          />
-          <button
-            type="button"
-            className="ghost"
-            onClick={handleFetchUrl}
-            disabled={fetchingUrl || !url.trim()}
-          >
-            {fetchingUrl ? 'Fetching…' : 'Fetch details'}
+          <div className="field">
+            <label htmlFor="title">Title</label>
+            <input id="title" name="title" value={form.title} onChange={updateField} required />
+          </div>
+
+          <div className="row">
+            <div className="field">
+              <label htmlFor="price">Price</label>
+              <input id="price" name="price" type="number" step="0.01" min="0.01" value={form.price} onChange={updateField} required />
+            </div>
+            <div className="field">
+              <label htmlFor="currency">Currency</label>
+              <select id="currency" name="currency" value={form.currency} onChange={updateField}>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+                <option value="CAD">CAD</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="source">Marketplace</label>
+              <input id="source" name="source" value={form.source} onChange={updateField} required />
+            </div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="description">Description</label>
+            <textarea id="description" name="description" value={form.description} onChange={updateField} required />
+          </div>
+
+          <div className="field">
+            <label htmlFor="url">Listing URL (optional)</label>
+            <input id="url" name="url" type="url" value={form.url} onChange={updateField} placeholder="https://example.com/listing" />
+          </div>
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Analyzing…' : 'Analyze listing'}
           </button>
-        </div>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        <div className="field">
-          <label htmlFor="title">Title</label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="row">
-          <div className="field">
-            <label htmlFor="price">Price</label>
-            <input
-              id="price"
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              required
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="currency">Currency</label>
-            <select id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="source">Marketplace</label>
-            <input
-              id="source"
-              type="text"
-              placeholder="e.g. Facebook Marketplace"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="description">Description</label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            minLength={10}
-            required
-          />
-        </div>
-
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Analyzing…' : 'Analyze listing'}
-        </button>
-      </form>
+        </form>
+      </section>
     </div>
   );
 }
