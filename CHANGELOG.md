@@ -1,3 +1,10 @@
+## [1.2.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.1.0...v1.2.0) (2026-07-31)
+
+
+### Features
+
+* implement E3 AI analysis and risk scoring ([#12](https://github.com/Ranga-Schooling/trustai-marketplace/issues/12)) ([32bdd6e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/32bdd6e8ca66ab593e835667441ec365271a0fb5)), closes [#8](https://github.com/Ranga-Schooling/trustai-marketplace/issues/8) [#8](https://github.com/Ranga-Schooling/trustai-marketplace/issues/8)
+
 ## [1.1.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.0.0...v1.1.0) (2026-07-30)
 
 
