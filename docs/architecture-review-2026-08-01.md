@@ -10,6 +10,58 @@ Every finding below cites the specific decision it conflicts with and the
 specific card/file it conflicts against, so it can be checked independently
 rather than taken on faith.
 
+**Update:** §0 below extends this review to the 9 PRs already open against
+`main` at review time (#20, #21, #24, #25, #26, #29, #30, #31, #32) — work
+already done, not just planned. One finding there is more urgent than
+anything in §1: the numeric-score conflict isn't hypothetical, it's already
+implemented and open for merge.
+
+---
+
+## 0. Open PR audit — work already done, checked against the same decisions
+
+All 9 non-review, non-infra PRs open at review time were pulled and diffed
+against `main`. Headline result: two of them already ship the D-05 conflict
+as working code, not just a backlog card.
+
+### 0.1 🔴 PR #31 and PR #32 (amooch) already implement the numeric risk score — do not merge as-is
+
+- **PR #31** "refactor: analysis result" (`frontend/src/components/AnalysisResult.jsx`): replaces the existing, correct `<span className={\`badge ${riskLevel}\`}>{riskLevel}</span>` categorical badge with a new "Risk score … / 100" tile reading `analysis.risk_score`.
+- **PR #32** "feat(history): replace card list with a filterable table" (`frontend/src/components/History.jsx`): same swap — replaces `<span className={\`badge ${item.risk_level}\`}>{item.risk_level}</span>` with `<td>{item.risk_score ?? '—'}</td>`.
+- **The problem:** `risk_score` does not exist anywhere in the backend contract. `AnalysisOut`/`AnalysisWithListingOut` in `schemas/schemas.py` only expose `risk_level: RiskLevel` (categorical, three values) — this is D-05, deliberately, precisely because LLM-invented numeric scores aren't calibrated. Both PRs' own fallback code (`typeof analysis.risk_score === 'number' ? … : null`, `item.risk_score ?? '—'`) proves the authors already knew the field might not exist — it doesn't, and per D-05 it never will unless the team explicitly overturns that decision.
+- **Concrete effect if merged today:** every user sees "— / 100" where they currently see a working `low`/`medium`/`high` badge. This is a shipped regression, not a future risk.
+- **Root cause:** this is almost certainly downstream of Trello card #27 ("0–100 risk score combining rule-based and AI signals," §1.1) — the frontend was built to a card that itself contradicts a standing decision. Fixing the card without checking the two PRs already built against it would have missed this.
+- **Action:** Before merging #31 or #32, revert the `risk_score` UI back to the categorical badge (the diffs show exactly what to restore). If the team wants a numeric score badly enough to justify overturning D-05, that decision has to happen first, in the open, with a new decision-log entry and a corresponding backend contract change (new PR, `AIAnalysisResult` amendment) — not by merging frontend code that quietly assumes it.
+
+### 0.2 🟢 PR #21 and PR #24 — model examples of compliant contract-adjacent work
+
+Both add new functionality that touches the frozen files (`routes.py`, `schemas.py`) without violating SCHEMA-0, and both explicitly document why:
+- **PR #21** (US-2.3, URL fetch preview) adds `POST /listings/preview` as a wholly new, additive endpoint with its own schemas (`ListingUrlIn`, `ListingPreviewOut`) that never touch `ListingIn`/`POST /analyses`. Documents the choice as decision **D-06** in `DESIGN_NOTES.md`, including a real SSRF threat-model writeup (private/loopback/link-local rejection, redirect-count cap, response-size cap) — this is the level of rigor §1's conflicts should have gotten before landing on the board.
+- **PR #24** (US-1.4, profile edit) adds `PATCH /auth/me` as an additive endpoint with its own `UserUpdate` schema, leaves `UserOut`/`UserRegister`/`UserLogin` untouched, correctly updates the ownership docstring, and ships tests for every branch (auth-required, name update, email update, duplicate-email 409, empty-body 400).
+- **Action:** none — hold these up as the template for how §1's conflicts should be resolved if the team decides they're worth pursuing (i.e., additive endpoint + decision-log entry, not a frozen-contract edit).
+
+### 0.3 🟡 All 9 open PRs are stale relative to `main` — rebase before further review
+
+Checked via `git rev-list` against `origin/main`:
+
+| PR | Ahead | Behind |
+|---|---|---|
+| #20 | 4 | 3 |
+| #21 | 2 | 3 |
+| #24 | 1 | 3 |
+| #25 | 1 | 3 |
+| #26 | 1 | 3 |
+| #29 | 2 | 2 |
+| #30 | 1 | 3 |
+| #31 | 1 | 3 |
+| #32 | 1 | 3 |
+
+None of them include the E3 merge (`PR #12`) or the two release commits after it. Practically: any CI runs already recorded on these PRs did **not** validate against the current `main`, including the E3 code these PRs' UI renders against — which is exactly how #31/#32 (§0.1) shipped against a field that was never real. Rebase (or merge `main` in) before the next round of review on any of them.
+
+### 0.4 ⚪ PR #20 is a phantom — close it
+
+`git diff origin/main...pr20-check` is **empty** — its content ("build sign-in/register form for auth flow") already landed on `main` through some other path (most likely superseded by #25's wireframe-alignment work on the same component). Nothing left to merge. Close it rather than leaving it open indefinitely as false signal of pending work.
+
 ---
 
 ## 1. Critical conflicts — stop before building these as currently worded
@@ -94,27 +146,29 @@ This is a sequencing guide, not a rewrite of the backlog. Each phase assumes
 the previous one's guardrails hold.
 
 ### Phase 0 — Realign (do this before writing more code)
-1. Team sync on §1.1–§1.3: get explicit yes/no on the three critical conflicts. Any "yes, we want this" becomes a decision-log entry in `DESIGN_NOTES.md` *before* code, not after.
-2. Fix ownership comments (§2.2) and confirm who owns US-4.1.
-3. Correct the Render/GitHub Pages cards (§2.1).
-4. Correct `docs/BACKLOG.md`'s US-4.1 status (§2.3).
+1. **Most urgent:** fix or hold PR #31 and #32 (§0.1) — revert the `risk_score` UI to `risk_level` before either merges. This is the one item here with a real, immediate user-facing regression sitting in review right now.
+2. Rebase all 9 open PRs onto current `main` (§0.3) so future review actually validates against the E3 code; close PR #20 (§0.4) as superseded.
+3. Team sync on §1.1–§1.3: get explicit yes/no on the three critical conflicts. Any "yes, we want this" becomes a decision-log entry in `DESIGN_NOTES.md` *before* code, not after.
+4. Fix ownership comments (§2.2) and confirm who owns US-4.1.
+5. Correct the Render/GitHub Pages cards (§2.1).
+6. Correct `docs/BACKLOG.md`'s US-4.1 status (§2.3).
 
 ### Phase 1 — Close the last Must-have gap
-5. Implement US-4.1 (`GET /analyses`, `GET /analyses/{id}`), un-skip `test_history_is_per_user`. This unblocks PR #32 and completes EPIC 4.
-6. Fix the D-05 string-literal test hygiene issue (§2.4) in the same pass if convenient — it's a one-line-per-assertion change.
+7. Implement US-4.1 (`GET /analyses`, `GET /analyses/{id}`), un-skip `test_history_is_per_user`. This unblocks PR #32 (once its §0.1 fix lands) and completes EPIC 4.
+8. Fix the D-05 string-literal test hygiene issue (§2.4) in the same pass if convenient — it's a one-line-per-assertion change.
 
 ### Phase 2 — Harden what's shipped (all named as gaps in `DESIGN_NOTES.md` already — don't rediscover them, just schedule them)
-7. Rate limiting on `POST /analyses` (currently: none — a deployed instance exposes the Groq key's quota).
-8. Tighten CORS from `allow_origins=["*"]` to the deployed frontend origin.
-9. Card #31's contract test: replay a recorded Groq response through `AIAnalysisResult` validation, and add one Postgres-backed integration test (SQLite JSON behavior differs subtly from Postgres — this is the only place that gap can bite before submission).
+9. Rate limiting on `POST /analyses` (currently: none — a deployed instance exposes the Groq key's quota).
+10. Tighten CORS from `allow_origins=["*"]` to the deployed frontend origin.
+11. Trello card #31 (Current Sprint, "Integration tests… contract tests in CI" — not to be confused with PR #31 above): replay a recorded Groq response through `AIAnalysisResult` validation, and add one Postgres-backed integration test (SQLite JSON behavior differs subtly from Postgres — this is the only place that gap can bite before submission).
 
 ### Phase 3 — Ship the infra story correctly
-10. Resolve #2.1: decide Render vs. GitHub Pages once, update the three affected cards, then build CD against the real target.
-11. Wire `alembic upgrade head` into deploy/container start (named as a Sprint 3 candidate in `DESIGN_NOTES.md` already).
-12. Merge PR #33 (docker-compose dev-startup fix) if not already done — it's a pure infra fix, no contract risk, unblocks clean onboarding.
+12. Resolve §2.1: decide Render vs. GitHub Pages once, update the three affected cards, then build CD against the real target.
+13. Wire `alembic upgrade head` into deploy/container start (named as a Sprint 3 candidate in `DESIGN_NOTES.md` already).
+14. Merge PR #33 (docker-compose dev-startup fix) if not already done — it's a pure infra fix, no contract risk, unblocks clean onboarding.
 
 ### Phase 4 — Only after Phase 0–3: net-new scope
-13. Anything that touches `ListingIn`, `AIAnalysisResult`, `AIProvider`, or route signatures (currency normalization for real, image uploads/#41, numeric scoring if the team overturns D-05, listing-status lifecycle if the team overturns the sync-flow decision) goes through the SCHEMA-0 change-control process explicitly: **its own PR + a decision-log entry**, never bundled into an unrelated story.
+15. Anything that touches `ListingIn`, `AIAnalysisResult`, `AIProvider`, or route signatures (currency normalization for real, image uploads/#41, numeric scoring if the team overturns D-05, listing-status lifecycle if the team overturns the sync-flow decision) goes through the SCHEMA-0 change-control process explicitly: **its own PR + a decision-log entry**, never bundled into an unrelated story.
 
 ### Standing guardrails (apply at every phase, not just once)
 - Before starting any card that touches a frozen file (`schemas/schemas.py`, route signatures/status codes in `routes.py`, the `AIProvider` protocol), check `CLAUDE.md`'s pitfalls list and `DESIGN_NOTES.md`'s decisions section first — five minutes of reading versus a rebuilt feature.
