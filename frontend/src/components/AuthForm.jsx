@@ -1,3 +1,6 @@
+// E5 Frontend (owner: Adrian) — US-1.1/US-1.2 auth screens.
+// Contract: api.register({email, name, password}), api.login({email, password})
+// -> {access_token}; store via setToken(), then api.me() -> user object.
 import { useState } from 'react';
 import { ApiError, api, setToken } from '../api';
 
@@ -43,21 +46,16 @@ export default function AuthForm({ onSignedIn }) {
 
   return (
     <div className="card auth-card">
+      <p className="eyebrow">Login form</p>
+
       <div className="auth-toggle" role="tablist" aria-label="Authentication mode">
         <button type="button" className={mode === 'signin' ? 'pill active' : 'pill'} onClick={() => setMode('signin')}>
           Sign in
         </button>
         <button type="button" className={mode === 'signup' ? 'pill active' : 'pill'} onClick={() => setMode('signup')}>
-          Create account
+          Register
         </button>
       </div>
-
-      <h1>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
-      <p className="subtle">
-        {mode === 'signin'
-          ? 'Use your credentials to re-open your private analysis history.'
-          : 'Join TrustAI to review marketplace listings with structured guidance.'}
-      </p>
 
       <form onSubmit={handleSubmit}>
         {error ? <div className="error">{error}</div> : null}
@@ -71,18 +69,66 @@ export default function AuthForm({ onSignedIn }) {
 
         <div className="field">
           <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" value={form.email} onChange={updateField} required />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={updateField}
+            placeholder="name@example.com"
+            required
+          />
         </div>
 
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" value={form.password} onChange={updateField} minLength="8" required />
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={form.password}
+            onChange={updateField}
+            minLength="8"
+            required
+          />
         </div>
 
         <button type="submit" disabled={loading}>
           {loading ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
         </button>
       </form>
+
+      <div className="auth-footer-links">
+        <a href="#forgot-password" className="link">
+          Forgot password?
+        </a>
+
+        {mode === 'signin' ? (
+          <p className="auth-switch">
+            New user?{' '}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => setMode('signup')}
+            >
+              Create account
+            </button>
+          </p>
+        ) : (
+          <p className="auth-switch">
+            Already have an account?{' '}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => setMode('signin')}
+            >
+              Sign in
+            </button>
+          </p>
+        )}
+      </div>
+
+      <div className="security-copy">Security copy — TrustAI stores analysis history for signed-in users.</div>
     </div>
   );
 }
