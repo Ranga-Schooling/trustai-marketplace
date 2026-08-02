@@ -1,3 +1,10 @@
+## [1.3.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.1...v1.3.0) (2026-08-02)
+
+
+### Features
+
+* build sign-in/register form for auth flow ([#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)) ([0431c1b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/0431c1bfca62214390499132b778b0bba5640ec7))
+
 ## [1.2.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.0...v1.2.1) (2026-08-01)
 
 
