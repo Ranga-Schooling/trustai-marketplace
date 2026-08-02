@@ -91,3 +91,5 @@ Documentation
 - [ ] AI model decision log
 - [ ] Deployment guide
 - [ ] Final architecture review
+- [x] Verified registration, login, listing submission, and AI analysis work successfully through Docker Compose.
+- [ ] Verified History page — currently fails because `GET /analyses` raises `NotImplementedError("E2/US-4.1")`.
