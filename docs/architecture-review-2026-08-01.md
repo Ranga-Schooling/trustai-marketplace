@@ -46,7 +46,6 @@ Checked via `git rev-list` against `origin/main`:
 
 | PR | Ahead | Behind |
 |---|---|---|
-| #20 | 4 | 3 |
 | #21 | 2 | 3 |
 | #24 | 1 | 3 |
 | #25 | 1 | 3 |
@@ -58,9 +57,9 @@ Checked via `git rev-list` against `origin/main`:
 
 None of them include the E3 merge (`PR #12`) or the two release commits after it. Practically: any CI runs already recorded on these PRs did **not** validate against the current `main`, including the E3 code these PRs' UI renders against — which is exactly how #31/#32 (§0.1) shipped against a field that was never real. Rebase (or merge `main` in) before the next round of review on any of them.
 
-### 0.4 ⚪ PR #20 is a phantom — close it
+### 0.4 ⚪ PR #20 — resolved
 
-`git diff origin/main...pr20-check` is **empty** — its content ("build sign-in/register form for auth flow") already landed on `main` through some other path (most likely superseded by #25's wireframe-alignment work on the same component). Nothing left to merge. Close it rather than leaving it open indefinitely as false signal of pending work.
+`git diff origin/main...pr20-check` was **empty** at review time — its content ("build sign-in/register form for auth flow") had already landed on `main` through some other path. No action needed: #20 has since been merged.
 
 ---
 
