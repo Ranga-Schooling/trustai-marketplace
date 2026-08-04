@@ -6,13 +6,10 @@ A story's Definition of Done includes its tests passing here and in CI.
 
 Every test below is currently skipped. The skip reason names the story.
 Do NOT weaken assertions to make tests pass — change the implementation.
+
+Test env vars (DATABASE_URL, AI_PROVIDER, JWT_SECRET) are set in
+conftest.py, not here -- see that file for why it has to happen there.
 """
-import os
-
-os.environ["DATABASE_URL"] = "sqlite:///./test_trustai.db"
-os.environ["AI_PROVIDER"] = "mock"
-os.environ["JWT_SECRET"] = "test-secret"
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -96,7 +93,6 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
-@pytest.mark.skip(reason="US-3.1: benign listing -> low risk, buy (E3)")
 def test_low_risk_listing_gets_buy(client):
     headers = register_and_login(client)
     r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
@@ -107,7 +103,6 @@ def test_low_risk_listing_gets_buy(client):
     assert len(body["seller_questions"]) >= 1
 
 
-@pytest.mark.skip(reason="US-3.1: scam signals -> high risk, avoid (E3)")
 def test_high_risk_listing_gets_avoid(client):
     headers = register_and_login(client)
     r = client.post("/api/analyses", json=SCAM_LISTING, headers=headers)
@@ -119,7 +114,6 @@ def test_high_risk_listing_gets_avoid(client):
     assert "Off-platform payment" in categories
 
 
-@pytest.mark.skip(reason="US-2.1 AC1/AC2: invalid input rejected before AI call (E2)")
 def test_invalid_listing_rejected(client):
     headers = register_and_login(client)
     bad = {**SAFE_LISTING, "price": -5}
@@ -139,7 +133,6 @@ def test_history_is_per_user(client):
     assert client.get(f"/api/analyses/{aid}", headers=bob).status_code == 404
 
 
-@pytest.mark.skip(reason="US-2.2: AI failure -> 502, listing still saved (E2+E3)")
 def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch):
     headers = register_and_login(client)
 

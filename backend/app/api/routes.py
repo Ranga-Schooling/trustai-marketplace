@@ -26,7 +26,8 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.db import User, get_db
+from app.models.db import Analysis, Listing, RiskIndicator, User, get_db
+from app.services.ai import AnalysisFailure, get_provider
 from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
@@ -91,7 +92,54 @@ def create_analysis(
     persist the validated analysis with audit columns, return it.
     Enforce settings.max_description_chars with 413. 502 on AnalysisFailure
     (listing already saved)."""
-    raise NotImplementedError("E2+E3 integration story")
+    if len(body.description) > settings.max_description_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Description exceeds {settings.max_description_chars} characters",
+        )
+    listing = Listing(
+        user_id=user.id,
+        title=body.title,
+        price=body.price,
+        currency=body.currency,
+        source=body.source,
+        description=body.description,
+        url=str(body.url) if body.url is not None else None,
+    )
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+    try:
+        provider = get_provider()
+        result, raw_response = provider.analyze(body)
+    except AnalysisFailure as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI analysis failed; the listing was saved.",
+        ) from exc
+    analysis = Analysis(
+        listing_id=listing.id,
+        risk_level=result.risk_level.value,
+        summary=result.summary,
+        price_assessment=result.price_assessment,
+        recommendation=result.recommendation.value,
+        seller_questions=result.seller_questions,
+        model_used=provider.model_name,
+        prompt_version=settings.prompt_version,
+        raw_response=raw_response,
+    )
+    db.add(analysis)
+    analysis.risk_indicators = [
+        RiskIndicator(
+            category=indicator.category,
+            severity=indicator.severity.value,
+            explanation=indicator.explanation,
+        )
+        for indicator in result.risk_indicators
+    ]
+    db.commit()
+    db.refresh(analysis)
+    return analysis
 
 
 @router.get("/analyses", response_model=list[AnalysisWithListingOut])
