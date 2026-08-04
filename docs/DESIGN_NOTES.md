@@ -68,6 +68,29 @@ of scope here — consistent with the existing minimal-auth stance (no
 refresh tokens, no password reset, no email verification); adding it would
 need its own story and a re-authentication/current-password check to be
 safe.
+**MockProvider heuristics.** Deterministic keyword/price signals, not a
+model: urgency language ("urgent", "today only", "act now"), off-platform
+payment requests (gift card/wire transfer/crypto — high severity, the
+hardest scam pattern to reverse), off-platform contact requests (WhatsApp/
+Telegram), and a per-currency low-price threshold (`PRICE_THRESHOLDS`,
+falling back to a default for unlisted currencies) rather than one global
+number, since "suspiciously low" means something different at ZAR vs. USD
+scale. Any high-severity indicator forces `avoid`; this keeps the mock a
+stable, zero-network fixture for tests/CI while doubling as a literal,
+readable list of the fraud signals the product targets.
+
+**Test env isolation via conftest.py.** `app/core/config.get_settings()`
+is `@lru_cache`'d, so whichever test module's imports call it first wins
+for the whole pytest session. `test_api.py` used to set `DATABASE_URL`/
+`AI_PROVIDER`/`JWT_SECRET` at its own module top, which only works if
+pytest happens to collect it before any other test file — adding
+`test_ai_provider.py` (alphabetically earlier) broke that assumption and
+the whole suite silently pointed at whatever `DATABASE_URL` was already
+in the developer's shell. Moved the env setup into `tests/conftest.py`
+(which pytest always imports before test modules) and made it an
+unconditional assignment, not `setdefault` — the point is to guarantee
+an isolated test config regardless of the ambient environment, not to
+merely fill in gaps.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
@@ -105,3 +128,26 @@ would be a dedicated Postgres instance and an always-on API instance.
 - CORS is wide open for development; restrict to the deployed frontend origin.
 - SQLite JSON column behavior differs subtly from Postgres; integration tests
   against Postgres (via compose) are worth adding before final submission.
+
+## Fixed: clean `docker compose up --build` startup (2026-08-01)
+
+Reported by a teammate testing a from-scratch clone: (1) the frontend
+container started with no errors but `localhost:5173` was unreachable, and
+(2) the `api` container sometimes exited on the very first `up` with a
+Postgres connection error.
+
+Root causes and fixes:
+- **Frontend:** `npm run dev` runs bare `vite`, whose dev server binds to
+  `localhost` by default. Inside a container that's the container's own
+  loopback interface, not the interface the published port forwards from —
+  so the host can never reach it regardless of the `ports:` mapping. Fixed
+  by starting Vite with `--host 0.0.0.0` in `frontend/Dockerfile`.
+- **API/DB race:** Compose's `depends_on: [db]` only waits for the `db`
+  container process to start, not for Postgres to finish `initdb` and
+  accept connections — which takes a few seconds on the very first run
+  against an empty volume (subsequent runs reuse the volume and are fast
+  enough not to hit it). `api`'s startup (`init_db()`) has no connection
+  retry, so it crashed instead of racing to a flaky pass. Fixed with a
+  `pg_isready` healthcheck on `db` and `depends_on: db: condition:
+  service_healthy` on `api`, rather than adding retry logic in the app —
+  keeps the fix in the infra layer where the problem actually is.
