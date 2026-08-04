@@ -1,3 +1,17 @@
+## [1.3.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.1...v1.3.0) (2026-08-02)
+
+
+### Features
+
+* build sign-in/register form for auth flow ([#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)) ([0431c1b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/0431c1bfca62214390499132b778b0bba5640ec7))
+
+## [1.2.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.0...v1.2.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **docker:** bind Vite to 0.0.0.0 and wait for db healthcheck before api starts ([#33](https://github.com/Ranga-Schooling/trustai-marketplace/issues/33)) ([e0a77c2](https://github.com/Ranga-Schooling/trustai-marketplace/commit/e0a77c2fc3283eb72d1e03aec1f701c3a708bf0e))
+
 ## [1.2.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.1.0...v1.2.0) (2026-07-31)
 
 
