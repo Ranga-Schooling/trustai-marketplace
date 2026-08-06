@@ -1,6 +1,3 @@
-// E5 Frontend (owner: Adrian) — US-1.1/US-1.2 auth screens.
-// Contract: api.register({email, name, password}), api.login({email, password})
-// -> {access_token}; store via setToken(), then api.me() -> user object.
 import { useState } from 'react';
 import { ApiError, api, setToken } from '../api';
 
@@ -45,90 +42,79 @@ export default function AuthForm({ onSignedIn }) {
   }
 
   return (
-    <div className="card auth-card">
-      <p className="eyebrow">Login form</p>
+    <div className="content-grid">
+      <section className="card hero-card compact">
+        <p className="eyebrow">Why use TrustAI</p>
+        <h1>Safer buying decisions for online marketplace users</h1>
+        <ul className="check-list">
+          <li>AI listing summary</li>
+          <li>Risk indicators</li>
+          <li>Seller questions</li>
+          <li>Saved history</li>
+        </ul>
+      </section>
 
-      <div className="auth-toggle" role="tablist" aria-label="Authentication mode">
-        <button type="button" className={mode === 'signin' ? 'pill active' : 'pill'} onClick={() => setMode('signin')}>
-          Sign in
-        </button>
-        <button type="button" className={mode === 'signup' ? 'pill active' : 'pill'} onClick={() => setMode('signup')}>
-          Register
-        </button>
-      </div>
+      <div className="card auth-card">
+        <p className="eyebrow">Login form</p>
+        <div className="auth-toggle" role="tablist" aria-label="Authentication mode">
+          <button type="button" className={mode === 'signin' ? 'pill active' : 'pill'} onClick={() => setMode('signin')}>
+            Sign in
+          </button>
+          <button type="button" className={mode === 'signup' ? 'pill active' : 'pill'} onClick={() => setMode('signup')}>
+            Register
+          </button>
+        </div>
 
-      <form onSubmit={handleSubmit}>
-        {error ? <div className="error">{error}</div> : null}
+        <h2>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h2>
+        <p className="subtle">
+          {mode === 'signin'
+            ? 'Use your credentials to re-open your private analysis history.'
+            : 'Join TrustAI to review marketplace listings with structured guidance.'}
+        </p>
 
-        {mode === 'signup' ? (
+        <form onSubmit={handleSubmit}>
+          {error ? <div className="error">{error}</div> : null}
+
+          {mode === 'signup' ? (
+            <div className="field">
+              <label htmlFor="name">Your name</label>
+              <input id="name" name="name" value={form.name} onChange={updateField} required />
+            </div>
+          ) : null}
+
           <div className="field">
-            <label htmlFor="name">Your name</label>
-            <input id="name" name="name" value={form.name} onChange={updateField} required />
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="name@example.com"
+              value={form.email}
+              onChange={updateField}
+              required
+            />
           </div>
-        ) : null}
 
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={updateField}
-            placeholder="name@example.com"
-            required
-          />
-        </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input id="password" name="password" type="password" value={form.password} onChange={updateField} minLength="8" required />
+          </div>
 
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={updateField}
-            minLength="8"
-            required
-          />
-        </div>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+          </button>
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Working…' : mode === 'signin' ? 'Sign in' : 'Create account'}
-        </button>
-      </form>
-
-      <div className="auth-footer-links">
-        <a href="#forgot-password" className="link">
-          Forgot password?
-        </a>
-
-        {mode === 'signin' ? (
-          <p className="auth-switch">
-            New user?{' '}
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => setMode('signup')}
-            >
-              Create account
-            </button>
+          <p className="subtle" style={{ marginTop: 12 }}>
+            {mode === 'signin' ? (
+              <>New user? <a className="link" onClick={() => setMode('signup')}>Create account</a></>
+            ) : (
+              <>Already have an account? <a className="link" onClick={() => setMode('signin')}>Sign in</a></>
+            )}
           </p>
-        ) : (
-          <p className="auth-switch">
-            Already have an account?{' '}
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => setMode('signin')}
-            >
-              Sign in
-            </button>
-          </p>
-        )}
+        </form>
+
+        <p className="security-copy">TrustAI stores analysis history for signed-in users.</p>
       </div>
-
-      <div className="security-copy">Security copy — TrustAI stores analysis history for signed-in users.</div>
     </div>
   );
 }
