@@ -59,6 +59,15 @@ schema (Compose/Neon/Supabase) going forward. Not yet wired up: running
 `alembic upgrade head` automatically on deploy/container start — a candidate
 for the Sprint 3 DevOps pass.
 
+**View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
+`PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
+user update their `name` and/or `email` (`UserUpdate`, a new schema
+alongside the frozen ones, not a change to register/login). Duplicate
+email returns 409, same as register. Password change is deliberately out
+of scope here — consistent with the existing minimal-auth stance (no
+refresh tokens, no password reset, no email verification); adding it would
+need its own story and a re-authentication/current-password check to be
+safe.
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the

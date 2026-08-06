@@ -105,6 +105,56 @@ button.ghost {
 }
 .history-item:hover { background: #f1f4f2; }
 
+/* Shared two-column layout: intro/value-prop panel + primary content card.
+   Used by the auth screen and reused by ListingForm/AnalysisResult, which
+   already reference these classes (per the approved wireframes) but had no
+   backing CSS yet. */
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .content-grid { grid-template-columns: 1fr; }
+}
+
+.eyebrow {
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--trust); margin: 0 0 6px;
+}
+
+.hero-card { background: var(--ink); color: #fff; border: none; }
+.hero-card.compact { padding: 22px; }
+.hero-card .eyebrow { color: #9fd8c9; }
+.hero-card .subtle { color: #b7c2c6; }
+.hero-card h1, .hero-card h2 { color: #fff; }
+
+.check-list { list-style: none; padding: 0; margin: 14px 0 0; }
+.check-list li { padding-left: 20px; position: relative; margin: 8px 0; font-size: 0.9rem; }
+.check-list li::before { content: "\2713"; position: absolute; left: 0; color: var(--trust); font-weight: 700; }
+.hero-card .check-list li::before { color: #4fd8b8; }
+
+/* Auth screen — sign in / register toggle (docs/TrustAI Wireframes.pdf, 01/Auth) */
+.auth-card { max-width: 420px; }
+.auth-toggle {
+  display: flex; background: var(--paper); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px; margin-bottom: 20px; gap: 4px;
+}
+.pill {
+  flex: 1; background: transparent; color: var(--ink-soft); border: 0;
+  border-radius: 999px; padding: 8px 14px; font: inherit; font-weight: 600;
+  cursor: pointer;
+}
+.pill:hover { background: rgba(14, 124, 102, 0.08); }
+.pill.active { background: var(--ink); color: #fff; }
+.pill.active:hover { background: var(--ink); }
+
+.security-copy {
+  font-size: 0.8rem; color: var(--ink-soft); border: 1px dashed var(--line);
+  border-radius: 6px; padding: 10px 12px; margin-top: 16px;
+}
+
 .disclaimer {
   font-size: 0.8rem; color: var(--ink-soft); border-top: 1px solid var(--line);
   padding-top: 12px; margin-top: 20px;
