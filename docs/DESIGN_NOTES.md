@@ -79,6 +79,15 @@ the resolved address after following redirects (capped at 3, to blunt
 DNS-rebinding), restricts to `http(s)` and `text/html` responses, and caps
 response size (2 MB) and timeout (8s). This is a best-effort mitigation
 appropriate to a capstone project, not an exhaustive SSRF defense.
+**View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
+`PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
+user update their `name` and/or `email` (`UserUpdate`, a new schema
+alongside the frozen ones, not a change to register/login). Duplicate
+email returns 409, same as register. Password change is deliberately out
+of scope here — consistent with the existing minimal-auth stance (no
+refresh tokens, no password reset, no email verification); adding it would
+need its own story and a re-authentication/current-password check to be
+safe.
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the
@@ -127,6 +136,23 @@ would be a dedicated Postgres instance and an always-on API instance.
   - AI failure branch — confirms the 502 + saved-listing behavior.
 - **CI:** GitHub Actions runs the suite (mock provider) and a frontend
   production build on every push/PR. No secrets in CI by design.
+- **Unit vs. acceptance tests.** `test_api.py` is acceptance-level (full
+  HTTP round trips via `TestClient`). `test_security.py` and
+  `test_listing_schema.py` are unit-level: they call `core/security.py`
+  and the `ListingIn` schema directly, no DB session beyond a throwaway
+  SQLite one for `get_current_user`, no HTTP. Faster, and failures point
+  straight at the auth or listing-validation logic instead of a whole
+  request/response cycle.
+- **Coverage gate (`--cov-fail-under=85`).** `app` had no `__init__.py`
+  anywhere, which meant `coverage` silently excluded never-imported
+  files (`services/ai.py`) from its report instead of counting them as
+  0% — an easy way to end up with a misleadingly high number. Added
+  `__init__.py` to every package under `app/` so `services/ai.py`
+  (currently 0%, its two providers are still `NotImplementedError`
+  stubs) is honestly counted. Real total today is 89%; the gate is set
+  a few points below that as a floor with headroom, not a target — it
+  should ratchet up as US-2.1/US-3.1/US-3.3 land and those stubs get
+  implemented and tested.
 - **Not yet covered (candidates for Sprint 3):** frontend component tests,
   a contract test replaying recorded Groq responses through the validator,
   and load-testing the analysis endpoint.

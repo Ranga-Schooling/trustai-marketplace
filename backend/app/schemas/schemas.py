@@ -49,6 +49,18 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserUpdate(BaseModel):
+    """Input for PATCH /auth/me (US-1.4). Additive to SCHEMA-0 — profile
+    editing, not a change to the frozen register/login contract. Both
+    fields optional; at least one must be provided (enforced in the route).
+    Password change is deliberately out of scope, consistent with the
+    existing "no password reset" auth stance (docs/DESIGN_NOTES.md).
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    email: EmailStr | None = None
+
+
 # ---------- Listings / Analyses ----------
 class ListingIn(BaseModel):
     title: str = Field(min_length=1, max_length=255)

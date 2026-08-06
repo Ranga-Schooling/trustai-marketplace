@@ -43,58 +43,98 @@ export default function ListingForm({ onResult }) {
   }
 
   return (
-    <div className="content-grid">
-      <section className="card hero-card compact">
-        <p className="eyebrow">New review</p>
-        <h1>Evaluate a marketplace listing</h1>
-        <p className="subtle">
-          Share the listing basics and let TrustAI produce a structured recommendation that highlights the strongest warning signs.
-        </p>
-        <ul className="check-list">
-          <li>Title, price, and marketplace context</li>
-          <li>Short description of the listing</li>
-          <li>Optional URL for supporting context</li>
-        </ul>
-      </section>
-
+    <div className="submit-grid">
       <section className="card">
-        <h2>Listing details</h2>
+        <h1>Submit a marketplace listing for analysis</h1>
+
+        <h2 className="section-heading">Listing details</h2>
         <form onSubmit={handleSubmit}>
           {error ? <div className="error">{error}</div> : null}
 
           <div className="field">
-            <label htmlFor="title">Title</label>
-            <input id="title" name="title" value={form.title} onChange={updateField} required />
+            <label htmlFor="title">
+              Title <span className="req">*</span>
+            </label>
+            <input
+              id="title"
+              name="title"
+              value={form.title}
+              onChange={updateField}
+              placeholder="iPhone 14 Pro 256GB"
+              required
+            />
           </div>
 
-          <div className="row">
+          <div className="row two-col">
             <div className="field">
-              <label htmlFor="price">Price</label>
-              <input id="price" name="price" type="number" step="0.01" min="0.01" value={form.price} onChange={updateField} required />
+              <label htmlFor="price">
+                Price <span className="req">*</span>
+              </label>
+              <input
+                id="price"
+                name="price"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={form.price}
+                onChange={updateField}
+                placeholder="6500"
+                required
+              />
             </div>
             <div className="field">
-              <label htmlFor="currency">Currency</label>
+              <label htmlFor="currency">
+                Currency <span className="req">*</span>
+              </label>
               <select id="currency" name="currency" value={form.currency} onChange={updateField}>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
                 <option value="GBP">GBP</option>
                 <option value="CAD">CAD</option>
+                <option value="ZAR">ZAR</option>
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="source">Marketplace</label>
-              <input id="source" name="source" value={form.source} onChange={updateField} required />
-            </div>
           </div>
 
           <div className="field">
-            <label htmlFor="description">Description</label>
-            <textarea id="description" name="description" value={form.description} onChange={updateField} required />
+            <label htmlFor="source">
+              Source <span className="req">*</span>
+            </label>
+            <input
+              id="source"
+              name="source"
+              value={form.source}
+              onChange={updateField}
+              placeholder="Facebook Marketplace"
+              required
+            />
+            <p className="field-hint">e.g. Facebook Marketplace, Gumtree, OLX</p>
           </div>
 
           <div className="field">
-            <label htmlFor="url">Listing URL (optional)</label>
-            <input id="url" name="url" type="url" value={form.url} onChange={updateField} placeholder="https://example.com/listing" />
+            <label htmlFor="url">Optional URL</label>
+            <input
+              id="url"
+              name="url"
+              type="url"
+              value={form.url}
+              onChange={updateField}
+              placeholder="https://…"
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="description">
+              Description <span className="req">*</span>
+            </label>
+            <textarea
+              id="description"
+              name="description"
+              value={form.description}
+              onChange={updateField}
+              placeholder="Paste listing text"
+              required
+            />
           </div>
 
           <button type="submit" disabled={loading}>
@@ -102,6 +142,16 @@ export default function ListingForm({ onResult }) {
           </button>
         </form>
       </section>
+
+      <aside className="card tips-card">
+        <p className="eyebrow">Tips for better analysis</p>
+        <ul className="check-list">
+          <li>Include full description</li>
+          <li>Include price and seller claims</li>
+          <li>Add URL if available</li>
+          <li>Do not include private data</li>
+        </ul>
+      </aside>
     </div>
   );
 }

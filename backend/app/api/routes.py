@@ -5,7 +5,7 @@ agreed API contract (they generate the OpenAPI docs at /docs that the
 frontend builds against). Keep the signatures; implement the bodies.
 
 Ownership:
-- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3
+- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
 - POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
@@ -19,6 +19,9 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
 - POST /listings/preview is additive, not a change to the frozen
   ListingIn/POST /analyses contract (CLAUDE.md SCHEMA-0): it only suggests
   values, the user still submits through the unchanged endpoint. [US-2.3]
+- PATCH /auth/me is additive to the frozen register/login contract
+  (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
+  consistent with the existing minimal-auth stance. [US-1.4]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -42,6 +45,7 @@ from app.schemas.schemas import (
     UserLogin,
     UserOut,
     UserRegister,
+    UserUpdate,
 )
 from app.services.listing_fetch import FetchError, fetch_listing_preview
 
@@ -103,6 +107,31 @@ def preview_listing_url(
         return fetch_listing_preview(str(body.url))
     except FetchError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+@router.patch("/auth/me", response_model=UserOut)
+def update_me(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[US-1.4] Update the authenticated user's name and/or email.
+    400 if neither field is provided; 409 on duplicate email (store emails
+    lowercased, matching register)."""
+    if body.name is None and body.email is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+
+    if body.email is not None:
+        new_email = body.email.lower()
+        if new_email != user.email:
+            if db.query(User).filter(User.email == new_email).first() is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+            user.email = new_email
+
+    if body.name is not None:
+        user.name = body.name
+
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)
