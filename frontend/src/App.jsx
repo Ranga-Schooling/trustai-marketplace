@@ -4,10 +4,11 @@ import AnalysisResult from './components/AnalysisResult';
 import AuthForm from './components/AuthForm';
 import History from './components/History';
 import ListingForm from './components/ListingForm';
+import Profile from './components/Profile';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('submit');
+  const [view, setView] = useState('submit'); // submit | history | profile
   const [result, setResult] = useState(null);
   const [booting, setBooting] = useState(hasToken());
 
@@ -67,10 +68,11 @@ export default function App() {
             </button>
             <button type="button" className={`nav-pill ${view === 'history' ? 'active' : ''}`} onClick={openHistory}>
               History
-            </button>
-            <button type="button" className="ghost" onClick={signOut}>
-              Sign out
-            </button>
+            </a>
+            <a className="link" onClick={() => { setResult(null); setView('profile'); }}>
+              Account
+            </a>
+            <button className="ghost" onClick={signOut}>Sign out</button>
           </nav>
         ) : null}
       </header>
@@ -134,6 +136,10 @@ export default function App() {
       {user && !result && view === 'history' ? (
         <History onOpen={(item) => setResult(item)} onNewListing={openSubmit} />
       ) : null}
+
+      {user && !result && view === 'profile' && (
+        <Profile user={user} onUpdated={setUser} />
+      )}
 
       <p className="disclaimer">
         TrustAI provides heuristic risk analysis to support your own judgment. It does not detect every scam and makes no financial guarantees.

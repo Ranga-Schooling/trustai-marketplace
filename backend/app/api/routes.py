@@ -5,7 +5,7 @@ agreed API contract (they generate the OpenAPI docs at /docs that the
 frontend builds against). Keep the signatures; implement the bodies.
 
 Ownership:
-- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3
+- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
 
@@ -15,6 +15,9 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   the listing was saved. [US-2.2]
 - History queries are scoped to the authenticated user; fetching another
   user's analysis by id returns 404, not 403. [US-1.3 AC2]
+- PATCH /auth/me is additive to the frozen register/login contract
+  (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
+  consistent with the existing minimal-auth stance. [US-1.4]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -26,7 +29,8 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.models.db import User, get_db
+from app.models.db import Analysis, Listing, RiskIndicator, User, get_db
+from app.services.ai import AnalysisFailure, get_provider
 from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
@@ -35,6 +39,7 @@ from app.schemas.schemas import (
     UserLogin,
     UserOut,
     UserRegister,
+    UserUpdate,
 )
 
 router = APIRouter()
@@ -81,6 +86,33 @@ def me(user: User = Depends(get_current_user)):
     return user
 
 
+@router.patch("/auth/me", response_model=UserOut)
+def update_me(
+    body: UserUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[US-1.4] Update the authenticated user's name and/or email.
+    400 if neither field is provided; 409 on duplicate email (store emails
+    lowercased, matching register)."""
+    if body.name is None and body.email is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+
+    if body.email is not None:
+        new_email = body.email.lower()
+        if new_email != user.email:
+            if db.query(User).filter(User.email == new_email).first() is not None:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+            user.email = new_email
+
+    if body.name is not None:
+        user.name = body.name
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)
 def create_analysis(
     body: ListingIn,
@@ -91,7 +123,54 @@ def create_analysis(
     persist the validated analysis with audit columns, return it.
     Enforce settings.max_description_chars with 413. 502 on AnalysisFailure
     (listing already saved)."""
-    raise NotImplementedError("E2+E3 integration story")
+    if len(body.description) > settings.max_description_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Description exceeds {settings.max_description_chars} characters",
+        )
+    listing = Listing(
+        user_id=user.id,
+        title=body.title,
+        price=body.price,
+        currency=body.currency,
+        source=body.source,
+        description=body.description,
+        url=str(body.url) if body.url is not None else None,
+    )
+    db.add(listing)
+    db.commit()
+    db.refresh(listing)
+    try:
+        provider = get_provider()
+        result, raw_response = provider.analyze(body)
+    except AnalysisFailure as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="AI analysis failed; the listing was saved.",
+        ) from exc
+    analysis = Analysis(
+        listing_id=listing.id,
+        risk_level=result.risk_level.value,
+        summary=result.summary,
+        price_assessment=result.price_assessment,
+        recommendation=result.recommendation.value,
+        seller_questions=result.seller_questions,
+        model_used=provider.model_name,
+        prompt_version=settings.prompt_version,
+        raw_response=raw_response,
+    )
+    db.add(analysis)
+    analysis.risk_indicators = [
+        RiskIndicator(
+            category=indicator.category,
+            severity=indicator.severity.value,
+            explanation=indicator.explanation,
+        )
+        for indicator in result.risk_indicators
+    ]
+    db.commit()
+    db.refresh(analysis)
+    return analysis
 
 
 @router.get("/analyses", response_model=list[AnalysisWithListingOut])
