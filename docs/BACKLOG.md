@@ -161,6 +161,15 @@ misled into treating heuristic output as a guarantee.
 - AC1: README covers setup, environment variables, running tests, Docker, and deployment notes.
 - Implemented: `README.md`, this backlog, `docs/DESIGN_NOTES.md`.
 
+**US-6.4 — Unit test foundations with a CI coverage gate**
+As the team, we want a fast unit-test layer (not just full HTTP acceptance
+tests) for the auth and listing services, with CI enforcing a coverage
+floor so untested code can't silently creep in.
+- AC1: `test_security.py` unit-tests `core/security.py` directly (hashing, JWT claims/expiry, `get_current_user`'s 401 cases) — no HTTP, no TestClient.
+- AC2: `test_listing_schema.py` unit-tests `ListingIn` validation directly (currency shape/normalization, positive price, description length, optional URL).
+- AC3: CI fails if backend coverage drops below 85% (`--cov-fail-under=85`); `app` gained `__init__.py` files so untested modules (e.g. `services/ai.py`) are honestly counted instead of silently excluded.
+- Implemented: `tests/test_security.py`, `tests/test_listing_schema.py`, `backend/.coveragerc`, `.github/workflows/ci.yml`.
+
 ---
 
 ## Priority summary
