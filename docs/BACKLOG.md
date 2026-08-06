@@ -37,9 +37,18 @@ so one user's history is never visible to another.
 - AC2: A user cannot fetch another user's analysis by guessing its id (404).
 - Implemented: `get_current_user` dependency, tests `test_analyses_requires_auth`, `test_history_is_per_user`.
 
+**US-1.4 — View and edit profile**
+As a user, I want to view my profile and edit my name/email, so my account
+details stay current.
+- AC1: `GET /auth/me` returns the current name/email (already implemented under US-1.3).
+- AC2: `PATCH /auth/me` updates name and/or email; at least one field required (400 otherwise).
+- AC3: Changing to an already-registered email returns 409, same as registration.
+- Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
+
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
-session token storage and 401 auto-signout in the frontend API client.
+session token storage and 401 auto-signout in the frontend API client ·
+profile view/edit route and UI (US-1.4).
 
 ---
 
@@ -158,6 +167,6 @@ misled into treating heuristic output as a guarantee.
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.3, 2.1–2.2, 3.1–3.3, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.3, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
 | Could (future) | PDF export, URL auto-fetch, browser extension, reverse image search |
