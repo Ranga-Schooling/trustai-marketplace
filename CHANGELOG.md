@@ -1,3 +1,10 @@
+## [1.6.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.5.0...v1.6.0) (2026-08-06)
+
+
+### Features
+
+* **app:** merge promo and intro into one landing column; wire up his… ([#29](https://github.com/Ranga-Schooling/trustai-marketplace/issues/29)) ([9ebe90a](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9ebe90a410423f26186b2798c1889e1a69f85e00))
+
 ## [1.5.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.4.0...v1.5.0) (2026-08-06)
 
 
