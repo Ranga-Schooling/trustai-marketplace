@@ -4,10 +4,11 @@ import AnalysisResult from './components/AnalysisResult';
 import AuthForm from './components/AuthForm';
 import History from './components/History';
 import ListingForm from './components/ListingForm';
+import Profile from './components/Profile';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('submit'); // submit | history
+  const [view, setView] = useState('submit'); // submit | history | profile
   const [result, setResult] = useState(null);
   const [booting, setBooting] = useState(hasToken());
 
@@ -41,6 +42,9 @@ export default function App() {
             <a className="link" onClick={() => { setResult(null); setView('history'); }}>
               History
             </a>
+            <a className="link" onClick={() => { setResult(null); setView('profile'); }}>
+              Account
+            </a>
             <button className="ghost" onClick={signOut}>Sign out</button>
           </nav>
         )}
@@ -61,6 +65,10 @@ export default function App() {
 
       {user && !result && view === 'history' && (
         <History onOpen={setResult} />
+      )}
+
+      {user && !result && view === 'profile' && (
+        <Profile user={user} onUpdated={setUser} />
       )}
 
       <p className="disclaimer">
