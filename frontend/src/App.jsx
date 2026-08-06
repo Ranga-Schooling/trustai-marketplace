@@ -68,7 +68,7 @@ export default function App() {
             </button>
             <button type="button" className={`nav-pill ${view === 'history' ? 'active' : ''}`} onClick={openHistory}>
               History
-            </a>
+            </button>
             <a className="link" onClick={() => { setResult(null); setView('profile'); }}>
               Account
             </a>
