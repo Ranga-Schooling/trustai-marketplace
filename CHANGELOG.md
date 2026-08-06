@@ -1,3 +1,45 @@
+## [1.6.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.5.0...v1.6.0) (2026-08-06)
+
+
+### Features
+
+* **app:** merge promo and intro into one landing column; wire up his… ([#29](https://github.com/Ranga-Schooling/trustai-marketplace/issues/29)) ([9ebe90a](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9ebe90a410423f26186b2798c1889e1a69f85e00))
+
+## [1.5.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.4.0...v1.5.0) (2026-08-06)
+
+
+### Features
+
+* align sign in/register screen with approved wireframes (US-1.1/… ([#25](https://github.com/Ranga-Schooling/trustai-marketplace/issues/25)) ([707f2e4](https://github.com/Ranga-Schooling/trustai-marketplace/commit/707f2e4778de8b3b9c798f2d210b72d41b65ef1e)), closes [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20) [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20) [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)
+
+## [1.4.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.3.0...v1.4.0) (2026-08-06)
+
+
+### Features
+
+* view and edit account profile (US-1.4) ([#24](https://github.com/Ranga-Schooling/trustai-marketplace/issues/24)) ([5c3c918](https://github.com/Ranga-Schooling/trustai-marketplace/commit/5c3c918e837646b55156f4d51a9b40df4ee9fa19))
+
+## [1.3.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.1...v1.3.0) (2026-08-02)
+
+
+### Features
+
+* build sign-in/register form for auth flow ([#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)) ([0431c1b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/0431c1bfca62214390499132b778b0bba5640ec7))
+
+## [1.2.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.2.0...v1.2.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **docker:** bind Vite to 0.0.0.0 and wait for db healthcheck before api starts ([#33](https://github.com/Ranga-Schooling/trustai-marketplace/issues/33)) ([e0a77c2](https://github.com/Ranga-Schooling/trustai-marketplace/commit/e0a77c2fc3283eb72d1e03aec1f701c3a708bf0e))
+
+## [1.2.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.1.0...v1.2.0) (2026-07-31)
+
+
+### Features
+
+* implement E3 AI analysis and risk scoring ([#12](https://github.com/Ranga-Schooling/trustai-marketplace/issues/12)) ([32bdd6e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/32bdd6e8ca66ab593e835667441ec365271a0fb5)), closes [#8](https://github.com/Ranga-Schooling/trustai-marketplace/issues/8) [#8](https://github.com/Ranga-Schooling/trustai-marketplace/issues/8)
+
 ## [1.1.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.0.0...v1.1.0) (2026-07-30)
 
 

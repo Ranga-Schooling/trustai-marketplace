@@ -59,6 +59,39 @@ schema (Compose/Neon/Supabase) going forward. Not yet wired up: running
 `alembic upgrade head` automatically on deploy/container start — a candidate
 for the Sprint 3 DevOps pass.
 
+**View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
+`PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
+user update their `name` and/or `email` (`UserUpdate`, a new schema
+alongside the frozen ones, not a change to register/login). Duplicate
+email returns 409, same as register. Password change is deliberately out
+of scope here — consistent with the existing minimal-auth stance (no
+refresh tokens, no password reset, no email verification); adding it would
+need its own story and a re-authentication/current-password check to be
+safe.
+**MockProvider heuristics.** Deterministic keyword/price signals, not a
+model: urgency language ("urgent", "today only", "act now"), off-platform
+payment requests (gift card/wire transfer/crypto — high severity, the
+hardest scam pattern to reverse), off-platform contact requests (WhatsApp/
+Telegram), and a per-currency low-price threshold (`PRICE_THRESHOLDS`,
+falling back to a default for unlisted currencies) rather than one global
+number, since "suspiciously low" means something different at ZAR vs. USD
+scale. Any high-severity indicator forces `avoid`; this keeps the mock a
+stable, zero-network fixture for tests/CI while doubling as a literal,
+readable list of the fraud signals the product targets.
+
+**Test env isolation via conftest.py.** `app/core/config.get_settings()`
+is `@lru_cache`'d, so whichever test module's imports call it first wins
+for the whole pytest session. `test_api.py` used to set `DATABASE_URL`/
+`AI_PROVIDER`/`JWT_SECRET` at its own module top, which only works if
+pytest happens to collect it before any other test file — adding
+`test_ai_provider.py` (alphabetically earlier) broke that assumption and
+the whole suite silently pointed at whatever `DATABASE_URL` was already
+in the developer's shell. Moved the env setup into `tests/conftest.py`
+(which pytest always imports before test modules) and made it an
+unconditional assignment, not `setdefault` — the point is to guarantee
+an isolated test config regardless of the ambient environment, not to
+merely fill in gaps.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
@@ -83,6 +116,23 @@ would be a dedicated Postgres instance and an always-on API instance.
   - AI failure branch — confirms the 502 + saved-listing behavior.
 - **CI:** GitHub Actions runs the suite (mock provider) and a frontend
   production build on every push/PR. No secrets in CI by design.
+- **Unit vs. acceptance tests.** `test_api.py` is acceptance-level (full
+  HTTP round trips via `TestClient`). `test_security.py` and
+  `test_listing_schema.py` are unit-level: they call `core/security.py`
+  and the `ListingIn` schema directly, no DB session beyond a throwaway
+  SQLite one for `get_current_user`, no HTTP. Faster, and failures point
+  straight at the auth or listing-validation logic instead of a whole
+  request/response cycle.
+- **Coverage gate (`--cov-fail-under=85`).** `app` had no `__init__.py`
+  anywhere, which meant `coverage` silently excluded never-imported
+  files (`services/ai.py`) from its report instead of counting them as
+  0% — an easy way to end up with a misleadingly high number. Added
+  `__init__.py` to every package under `app/` so `services/ai.py`
+  (currently 0%, its two providers are still `NotImplementedError`
+  stubs) is honestly counted. Real total today is 89%; the gate is set
+  a few points below that as a floor with headroom, not a target — it
+  should ratchet up as US-2.1/US-3.1/US-3.3 land and those stubs get
+  implemented and tested.
 - **Not yet covered (candidates for Sprint 3):** frontend component tests,
   a contract test replaying recorded Groq responses through the validator,
   and load-testing the analysis endpoint.
@@ -95,3 +145,26 @@ would be a dedicated Postgres instance and an always-on API instance.
 - CORS is wide open for development; restrict to the deployed frontend origin.
 - SQLite JSON column behavior differs subtly from Postgres; integration tests
   against Postgres (via compose) are worth adding before final submission.
+
+## Fixed: clean `docker compose up --build` startup (2026-08-01)
+
+Reported by a teammate testing a from-scratch clone: (1) the frontend
+container started with no errors but `localhost:5173` was unreachable, and
+(2) the `api` container sometimes exited on the very first `up` with a
+Postgres connection error.
+
+Root causes and fixes:
+- **Frontend:** `npm run dev` runs bare `vite`, whose dev server binds to
+  `localhost` by default. Inside a container that's the container's own
+  loopback interface, not the interface the published port forwards from —
+  so the host can never reach it regardless of the `ports:` mapping. Fixed
+  by starting Vite with `--host 0.0.0.0` in `frontend/Dockerfile`.
+- **API/DB race:** Compose's `depends_on: [db]` only waits for the `db`
+  container process to start, not for Postgres to finish `initdb` and
+  accept connections — which takes a few seconds on the very first run
+  against an empty volume (subsequent runs reuse the volume and are fast
+  enough not to hit it). `api`'s startup (`init_db()`) has no connection
+  retry, so it crashed instead of racing to a flaky pass. Fixed with a
+  `pg_isready` healthcheck on `db` and `depends_on: db: condition:
+  service_healthy` on `api`, rather than adding retry logic in the app —
+  keeps the fix in the infra layer where the problem actually is.
