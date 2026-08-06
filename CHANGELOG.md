@@ -1,3 +1,10 @@
+## [1.5.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.4.0...v1.5.0) (2026-08-06)
+
+
+### Features
+
+* align sign in/register screen with approved wireframes (US-1.1/… ([#25](https://github.com/Ranga-Schooling/trustai-marketplace/issues/25)) ([707f2e4](https://github.com/Ranga-Schooling/trustai-marketplace/commit/707f2e4778de8b3b9c798f2d210b72d41b65ef1e)), closes [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20) [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20) [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)
+
 ## [1.4.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.3.0...v1.4.0) (2026-08-06)
 
 
