@@ -167,6 +167,46 @@ def test_invalid_listing_rejected(client):
     assert client.post("/api/analyses", json=bad, headers=headers).status_code == 422
 
 
+def test_preview_listing_from_text(client):
+    headers = register_and_login(client)
+    body = {
+        "text": "Awesome sofa, firm price $250. Contact me on WhatsApp."
+    }
+    r = client.post("/api/listings/preview", json=body, headers=headers)
+    assert r.status_code == 200
+    response = r.json()
+    assert response["title"] == "Awesome sofa, firm price $250. Contact me on WhatsApp."
+    assert response["price"] == 250.0
+    assert response["currency"] == "USD"
+    assert "WhatsApp" in response["seller_details"]
+
+
+def test_preview_listing_from_url(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.services.listing_parser import _fetch_html
+
+    def fake_fetch_html(url: str) -> str:
+        return (
+            "<html><head><title>Vintage guitar</title>"
+            "<meta name='description' content='1960s guitar in good shape.'>"
+            "</head><body>Price: $1,800</body></html>"
+        )
+
+    monkeypatch.setattr("app.services.listing_parser._fetch_html", fake_fetch_html)
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "https://example.com/listing/123"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    response = r.json()
+    assert response["title"] == "Vintage guitar"
+    assert response["description"] == "1960s guitar in good shape."
+    assert response["price"] == 1800.0
+    assert response["currency"] == "USD"
+
+
 @pytest.mark.skip(reason="US-1.3 AC2 + US-4.1: per-user history isolation (E1+E2)")
 def test_history_is_per_user(client):
     alice = register_and_login(client, "alice@example.com")

@@ -35,11 +35,14 @@ from app.core.security import (
 )
 from app.models.db import Analysis, Listing, RiskIndicator, User, get_db
 from app.services.ai import AnalysisFailure, get_provider
+from app.services.listing_parser import preview_listing_from_text, preview_listing_from_url
 from app.services.scoring import compute_risk_score
 from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
     ListingIn,
+    ListingPreviewIn,
+    ListingPreviewOut,
     TokenResponse,
     UserLogin,
     UserOut,
@@ -177,6 +180,21 @@ def create_analysis(
     db.commit()
     db.refresh(analysis)
     return analysis
+
+
+@router.post("/listings/preview", response_model=ListingPreviewOut)
+def preview_listing(
+    body: ListingPreviewIn,
+    user: User = Depends(get_current_user),
+):
+    """[US-2.3] Extract listing preview metadata from raw text or a URL."""
+    body.validate_input()
+    try:
+        if body.text is not None:
+            return preview_listing_from_text(body.text)
+        return preview_listing_from_url(str(body.url))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
 @router.get("/analyses", response_model=list[AnalysisWithListingOut])

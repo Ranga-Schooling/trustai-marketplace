@@ -81,6 +81,33 @@ class ListingIn(BaseModel):
         return v.upper()
 
 
+class ListingPreviewIn(BaseModel):
+    text: str | None = Field(default=None, min_length=1)
+    url: HttpUrl | None = None
+
+    @field_validator("text")
+    @classmethod
+    def strip_text(cls, v: str | None) -> str | None:
+        return v.strip() if v is not None else None
+
+    @field_validator("url")
+    @classmethod
+    def normalize_url(cls, v: HttpUrl | None) -> HttpUrl | None:
+        return v
+
+    def validate_input(self) -> None:
+        if not self.text and not self.url:
+            raise ValueError("Either text or url must be provided")
+
+
+class ListingPreviewOut(BaseModel):
+    title: str | None = None
+    price: float | None = None
+    currency: str | None = None
+    description: str | None = None
+    seller_details: str | None = None
+
+
 class RiskIndicatorOut(BaseModel):
     category: str
     severity: RiskLevel
