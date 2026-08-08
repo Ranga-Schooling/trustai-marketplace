@@ -12,12 +12,15 @@ request/response mechanism. The same `AIAnalysisResult` model validates LLM
 output, drives the OpenAPI docs at `/docs`, and serves as the team's API
 contract.
 
-**Categorical risk, not numeric.** LLM-emitted numeric scores are not
+**Categorical risk, not numeric (D-05).** LLM-emitted numeric scores are not
 calibrated; two runs on the same listing can differ by 20 points with no
 change in substance. Risk is therefore low/medium/high, derived from the
 severities of named indicators, with a deterministic mapping to
 Buy/Caution/Avoid. This is testable (see `test_high_risk_listing_gets_avoid`)
-in a way a free-floating number is not.
+in a way a free-floating number is not. `AIAnalysisResult` — what a provider
+must return — still has no numeric field, and never will unless this
+paragraph itself changes. See D-09 below for the one numeric value that
+does exist in the app, and why it doesn't reopen this problem.
 
 **Provider interface (strategy pattern).** `AIProvider` is a Protocol with
 two implementations: `GroqProvider` (JSON mode, 30s timeout, one retry on
@@ -91,6 +94,31 @@ in the developer's shell. Moved the env setup into `tests/conftest.py`
 unconditional assignment, not `setdefault` — the point is to guarantee
 an isolated test config regardless of the ambient environment, not to
 merely fill in gaps.
+
+**Deterministic risk score (D-09, amends D-05's scope).** Trello card #27
+asked for "a 0-100 risk score combining rule-based and AI signals." Two
+PRs (#31, #32) were already built against a `risk_score` field that didn't
+exist, both defensively coded around its possible absence — a shipped
+regression waiting to merge (`docs/architecture-review-2026-08-01.md`
+§0.1). The naive fix (ask the LLM for a number) is exactly what D-05
+exists to prevent, so this doesn't do that: `AIAnalysisResult` — the
+contract every `AIProvider` must satisfy — is completely unchanged, still
+has no numeric field, and no provider is asked for or returns a score.
+Instead, `AnalysisOut.risk_score` is computed server-side, after the
+provider call, by a new pure function (`services/scoring.py`) over the
+already-validated categorical result: each `RiskLevel` tier owns a
+disjoint slice of 0-100 (low 0-33, medium 34-66, high 67-100), and where
+a listing lands within its tier scales with the severity-weighted count
+of its `risk_indicators`. Same inputs always produce the same score
+(unit-tested directly, `test_scoring.py`), and a tier's score range can
+never overlap a neighboring tier's — the number can't contradict the
+categorical badge it's derived from, which is the actual property D-05
+was protecting, not "no numbers anywhere." `CLAUDE.md`'s D-05 pitfall note
+is updated to reflect this narrower, still-deliberate scope.
+
+Persisted on `Analysis` (Alembic revision `3cc9cb43e9e6`) rather than
+computed on read, so a future `GET /analyses` (US-4.1) doesn't need to
+re-run the formula or re-fetch `risk_indicators` for a list view.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
