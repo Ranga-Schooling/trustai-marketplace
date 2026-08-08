@@ -128,7 +128,6 @@ def test_update_profile_requires_a_field(client):
     assert r.status_code == 400
 
 
-@pytest.mark.skip(reason="US-3.1: benign listing -> low risk, buy (E3)")
 def test_low_risk_listing_gets_buy(client):
     headers = register_and_login(client)
     r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)

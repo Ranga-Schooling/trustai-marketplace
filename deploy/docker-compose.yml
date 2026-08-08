@@ -1,0 +1,53 @@
+# Production stack for EC2 — pulls pre-built images from ECR (do not build here).
+# Copy this file to the EC2 host as docker-compose.yml (e.g. /opt/trustai/).
+#
+# First-time on EC2:
+#   aws ecr get-login-password --region eu-north-1 \
+#     | docker login --username AWS --password-stdin \
+#       585142511013.dkr.ecr.eu-north-1.amazonaws.com
+#   docker compose pull && docker compose up -d
+#
+# Required in .env beside this file: JWT_SECRET, POSTGRES_PASSWORD
+# Optional: GROQ_API_KEY, AI_PROVIDER
+
+services:
+  backend:
+    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:latest
+    # No host port: API is reached via frontend nginx (/api → backend:8000).
+    expose:
+      - "8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://trustai:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/trustai
+      AI_PROVIDER: ${AI_PROVIDER:-mock}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trustai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: trustai
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustai -d trustai"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
