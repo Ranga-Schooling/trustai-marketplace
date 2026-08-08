@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.0...v1.6.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* un-skip test_low_risk_listing_gets_buy (US-3.1) ([#36](https://github.com/Ranga-Schooling/trustai-marketplace/issues/36)) ([319b351](https://github.com/Ranga-Schooling/trustai-marketplace/commit/319b351405b0abe741f405a293e9b14173acb68e))
+
 ## [1.6.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.5.0...v1.6.0) (2026-08-06)
 
 
