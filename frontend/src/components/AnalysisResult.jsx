@@ -1,3 +1,13 @@
+// Reuses the existing low/medium/high badge palette for plausibility, since
+// it's the same "fine -> caution -> alarming" gradient as risk severity —
+// no new CSS needed. Purely visual grouping; price_plausibility and
+// risk_level are independent fields (see DESIGN_NOTES.md D-08).
+const PLAUSIBILITY_DISPLAY = {
+  plausible: { label: 'Plausible', tone: 'low' },
+  suspicious: { label: 'Suspicious', tone: 'medium' },
+  too_good_to_be_true: { label: 'Too good to be true', tone: 'high' },
+};
+
 export default function AnalysisResult({ analysis, onBack }) {
   const riskLevel = analysis.risk_level || 'low';
   const recommendationLabel = {
@@ -5,6 +15,7 @@ export default function AnalysisResult({ analysis, onBack }) {
     caution: 'Caution',
     avoid: 'Avoid',
   }[analysis.recommendation] || 'Review';
+  const plausibility = PLAUSIBILITY_DISPLAY[analysis.price_plausibility] || null;
 
   const indicators = Array.isArray(analysis.risk_indicators) ? analysis.risk_indicators : [];
   const sellerQuestions = Array.isArray(analysis.seller_questions) ? analysis.seller_questions : [];
@@ -25,7 +36,10 @@ export default function AnalysisResult({ analysis, onBack }) {
           <h2>What the AI is saying</h2>
           <p className="subtle">{analysis.summary}</p>
           <div className="info-block">
-            <h3>Price assessment</h3>
+            <h3>
+              Price assessment
+              {plausibility ? <span className={`badge ${plausibility.tone}`}> {plausibility.label}</span> : null}
+            </h3>
             <p>{analysis.price_assessment || 'No price assessment was provided.'}</p>
           </div>
           <div className="info-block">

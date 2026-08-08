@@ -68,6 +68,7 @@ of scope here — consistent with the existing minimal-auth stance (no
 refresh tokens, no password reset, no email verification); adding it would
 need its own story and a re-authentication/current-password check to be
 safe.
+
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the
@@ -91,6 +92,28 @@ in the developer's shell. Moved the env setup into `tests/conftest.py`
 unconditional assignment, not `setdefault` — the point is to guarantee
 an isolated test config regardless of the ambient environment, not to
 merely fill in gaps.
+
+**Price plausibility category (D-08, additive to SCHEMA-0).** Trello card
+#28 asked for "is the asking price plausible, suspicious, or too-good-to-
+be-true (no factual market-value claim)." The free-text `price_assessment`
+field already honored the "no factual market-value claim" half — both
+providers were already instructed never to invent a figure — but had no
+structured category, so "suspicious" vs. "too good to be true" wasn't a
+queryable/testable distinction, just prose a human had to read. Added
+`PricePlausibility` (`plausible` / `suspicious` / `too_good_to_be_true`) as
+a new field on `AIAnalysisResult`/`AnalysisOut`, following the exact D-05
+precedent: categorical, not numeric, because an LLM-invented number here
+would have the same calibration problem `risk_level` was built to avoid.
+`price_assessment` is unchanged and still carries the qualitative
+explanation; this is purely additive, no existing field renamed or
+removed. `MockProvider` splits its existing single low-price threshold in
+two: below half the threshold is `too_good_to_be_true`, below the full
+threshold is `suspicious`, otherwise `plausible` — same deterministic,
+zero-network heuristic as the rest of the mock, just two tiers instead of
+one. `Analysis.price_plausibility` is a new Postgres column (Alembic
+revision `ecb69044639d`); its `server_default='plausible'` exists only to
+backfill any pre-existing rows harmlessly and is not a live escape hatch —
+`routes.create_analysis` always supplies a real value on insert.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI

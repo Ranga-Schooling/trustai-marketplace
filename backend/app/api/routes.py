@@ -153,6 +153,7 @@ def create_analysis(
         risk_level=result.risk_level.value,
         summary=result.summary,
         price_assessment=result.price_assessment,
+        price_plausibility=result.price_plausibility.value,
         recommendation=result.recommendation.value,
         seller_questions=result.seller_questions,
         model_used=provider.model_name,

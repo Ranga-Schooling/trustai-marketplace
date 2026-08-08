@@ -30,6 +30,7 @@ class FakeResponse:
                             "risk_level": "low",
                             "risk_indicators": [],
                             "price_assessment": "The price requires independent verification.",
+                            "price_plausibility": "plausible",
                             "seller_questions": [
                                 "Can I inspect the item before paying?"
                             ],
