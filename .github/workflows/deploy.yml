@@ -36,8 +36,9 @@ jobs:
           REPOSITORY: ${{ secrets.ECR_BACKEND_REPO }}
           IMAGE_TAG: latest
         run: |
-          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" ./backend
+          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" -t "$REGISTRY/$REPOSITORY:$GITHUB_SHA" ./backend
           docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker push "$REGISTRY/$REPOSITORY:$GITHUB_SHA"
 
       - name: Build and Push Frontend
         env:
@@ -45,8 +46,9 @@ jobs:
           REPOSITORY: ${{ secrets.ECR_FRONTEND_REPO }}
           IMAGE_TAG: latest
         run: |
-          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" ./frontend
+          docker build -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" -t "$REGISTRY/$REPOSITORY:$GITHUB_SHA" ./frontend
           docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker push "$REGISTRY/$REPOSITORY:$GITHUB_SHA"
 
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v1.2.0

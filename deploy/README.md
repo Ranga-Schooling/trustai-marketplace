@@ -3,6 +3,7 @@
 On every push to `main`, `.github/workflows/deploy.yml`:
 
 1. Builds and pushes `trustaimarketplace/backend` and `trustaimarketplace/frontend` to ECR
+   (tags: `latest` and the commit SHA)
 2. SSHs to EC2 and runs `docker compose pull && docker compose up -d`
 
 ## Image names (must match ECR)
@@ -31,8 +32,17 @@ On every push to `main`, `.github/workflows/deploy.yml`:
 1. Install Docker, Compose plugin, and AWS CLI.
 2. Give the instance (or `~/.aws`) permission to pull from both ECR repos.
 3. Copy `deploy/docker-compose.yml` → `$EC2_APP_DIR/docker-compose.yml`.
-4. Create `$EC2_APP_DIR/.env` with `JWT_SECRET=...`.
-5. Open security group port **80** (and **8000** if you need direct API access).
+4. Create `$EC2_APP_DIR/.env` with strong secrets (required — compose will refuse to start without them):
+
+   ```bash
+   JWT_SECRET=replace-with-a-long-random-string
+   POSTGRES_PASSWORD=replace-with-a-strong-db-password
+   # optional:
+   # AI_PROVIDER=mock
+   # GROQ_API_KEY=
+   ```
+
+5. Open security group port **80** only (API is reached via nginx `/api`, not public `:8000`).
 6. Manual first run: ECR login → `docker compose pull && up -d`.
 
 Local development still uses the root `docker-compose.yml` (builds from source).
