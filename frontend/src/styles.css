@@ -84,6 +84,12 @@ button.ghost {
 .verdict.medium { background: var(--risk-medium); }
 .verdict.high { background: var(--risk-high); }
 
+/* Deterministic 0-100 score (D-09) sits beside the categorical badge, never
+   replaces it -- the badge is still the source of truth for the tier. */
+.verdict-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.risk-score { font-weight: 700; font-size: 1.1rem; white-space: nowrap; }
+.history-topline .risk-score { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); }
+
 .indicator { border-left: 3px solid var(--line); padding: 6px 12px; margin: 8px 0; }
 .indicator.low { border-color: var(--risk-low); }
 .indicator.medium { border-color: var(--risk-medium); }
