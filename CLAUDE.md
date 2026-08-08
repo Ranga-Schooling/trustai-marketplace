@@ -11,10 +11,19 @@ process evidence (Git history, decision records), not just working code.
   Never change any of these as a side effect of another task. If a task
   seems to require a contract change, stop and say so — it needs a PR of
   its own plus a decision-log entry in `docs/DESIGN_NOTES.md`.
-- Risk is categorical (`RiskLevel` enum), never numeric. Do not add
-  scores, percentages, or confidence numbers anywhere — this is decision
-  D-05 and it is deliberate. Always reference the `RiskLevel` and
-  `Recommendation` enums; never hardcode label strings, including in tests.
+- Risk is categorical (`RiskLevel` enum), never numeric — this is decision
+  D-05 and it is deliberate. `AIAnalysisResult` (what every `AIProvider`
+  must return) has no numeric field and never will; no provider is ever
+  asked for or returns a score, percentage, or confidence number. Always
+  reference the `RiskLevel` and `Recommendation` enums; never hardcode
+  label strings, including in tests.
+  - One narrow, already-decided exception (D-09,
+    `docs/DESIGN_NOTES.md`): `AnalysisOut.risk_score` is a 0-100 value
+    computed server-side by the pure function in `services/scoring.py`
+    from the already-validated categorical result — never by an LLM, never
+    part of `AIAnalysisResult`. Don't extend this pattern to other numeric
+    fields (e.g. a "confidence score") without the same stop-and-flag
+    process as any other contract change.
 
 ## Definition of Done
 
