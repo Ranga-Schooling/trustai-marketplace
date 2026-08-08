@@ -76,6 +76,30 @@ class ListingIn(BaseModel):
         return v.upper()
 
 
+class ListingUrlIn(BaseModel):
+    """Input for the URL-fetch preview endpoint (docs/DESIGN_NOTES.md).
+
+    Kept separate from ListingIn on purpose: this never bypasses the frozen
+    POST /analyses contract, it only produces suggestions for it.
+    """
+
+    url: HttpUrl
+
+
+class ListingPreviewOut(BaseModel):
+    """Best-effort suggestions extracted from a fetched listing page.
+
+    Fields intentionally mirror a subset of ListingIn's optional-to-fill-in
+    fields, not the schema itself — the user still reviews/edits these
+    before they ever reach ListingIn/POST /analyses.
+    """
+
+    url: str
+    title: str
+    description: str
+    source: str | None = None
+
+
 class RiskIndicatorOut(BaseModel):
     category: str
     severity: RiskLevel

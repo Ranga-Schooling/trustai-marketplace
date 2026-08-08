@@ -10,6 +10,8 @@ const initialState = {
   url: '',
 };
 
+const CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP'];
+
 export default function ListingForm({ onResult }) {
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);

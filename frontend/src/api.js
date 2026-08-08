@@ -46,6 +46,7 @@ export const api = {
   me: () => request('/auth/me'),
   updateProfile: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   createAnalysis: (data) => request('/analyses', { method: 'POST', body: JSON.stringify(data) }),
+  previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),
 };

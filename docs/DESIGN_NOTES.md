@@ -59,6 +59,26 @@ schema (Compose/Neon/Supabase) going forward. Not yet wired up: running
 `alembic upgrade head` automatically on deploy/container start — a candidate
 for the Sprint 3 DevOps pass.
 
+**URL fetch preview (D-06, additive to SCHEMA-0).** US-2.3 asks for
+"submit a listing URL and the system fetches the page content." Rather than
+changing the frozen `ListingIn`/`POST /analyses` contract to accept a
+URL-only submission, this is implemented as a separate, additive endpoint —
+`POST /listings/preview` — that fetches the page server-side and returns
+best-effort `title`/`description` suggestions (`ListingUrlIn`/
+`ListingPreviewOut`, new schemas alongside the frozen ones, not replacing
+them). The frontend uses these to prefill `ListingForm`; the user still
+reviews and submits through the unchanged `POST /analyses`, so nothing
+unvalidated from a scraped page ever reaches the AI provider or the
+database directly. This keeps `BeautifulSoup`/`lxml` parsing (a new failure
+surface) isolated from the existing, tested submission path.
+
+Fetching an arbitrary user-supplied URL server-side is a textbook SSRF
+vector, so `app/services/listing_fetch.py` resolves the hostname and
+rejects private/loopback/link-local/multicast/reserved addresses, re-checks
+the resolved address after following redirects (capped at 3, to blunt
+DNS-rebinding), restricts to `http(s)` and `text/html` responses, and caps
+response size (2 MB) and timeout (8s). This is a best-effort mitigation
+appropriate to a capstone project, not an exhaustive SSRF defense.
 **View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
 `PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
 user update their `name` and/or `email` (`UserUpdate`, a new schema
