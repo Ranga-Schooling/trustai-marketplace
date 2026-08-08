@@ -1,3 +1,10 @@
+## [1.7.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.1...v1.7.0) (2026-08-08)
+
+
+### Features
+
+* deterministic 0-100 risk score, resolving Card [#27](https://github.com/Ranga-Schooling/trustai-marketplace/issues/27) without reopening D-05 ([#43](https://github.com/Ranga-Schooling/trustai-marketplace/issues/43)) ([164b915](https://github.com/Ranga-Schooling/trustai-marketplace/commit/164b915e26544535a37f3408f8b58f9f4a0ef008)), closes [#31](https://github.com/Ranga-Schooling/trustai-marketplace/issues/31) [#32](https://github.com/Ranga-Schooling/trustai-marketplace/issues/32)
+
 ## [1.6.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.0...v1.6.1) (2026-08-08)
 
 
