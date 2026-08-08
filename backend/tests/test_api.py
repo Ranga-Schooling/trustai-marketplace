@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.db import Base, engine
+from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 pytestmark = []
 
@@ -57,6 +58,14 @@ SCAM_LISTING = {
     "source": "Gumtree",
     "description": "URGENT sale today only!! Payment by gift card or wire "
                    "transfer only, contact me on WhatsApp.",
+}
+
+MODERATELY_LOW_PRICE_LISTING = {
+    "title": "Samsung Galaxy S22, lightly used",
+    "price": 35.0,
+    "currency": "USD",
+    "source": "OLX",
+    "description": "Selling my phone, works perfectly, minor scratches on the back.",
 }
 
 
@@ -133,8 +142,9 @@ def test_low_risk_listing_gets_buy(client):
     r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
     assert r.status_code == 201
     body = r.json()
-    assert body["risk_level"] == "low"
-    assert body["recommendation"] == "buy"
+    assert body["risk_level"] == RiskLevel.low.value
+    assert body["recommendation"] == Recommendation.buy.value
+    assert body["price_plausibility"] == PricePlausibility.plausible.value
     assert len(body["seller_questions"]) >= 1
 
 
@@ -143,10 +153,21 @@ def test_high_risk_listing_gets_avoid(client):
     r = client.post("/api/analyses", json=SCAM_LISTING, headers=headers)
     assert r.status_code == 201
     body = r.json()
-    assert body["risk_level"] == "high"
-    assert body["recommendation"] == "avoid"
+    assert body["risk_level"] == RiskLevel.high.value
+    assert body["recommendation"] == Recommendation.avoid.value
+    assert body["price_plausibility"] == PricePlausibility.too_good_to_be_true.value
     categories = {i["category"] for i in body["risk_indicators"]}
     assert "Off-platform payment" in categories
+
+
+def test_moderately_low_price_gets_suspicious_plausibility(client):
+    headers = register_and_login(client)
+    r = client.post("/api/analyses", json=MODERATELY_LOW_PRICE_LISTING, headers=headers)
+    assert r.status_code == 201
+    body = r.json()
+    assert body["price_plausibility"] == PricePlausibility.suspicious.value
+    assert body["risk_level"] == RiskLevel.medium.value
+    assert body["recommendation"] == Recommendation.caution.value
 
 
 def test_invalid_listing_rejected(client):

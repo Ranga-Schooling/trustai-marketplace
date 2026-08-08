@@ -24,6 +24,16 @@ class Recommendation(str, Enum):
     avoid = "avoid"
 
 
+class PricePlausibility(str, Enum):
+    """Categorical price-plausibility tier (D-08, docs/DESIGN_NOTES.md).
+    Deliberately not a numeric or factual market-value claim — same
+    rationale as D-05's categorical RiskLevel."""
+
+    plausible = "plausible"
+    suspicious = "suspicious"
+    too_good_to_be_true = "too_good_to_be_true"
+
+
 # ---------- Auth ----------
 class UserRegister(BaseModel):
     email: EmailStr
@@ -91,6 +101,7 @@ class AIAnalysisResult(BaseModel):
     risk_level: RiskLevel
     risk_indicators: list[RiskIndicatorOut] = Field(max_length=10)
     price_assessment: str = Field(min_length=1)
+    price_plausibility: PricePlausibility
     seller_questions: list[str] = Field(min_length=1, max_length=8)
     recommendation: Recommendation
 
@@ -101,6 +112,7 @@ class AnalysisOut(BaseModel):
     risk_level: RiskLevel
     summary: str
     price_assessment: str
+    price_plausibility: PricePlausibility
     recommendation: Recommendation
     seller_questions: list[str]
     risk_indicators: list[RiskIndicatorOut]
