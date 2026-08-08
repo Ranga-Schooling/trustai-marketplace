@@ -1,5 +1,5 @@
-# Local development stack. Deployed environments use Render (app) plus a
-# managed Postgres (Neon/Supabase) via DATABASE_URL.
+# Local development stack — builds from source.
+# Production EC2 stack lives in deploy/docker-compose.yml (ECR images).
 services:
   api:
     build: ./backend
@@ -14,7 +14,9 @@ services:
       db:
         condition: service_healthy
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     ports: ["5173:5173"]
     environment:
       # Reach the api container by its Compose service name, not localhost.
