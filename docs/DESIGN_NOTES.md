@@ -144,6 +144,23 @@ setting `AI_PROVIDER` and restarting the process — `Settings` stays a
 separate, bigger piece of work (tracked as a GitHub issue: admin-gated
 runtime configuration + analytics), not bundled into this card.
 
+**Compose gap found while dogfooding D-10 (fixed same PR).** `docker-compose.yml`'s
+`api` service set `AI_PROVIDER`/`*_API_KEY` via `${VAR:-default}`
+interpolation. That syntax only ever resolves from the shell invoking
+`docker compose` (or a `.env` next to `docker-compose.yml`, which doesn't
+exist) — it does **not** read `backend/.env`. Practical effect: setting
+`AI_PROVIDER=gpt` and `OPENAI_API_KEY=...` in `backend/.env` (the file
+`.env.example` and every other doc point developers at) silently had zero
+effect on the containerized API, which kept running `MockProvider` with no
+error. Fixed by pointing the `api` service at
+`env_file: [{path: ./backend/.env, required: false}]` instead, and
+dropping the dead `${VAR}` interpolations — `required: false` keeps a
+fresh clone with no `backend/.env` yet working via `Settings`' own field
+defaults, same as running `uvicorn` directly. Also added a `logger.warning`
+in `get_provider()` for an unrecognized `AI_PROVIDER` value, since silently
+falling back to mock with zero signal is exactly what made this gap hard to
+notice in the first place.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.

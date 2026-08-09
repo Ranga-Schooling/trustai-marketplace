@@ -29,6 +29,7 @@ Design decisions already agreed (docs/DESIGN_NOTES.md):
 
 """
 import json
+import logging
 from typing import Protocol
 
 import httpx
@@ -44,6 +45,9 @@ from app.schemas.schemas import (
 )
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
+
+KNOWN_PROVIDERS = {"mock", "groq", "gpt", "gemini"}
 
 # Fixed currency thresholds keep MockProvider deterministic for tests.
 # This mock intentionally does not perform live exchange-rate conversion.
@@ -358,4 +362,15 @@ def get_provider() -> AIProvider:
         return GPTProvider()
     if settings.ai_provider == "gemini":
         return GeminiProvider()
+    if settings.ai_provider not in KNOWN_PROVIDERS:
+        # An unrecognized AI_PROVIDER value (typo, stale config) used to fall
+        # through to MockProvider with no signal at all -- confusing when
+        # you've set a real key and can't tell why analyses still look
+        # heuristic. Log it; still fail open to mock rather than crash the
+        # request path over a config typo.
+        logger.warning(
+            "Unknown AI_PROVIDER=%r; falling back to MockProvider. Expected one of %s.",
+            settings.ai_provider,
+            sorted(KNOWN_PROVIDERS),
+        )
     return MockProvider()
