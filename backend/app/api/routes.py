@@ -22,6 +22,12 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   services/scoring.py from the already-validated risk_level/
   risk_indicators; no AIProvider returns it, AIAnalysisResult is
   unchanged. [Trello #27]
+- ListingIn.images (D-12, stretch) is a list of base64 image data URIs;
+  format is validated in the schema, count/size caps in this route (413),
+  same split as description. Passed through to AIProvider.analyze
+  unchanged -- MockProvider ignores it (stays deterministic), vision-
+  capable real providers use it. AIAnalysisResult is unchanged either way.
+  [US-2.4]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -127,12 +133,30 @@ def create_analysis(
     """[US-2.1, US-2.2, US-3.1] Persist the listing, run the AI provider,
     persist the validated analysis with audit columns, return it.
     Enforce settings.max_description_chars with 413. 502 on AnalysisFailure
-    (listing already saved)."""
+    (listing already saved).
+    [US-2.4, D-12] Same 413 treatment for listing.images: count capped by
+    settings.max_listing_images, each image's decoded size capped by
+    settings.max_image_bytes. Format (valid base64 image data URI) is
+    already enforced in ListingIn -- this is the size guard only, same
+    split as description."""
     if len(body.description) > settings.max_description_chars:
         raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Description exceeds {settings.max_description_chars} characters",
         )
+    if len(body.images) > settings.max_listing_images:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"A maximum of {settings.max_listing_images} images is allowed",
+        )
+    for image in body.images:
+        b64_payload = image.split(",", 1)[1]
+        decoded_bytes = len(b64_payload) * 3 // 4
+        if decoded_bytes > settings.max_image_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Each image must be under {settings.max_image_bytes // 1_000_000}MB",
+            )
     listing = Listing(
         user_id=user.id,
         title=body.title,
@@ -141,6 +165,7 @@ def create_analysis(
         source=body.source,
         description=body.description,
         url=str(body.url) if body.url is not None else None,
+        images=body.images or None,
     )
     db.add(listing)
     db.commit()

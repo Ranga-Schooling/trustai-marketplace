@@ -9,6 +9,7 @@ export default function AnalysisResult({ analysis, onBack }) {
 
   const indicators = Array.isArray(analysis.risk_indicators) ? analysis.risk_indicators : [];
   const sellerQuestions = Array.isArray(analysis.seller_questions) ? analysis.seller_questions : [];
+  const listingImages = Array.isArray(analysis.listing_images) ? analysis.listing_images : [];
 
   return (
     <div className="result-page">
@@ -22,6 +23,20 @@ export default function AnalysisResult({ analysis, onBack }) {
           <span className={`badge ${riskLevel}`}>{riskLevel}</span>
         </div>
       </div>
+
+      {listingImages.length > 0 ? (
+        <section className="card">
+          <p className="eyebrow">Submitted photos</p>
+          <h2>What the buyer attached</h2>
+          <div className="image-preview-list">
+            {listingImages.map((src, index) => (
+              <div className="image-preview" key={`${index}-${src.slice(-12)}`}>
+                <img src={src} alt={`Listing photo ${index + 1}`} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="content-grid">
         <section className="card">

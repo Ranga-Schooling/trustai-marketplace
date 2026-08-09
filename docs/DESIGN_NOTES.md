@@ -120,6 +120,45 @@ Persisted on `Analysis` (Alembic revision `3cc9cb43e9e6`) rather than
 computed on read, so a future `GET /analyses` (US-4.1) doesn't need to
 re-run the formula or re-fetch `risk_indicators` for a list view.
 
+**Listing images (D-12, US-2.4, stretch).** The architecture review flagged
+image uploads explicitly as something that must go through SCHEMA-0 change
+control rather than get bundled into another story
+(`architecture-review-2026-08-01.md` §15) -- this is that PR. Three
+options were weighed for storage: base64 in Postgres, image URLs only, or
+external object storage (S3/Cloudinary). Went with **base64 in Postgres**:
+no new required infra (consistent with the project's pattern so far of not
+introducing paid/free-tier external dependencies), works against SQLite in
+tests, and it's the same representation OpenAI- and Gemini-shaped vision
+APIs already accept natively (`image_url`/`inline_data` parts), so no
+transcoding between storage and AI-call shape. URL-only was rejected
+because most marketplace listings don't expose stable hotlinkable image
+URLs; S3/Cloudinary was rejected as a bigger lift (new credentials, deploy
+config, another moving part) than a 2-month capstone stretch goal
+justifies. Known trade-off, stated honestly: this doesn't scale to real
+photo-hosting volumes, and `GET /analyses` (US-4.1) returning full images
+for every list row is bandwidth-wasteful at more than demo/capstone
+volume -- acceptable here, a candidate for a separate lazy-loaded
+images endpoint if this ever needed to scale.
+
+Mechanically: `ListingIn.images` (list of base64 data URIs) validates
+*format* in the schema (a `field_validator`, same pattern as
+`upper_currency`); *count* (`max_listing_images`, 3) and *per-image size*
+(`max_image_bytes`, 2MB) are enforced in the route with a 413, mirroring
+`description`'s existing split (format/shape in the schema, abuse-guard
+size caps from settings in the route). `AIProvider.analyze` still just
+takes the full `ListingIn` it always did -- no Protocol change -- so each
+provider decides whether to use `.images`: `MockProvider` never looks at
+it (stays deterministic, zero network, CI unaffected); `GroqProvider`
+builds an OpenAI-shaped multi-part message (`_user_message_content`) when
+images are present. If the configured model isn't vision-capable, the
+provider's own API rejects the request and that surfaces through the
+*existing* `AnalysisFailure` -> 502 "listing was saved" path -- no
+special-casing needed, the failure mode is already handled and honest
+(US-6.2) about not guaranteeing analysis quality. `AnalysisOut.listing_images`
+echoes the images back (a plain property on the `Analysis` ORM model
+proxying `Listing.images`) so the immediate post-submit result and a
+later-reopened history entry use the same field, not two data paths.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.

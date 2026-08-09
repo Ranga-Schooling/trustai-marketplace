@@ -13,11 +13,22 @@ conftest.py, not here -- see that file for why it has to happen there.
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import app
 from app.models.db import Base, engine
 from app.schemas.schemas import Recommendation, RiskLevel
 
 pytestmark = []
+
+settings = get_settings()
+
+# Smallest valid PNG (1x1, transparent) -- real decodable image bytes so
+# this doubles as a legitimate multipart payload if a provider ever tries
+# to actually parse it, not just a format-shaped string.
+TINY_PNG = (
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lE"
+    "QVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
 
 
 @pytest.fixture(autouse=True)
@@ -165,6 +176,59 @@ def test_invalid_listing_rejected(client):
     assert client.post("/api/analyses", json=bad, headers=headers).status_code == 422
     bad = {**SAFE_LISTING, "currency": "RANDS"}
     assert client.post("/api/analyses", json=bad, headers=headers).status_code == 422
+
+
+def test_listing_without_images_has_empty_listing_images(client):
+    """US-2.4/D-12: images are optional; existing submissions are unaffected."""
+    headers = register_and_login(client)
+    body = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
+    assert body["listing_images"] == []
+
+
+def test_listing_with_images_is_accepted(client):
+    """US-2.4/D-12 AC1/AC2: a buyer can attach images; MockProvider ignores
+    them (stays deterministic) but they're persisted and echoed back."""
+    headers = register_and_login(client)
+    body = client.post(
+        "/api/analyses",
+        json={**SAFE_LISTING, "images": [TINY_PNG]},
+        headers=headers,
+    ).json()
+    assert body["listing_images"] == [TINY_PNG]
+    # MockProvider result is unaffected by images being present.
+    assert body["risk_level"] == RiskLevel.low.value
+
+
+def test_too_many_images_rejected(client):
+    """US-2.4/D-12 AC3: count cap enforced in the route, like description."""
+    headers = register_and_login(client)
+    too_many = [TINY_PNG] * (settings.max_listing_images + 1)
+    r = client.post(
+        "/api/analyses", json={**SAFE_LISTING, "images": too_many}, headers=headers
+    )
+    assert r.status_code == 413
+
+
+def test_oversized_image_rejected(client):
+    """US-2.4/D-12 AC3: per-image size cap enforced in the route."""
+    headers = register_and_login(client)
+    oversized_b64 = "A" * (settings.max_image_bytes * 4 // 3 + 100)
+    oversized_image = f"data:image/png;base64,{oversized_b64}"
+    r = client.post(
+        "/api/analyses", json={**SAFE_LISTING, "images": [oversized_image]}, headers=headers
+    )
+    assert r.status_code == 413
+
+
+def test_malformed_image_data_uri_rejected(client):
+    """Format is validated in ListingIn -- 422 before any route/AI logic runs."""
+    headers = register_and_login(client)
+    r = client.post(
+        "/api/analyses",
+        json={**SAFE_LISTING, "images": ["not-a-data-uri"]},
+        headers=headers,
+    )
+    assert r.status_code == 422
 
 
 @pytest.mark.skip(reason="US-1.3 AC2 + US-4.1: per-user history isolation (E1+E2)")

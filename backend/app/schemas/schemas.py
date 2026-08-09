@@ -12,9 +12,12 @@ field). It's a display-only value computed server-side by
 `services/scoring.py` from the already-validated categorical result.
 """
 import datetime as dt
+import re
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
+
+IMAGE_DATA_URI_RE = re.compile(r"^data:image/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/]+=*$")
 
 
 class RiskLevel(str, Enum):
@@ -74,11 +77,26 @@ class ListingIn(BaseModel):
     source: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=10)
     url: HttpUrl | None = None
+    # Stretch (US-2.4, D-12): optional listing photos as base64 data URIs.
+    # Format is validated here; count/size caps are enforced in the route
+    # from settings, same split as description's length guard (no
+    # max_length here on purpose, matching that existing pattern).
+    images: list[str] = Field(default_factory=list)
 
     @field_validator("currency")
     @classmethod
     def upper_currency(cls, v: str) -> str:
         return v.upper()
+
+    @field_validator("images")
+    @classmethod
+    def validate_image_data_uris(cls, v: list[str]) -> list[str]:
+        for image in v:
+            if not IMAGE_DATA_URI_RE.match(image):
+                raise ValueError(
+                    "Each image must be a base64 data URI (image/jpeg, png, webp, or gif)"
+                )
+        return v
 
 
 class RiskIndicatorOut(BaseModel):
@@ -112,6 +130,10 @@ class AnalysisOut(BaseModel):
     risk_indicators: list[RiskIndicatorOut]
     model_used: str
     created_at: dt.datetime
+    # Stretch (US-2.4, D-12): echoes the listing's images back so both the
+    # immediate post-submit result and a reopened history entry can render
+    # them, without the frontend needing two different data paths.
+    listing_images: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 

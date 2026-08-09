@@ -69,8 +69,31 @@ retry without retyping everything.
 - AC2: On AI failure the API returns 502 with a message stating the listing was saved.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
+**US-2.4 — Add listing images to the analysis (Stretch)**
+As a buyer, I want to attach photos of a listing so a vision-capable AI
+provider can factor them into the risk analysis (e.g. stock photos, a
+mismatched or too-polished image for the stated condition/price).
+- AC1: A buyer can attach up to `max_listing_images` (3) photos as part of
+  submission; each capped at `max_image_bytes` (2MB). Format (a base64
+  image data URI) is validated in `ListingIn`; count/size are enforced in
+  the route with 413, same split as `description`'s length guard.
+- AC2: Images are persisted with the listing and echoed back on
+  `AnalysisOut.listing_images` so both the immediate result and a reopened
+  history entry can display them.
+- AC3: Vision-capable providers (Groq, when configured with a
+  vision-capable model) receive the images as part of the analysis
+  request; `MockProvider` ignores them entirely and stays deterministic —
+  CI remains network-free. `AIAnalysisResult` is unchanged either way.
+- Implemented: `ListingIn.images`, `Listing.images` (Alembic
+  `7df6dabbd464`), `Analysis.listing_images` property,
+  `services/ai.py::_user_message_content`, image picker in
+  `ListingForm.jsx`, thumbnail gallery in `AnalysisResult.jsx`, tests in
+  `test_listing_schema.py`/`test_ai_provider.py`/`test_api.py`. Decision
+  log: `docs/DESIGN_NOTES.md` D-12.
+
 Tasks completed: Listing ORM model · input schema with currency normalization ·
-description length guard · submission form UI with inline errors.
+description length guard · submission form UI with inline errors · optional
+listing image upload with vision-provider wiring (US-2.4).
 
 ---
 
@@ -194,5 +217,6 @@ floor so untested code can't silently creep in.
 | Priority | Stories |
 |---|---|
 | Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.4, 4.1, 5.1–5.3, 6.1–6.3 |
+| Could (shipped stretch) | US-2.4 (listing images) |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
 | Could (future) | PDF export, URL auto-fetch, browser extension, reverse image search |

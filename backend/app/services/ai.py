@@ -192,6 +192,34 @@ class MockProvider:
         return result, result.model_dump_json()
 
 
+def _listing_prompt(listing: ListingIn) -> str:
+    return (
+        "Analyze this marketplace listing:\n"
+        f"Title: {listing.title}\n"
+        f"Price: {listing.price} {listing.currency}\n"
+        f"Source: {listing.source}\n"
+        f"Description:\n{listing.description}\n"
+        f"URL: {listing.url or 'Not provided'}"
+    )
+
+
+def _user_message_content(listing: ListingIn) -> str | list[dict]:
+    """Plain text when there are no images; otherwise OpenAI-shaped
+    multi-part content (text + image_url parts) for vision-capable models
+    (D-12, US-2.4). MockProvider never calls this -- it stays deterministic
+    and doesn't look at listing.images at all. If the configured provider's
+    model isn't vision-capable, the API rejects the image parts and that
+    surfaces through the existing AnalysisFailure -> 502 path below, same
+    as any other malformed-response failure -- no special-casing needed.
+    """
+    text = _listing_prompt(listing)
+    if not listing.images:
+        return text
+    return [{"type": "text", "text": text}] + [
+        {"type": "image_url", "image_url": {"url": image}} for image in listing.images
+    ]
+
+
 class GroqProvider:
     """Groq chat completions (OpenAI-compatible) with JSON mode."""
 
@@ -203,20 +231,11 @@ class GroqProvider:
         self.model_name = settings.groq_model
 
     def analyze(self, listing: ListingIn) -> tuple[AIAnalysisResult, str]:
-        listing_text = (
-            "Analyze this marketplace listing:\n"
-            f"Title: {listing.title}\n"
-            f"Price: {listing.price} {listing.currency}\n"
-            f"Source: {listing.source}\n"
-            f"Description:\n{listing.description}\n"
-            f"URL: {listing.url or 'Not provided'}"
-        )
-
         payload = {
             "model": self.model_name,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": listing_text},
+                {"role": "user", "content": _user_message_content(listing)},
             ],
             "response_format": {"type": "json_object"},
             "temperature": 0.2,

@@ -85,6 +85,10 @@ class Listing(Base):
     # char guard lives in the route, not the schema or the column.
     description: Mapped[str] = mapped_column(Text)
     url: Mapped[str | None] = mapped_column(String(2048), default=None)
+    # Stretch (US-2.4, D-12): base64 data URIs, capped by settings in the
+    # route (max_listing_images / max_image_bytes), not here -- same split
+    # as description's char cap.
+    images: Mapped[list[str] | None] = mapped_column(JSON, default=None)
 
     user: Mapped[User] = relationship(back_populates="listings")
     analyses: Mapped[list["Analysis"]] = relationship(back_populates="listing")
@@ -111,6 +115,13 @@ class Analysis(Base):
     model_used: Mapped[str] = mapped_column(String(120))
     prompt_version: Mapped[str] = mapped_column(String(20))
     raw_response: Mapped[str] = mapped_column(Text)
+
+    @property
+    def listing_images(self) -> list[str]:
+        """Proxies Listing.images (US-2.4, D-12) so AnalysisOut's
+        from_attributes conversion can read it directly off an Analysis
+        instance without every caller having to reach through .listing."""
+        return self.listing.images or []
 
     listing: Mapped[Listing] = relationship(back_populates="analyses")
     risk_indicators: Mapped[list["RiskIndicator"]] = relationship(

@@ -29,6 +29,11 @@ class Settings(BaseSettings):
 
     # Basic abuse guardrails for the public analysis endpoint.
     max_description_chars: int = 4000
+    # Stretch: listing images (US-2.4, D-12). Enforced in the route, same
+    # split as max_description_chars -- format lives in the schema, size in
+    # settings-driven route checks.
+    max_listing_images: int = 3
+    max_image_bytes: int = 2_000_000
 
     class Config:
         env_file = ".env"

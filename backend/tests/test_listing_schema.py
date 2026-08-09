@@ -70,3 +70,30 @@ def test_url_accepts_valid_http_url():
 def test_url_rejects_non_url_string():
     with pytest.raises(ValidationError):
         ListingIn(**{**VALID_LISTING, "url": "not a url"})
+
+
+TINY_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAA"
+
+
+def test_images_default_to_empty_list():
+    listing = ListingIn(**VALID_LISTING)
+    assert listing.images == []
+
+
+def test_valid_image_data_uri_accepted():
+    listing = ListingIn(**{**VALID_LISTING, "images": [TINY_PNG]})
+    assert listing.images == [TINY_PNG]
+
+
+@pytest.mark.parametrize(
+    "bad_image",
+    [
+        "not-a-data-uri",
+        "data:text/plain;base64,aGVsbG8=",  # right shape, wrong mime type
+        "data:image/png;base64,not valid base64!!",  # invalid base64 charset
+        "https://example.com/photo.jpg",  # a URL, not a data URI
+    ],
+)
+def test_invalid_image_format_rejected(bad_image):
+    with pytest.raises(ValidationError):
+        ListingIn(**{**VALID_LISTING, "images": [bad_image]})

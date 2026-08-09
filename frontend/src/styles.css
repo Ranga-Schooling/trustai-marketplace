@@ -169,3 +169,24 @@ button.ghost {
 a.link { color: var(--trust); cursor: pointer; text-decoration: underline; }
 ul.questions { padding-left: 20px; }
 ul.questions li { margin: 4px 0; }
+
+/* Listing images (US-2.4, D-12) -- thumbnail grid shared by the upload
+   picker (ListingForm, with a remove control) and the read-only gallery
+   on the result/history detail view (AnalysisResult). */
+.image-preview-list {
+  display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+}
+.image-preview {
+  position: relative; width: 84px; height: 84px;
+  border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  background: var(--paper);
+}
+.image-preview img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.image-remove {
+  position: absolute; top: 2px; right: 2px; width: 20px; height: 20px;
+  padding: 0; border-radius: 999px; line-height: 1; font-size: 0.9rem;
+  background: rgba(22, 35, 43, 0.75); color: #fff;
+}
+.image-remove:hover { background: var(--ink); }
