@@ -16,9 +16,16 @@ export function hasToken() {
 
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  // Track whether *this* request carried a bearer token -- a 401 only means
+  // "your session expired" when we sent a token and the server rejected it.
+  // Without this check, a plain wrong-password attempt on /auth/login (which
+  // never had a token to begin with) also got relabeled as an expired
+  // session, discarding the backend's actual "Invalid email or password"
+  // and confusing a brand new sign-in attempt with a stale one.
+  const hadToken = Boolean(token);
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
-  if (res.status === 401) {
+  if (res.status === 401 && hadToken) {
     setToken(null);
     throw new ApiError('Your session has expired. Please sign in again.', 401);
   }
