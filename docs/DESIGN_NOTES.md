@@ -58,9 +58,9 @@ reads `DATABASE_URL` from `core/config.py` at runtime instead of a DSN baked
 into `alembic.ini`, consistent with US-5.3. Tests still use
 `Base.metadata.create_all` against a throwaway SQLite file (fast, no
 migration history needed); Alembic is for evolving the real Postgres
-schema (Compose/Neon/Supabase) going forward. Not yet wired up: running
-`alembic upgrade head` automatically on deploy/container start — a candidate
-for the Sprint 3 DevOps pass.
+schema (Compose/Neon/Supabase) going forward. `alembic upgrade head` now
+runs automatically on every container start (D-11) — see below for why
+this stopped being a "candidate for later" and became urgent.
 
 **View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
 `PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
@@ -119,6 +119,42 @@ is updated to reflect this narrower, still-deliberate scope.
 Persisted on `Analysis` (Alembic revision `3cc9cb43e9e6`) rather than
 computed on read, so a future `GET /analyses` (US-4.1) doesn't need to
 re-run the formula or re-fetch `risk_indicators` for a list view.
+
+**Migrations now run automatically on container start (D-11).** The "not
+yet wired up" gap noted above stopped being theoretical: `backend/Dockerfile`
+only ever did `COPY app ./app` — `alembic/` and `alembic.ini` were never
+copied into the image at all, so even a manual `alembic upgrade head`
+inside a running container had no migration files to run. Combined with
+nothing running migrations automatically, the `3cc9cb43e9e6` migration
+(D-09's `risk_score` column) landed in code but never reached the local
+Docker Postgres — `Base.metadata.create_all()` doesn't `ALTER` existing
+tables, so the column silently never appeared, and every `POST /analyses`
+failed with `UndefinedColumn` the moment that code shipped. This would
+have hit the deployed EC2 database identically, since it's built from the
+same Dockerfile.
+
+Fixed two ways:
+1. `Dockerfile` now copies `alembic.ini`/`alembic/` and its `CMD` runs
+   `alembic upgrade head && uvicorn ...` — migrations apply before the app
+   ever starts serving, every time, locally or on EC2. A no-op when
+   already at head.
+2. The already-affected local Postgres had no `alembic_version` table at
+   all (bootstrapped purely via `create_all()`, never touched by Alembic).
+   Fixed by stamping it at `ddee9423a6c1` (the revision matching its
+   actual schema) before the first auto-upgrade ran, so the existing
+   `risk_score`-less rows got the new column added in place — not wiped.
+   A brand-new database (no prior state) just runs the full chain from
+   scratch, no stamping needed; this was a one-time repair for a database
+   that predated Alembic being used at all.
+
+**Unknown `.env` keys no longer crash the app (also D-11).** Found via the
+same incident: `Settings` (pydantic-settings) forbids unrecognized keys by
+default, so a `.env` file containing a variable not yet declared as a
+`Settings` field — e.g. a key added locally ahead of the PR that declares
+it — fails the entire app at startup with an opaque `ValidationError`
+instead of just ignoring it. Added `extra = "ignore"` to `Settings.Config`;
+an unrecognized `.env` key is now inert, which is the behavior anyone
+editing a settings file would actually expect.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI

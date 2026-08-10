@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.0...v1.7.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* run Alembic migrations on container start; tolerate unknown .env keys ([#47](https://github.com/Ranga-Schooling/trustai-marketplace/issues/47)) ([d4baae7](https://github.com/Ranga-Schooling/trustai-marketplace/commit/d4baae71494bc08ee24ae2fdff119f9fec6deb96))
+
 ## [1.7.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.1...v1.7.0) (2026-08-08)
 
 
