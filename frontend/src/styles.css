@@ -84,6 +84,12 @@ button.ghost {
 .verdict.medium { background: var(--risk-medium); }
 .verdict.high { background: var(--risk-high); }
 
+/* Deterministic 0-100 score (D-09) sits beside the categorical badge, never
+   replaces it -- the badge is still the source of truth for the tier. */
+.verdict-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.risk-score { font-weight: 700; font-size: 1.1rem; white-space: nowrap; }
+.history-topline .risk-score { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); }
+
 .indicator { border-left: 3px solid var(--line); padding: 6px 12px; margin: 8px 0; }
 .indicator.low { border-color: var(--risk-low); }
 .indicator.medium { border-color: var(--risk-medium); }
@@ -104,6 +110,24 @@ button.ghost {
   padding: 12px 0; border-bottom: 1px solid var(--line); cursor: pointer;
 }
 .history-item:hover { background: #f1f4f2; }
+
+/* History list rows (US-4.1). Each row is a <button>, which without an
+   override here inherits the base `button` rule (solid --trust background,
+   white text) -- fine for the title (<strong>, stays white) but `.subtle`
+   and `.risk-score` set their own dark --ink-soft color for use on light
+   `.card` backgrounds, so on an unstyled teal button that text became
+   near-invisible. Style the row as a card, not a CTA button, instead. */
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; text-align: left; font: inherit; font-weight: normal;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.history-card:hover { background: #f1f4f2; }
+.history-topline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.history-card .link { color: var(--trust); font-weight: 600; flex-shrink: 0; }
 
 /* Shared two-column layout: intro/value-prop panel + primary content card.
    Used by the auth screen and reused by ListingForm/AnalysisResult, which

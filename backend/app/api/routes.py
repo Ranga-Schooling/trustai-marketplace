@@ -22,6 +22,10 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
 - PATCH /auth/me is additive to the frozen register/login contract
   (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
   consistent with the existing minimal-auth stance. [US-1.4]
+- AnalysisOut.risk_score (D-09) is computed server-side by
+  services/scoring.py from the already-validated risk_level/
+  risk_indicators; no AIProvider returns it, AIAnalysisResult is
+  unchanged. [Trello #27]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -35,6 +39,7 @@ from app.core.security import (
 )
 from app.models.db import Analysis, Listing, RiskIndicator, User, get_db
 from app.services.ai import AnalysisFailure, get_provider
+from app.services.scoring import compute_risk_score
 from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
@@ -172,6 +177,7 @@ def create_analysis(
     analysis = Analysis(
         listing_id=listing.id,
         risk_level=result.risk_level.value,
+        risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
         summary=result.summary,
         price_assessment=result.price_assessment,
         recommendation=result.recommendation.value,

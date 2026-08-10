@@ -108,9 +108,26 @@ keys.
 - AC1: `AI_PROVIDER=mock` selects a deterministic heuristic provider satisfying the same contract.
 - Implemented: `MockProvider`, provider selection in `get_provider()`, CI env config.
 
+**US-3.4 — Deterministic 0-100 risk score (Trello #27)**
+As a buyer, I want a 0-100 risk score combining rule-based and AI signals,
+without the tool inventing an uncalibrated number.
+- AC1: `risk_score` is 0-100 and always falls within its `risk_level` tier's
+  range (low 0-33, medium 34-66, high 67-100) — never contradicts the
+  categorical badge it's derived from.
+- AC2: No `AIProvider` returns or is asked for a score; `AIAnalysisResult`
+  is unchanged (D-05 still applies to it in full).
+- AC3: Same (risk_level, indicators) always produces the same score
+  (deterministic, unit-tested, not an LLM call).
+- Implemented: `services/scoring.py`, `Analysis.risk_score` column +
+  Alembic migration `3cc9cb43e9e6`, `AnalysisResult.jsx`/`History.jsx`
+  score display, tests `test_scoring.py`,
+  `test_risk_score_never_contradicts_risk_level`. Decision log:
+  `docs/DESIGN_NOTES.md` D-09 (amends D-05's scope).
+
 Tasks completed: provider Protocol · system prompt with schema + honesty rules ·
 Groq JSON-mode call with timeout and single retry · Pydantic validation gate ·
-deterministic heuristic signal table · categorical risk derivation logic.
+deterministic heuristic signal table · categorical risk derivation logic ·
+deterministic rule-based risk scoring (US-3.4).
 
 ---
 
@@ -185,6 +202,6 @@ floor so untested code can't silently creep in.
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.3, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.4, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
 | Could (future) | PDF export, browser extension, reverse image search |
