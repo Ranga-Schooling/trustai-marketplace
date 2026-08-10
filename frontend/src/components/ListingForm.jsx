@@ -10,16 +10,41 @@ const initialState = {
   url: '',
 };
 
-const CURRENCIES = ['ZAR', 'USD', 'EUR', 'GBP'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'ZAR'];
 
 export default function ListingForm({ onResult }) {
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // US-2.3: server-side URL fetch to suggest title/description/source.
+  // Never bypasses this form -- the user still reviews/edits and submits
+  // through the same handleSubmit/POST /analyses path as manual entry.
+  const [fetchingUrl, setFetchingUrl] = useState(false);
+  const [fetchError, setFetchError] = useState('');
 
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  async function handleFetchUrl() {
+    const url = form.url.trim();
+    if (!url) return;
+    setFetchError('');
+    setFetchingUrl(true);
+    try {
+      const preview = await api.previewListingUrl(url);
+      setForm((current) => ({
+        ...current,
+        title: preview.title || current.title,
+        description: preview.description || current.description,
+        source: preview.source || current.source,
+      }));
+    } catch (err) {
+      setFetchError(err instanceof ApiError ? err.message : 'Unable to fetch that URL right now.');
+    } finally {
+      setFetchingUrl(false);
+    }
   }
 
   async function handleSubmit(event) {
@@ -87,11 +112,9 @@ export default function ListingForm({ onResult }) {
                 Currency <span className="req">*</span>
               </label>
               <select id="currency" name="currency" value={form.currency} onChange={updateField}>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="GBP">GBP</option>
-                <option value="CAD">CAD</option>
-                <option value="ZAR">ZAR</option>
+                {CURRENCIES.map((code) => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -113,14 +136,26 @@ export default function ListingForm({ onResult }) {
 
           <div className="field">
             <label htmlFor="url">Optional URL</label>
-            <input
-              id="url"
-              name="url"
-              type="url"
-              value={form.url}
-              onChange={updateField}
-              placeholder="https://…"
-            />
+            <div className="url-fetch-row">
+              <input
+                id="url"
+                name="url"
+                type="url"
+                value={form.url}
+                onChange={updateField}
+                placeholder="https://…"
+              />
+              <button
+                type="button"
+                className="ghost"
+                onClick={handleFetchUrl}
+                disabled={fetchingUrl || !form.url.trim()}
+              >
+                {fetchingUrl ? 'Fetching…' : 'Fetch details'}
+              </button>
+            </div>
+            <p className="field-hint">Suggests the title, description, and source below — review before submitting.</p>
+            {fetchError ? <div className="error">{fetchError}</div> : null}
           </div>
 
           <div className="field">

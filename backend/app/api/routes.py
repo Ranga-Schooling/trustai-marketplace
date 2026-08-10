@@ -111,7 +111,7 @@ def preview_listing_url(
     try:
         return fetch_listing_preview(str(body.url))
     except FetchError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 @router.patch("/auth/me", response_model=UserOut)
 def update_me(
     body: UserUpdate,
