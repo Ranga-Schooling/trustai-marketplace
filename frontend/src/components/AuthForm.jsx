@@ -42,7 +42,7 @@ export default function AuthForm({ onSignedIn }) {
   }
 
   return (
-    <div className="content-grid">
+    <div className="auth-column">
       <section className="card hero-card compact">
         <p className="eyebrow">Why use TrustAI</p>
         <h1>Safer buying decisions for online marketplace users</h1>

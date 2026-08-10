@@ -35,7 +35,18 @@ header.topbar {
 }
 .brand { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; }
 .brand span { color: var(--trust); }
-.topbar nav { display: flex; gap: 16px; align-items: center; }
+.topbar nav, .top-nav { display: flex; gap: 16px; align-items: center; }
+
+/* Nav pills (New analysis / History) -- ghost by default so three buttons
+   plus Sign out don't all compete as equally-loud primary CTAs; .active
+   picks up the solid --trust treatment to show the current view. */
+.nav-pill {
+  background: transparent; color: var(--ink); border: 1px solid var(--line);
+  font-weight: 600;
+}
+.nav-pill:hover { background: rgba(14, 124, 102, 0.08); }
+.nav-pill.active { background: var(--trust); color: #fff; border-color: var(--trust); }
+.nav-pill.active:hover { background: var(--trust-dark); }
 
 h1, h2 { font-family: var(--font-display); font-weight: 600; }
 h1 { font-size: 1.7rem; margin: 0 0 6px; }
@@ -55,7 +66,17 @@ input, textarea, select {
 input:focus, textarea:focus { outline: 2px solid var(--trust); outline-offset: 1px; }
 textarea { min-height: 110px; resize: vertical; }
 .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.row.two-col { grid-template-columns: 1fr 1fr; }
 @media (max-width: 640px) { .row { grid-template-columns: 1fr; } }
+
+.req { color: var(--risk-high); margin-left: 2px; }
+.field-hint { font-size: 0.78rem; color: var(--ink-soft); margin: 4px 0 0; }
+
+/* ListingForm: main submission card + a slim "tips" sidebar. */
+.submit-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start; }
+@media (max-width: 720px) { .submit-grid { grid-template-columns: 1fr; } }
+.section-heading { font-size: 1.1rem; margin: 0 0 14px; }
+.tips-card { background: var(--paper); }
 
 button {
   background: var(--trust); color: #fff; border: 0; border-radius: 6px;
@@ -83,6 +104,7 @@ button.ghost {
 .verdict.low { background: var(--risk-low); }
 .verdict.medium { background: var(--risk-medium); }
 .verdict.high { background: var(--risk-high); }
+.verdict-copy { margin: 4px 0 0; opacity: 0.92; }
 
 /* Deterministic 0-100 score (D-09) sits beside the categorical badge, never
    replaces it -- the badge is still the source of truth for the tier. */
@@ -90,11 +112,19 @@ button.ghost {
 .risk-score { font-weight: 700; font-size: 1.1rem; white-space: nowrap; }
 .history-topline .risk-score { font-weight: 600; font-size: 0.85rem; color: var(--ink-soft); }
 
+.indicator-list { list-style: none; padding: 0; margin: 0; }
 .indicator { border-left: 3px solid var(--line); padding: 6px 12px; margin: 8px 0; }
 .indicator.low { border-color: var(--risk-low); }
 .indicator.medium { border-color: var(--risk-medium); }
 .indicator.high { border-color: var(--risk-high); }
 .indicator .cat { font-weight: 600; font-size: 0.88rem; }
+
+.info-block { margin-top: 16px; }
+.info-block h3 {
+  font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--ink-soft); margin: 0 0 4px;
+}
+.info-block p { margin: 0; }
 
 .badge {
   display: inline-block; font-size: 0.72rem; font-weight: 600;
@@ -129,6 +159,19 @@ button.ghost {
 .history-topline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .history-card .link { color: var(--trust); font-weight: 600; flex-shrink: 0; }
 
+.panel-heading {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 20px; margin-bottom: 18px;
+}
+.panel-heading .subtle { max-width: 280px; text-align: right; }
+@media (max-width: 640px) {
+  .panel-heading { flex-direction: column; }
+  .panel-heading .subtle { text-align: left; max-width: none; }
+}
+
+.empty-state { text-align: center; padding: 48px 20px; color: var(--ink-soft); }
+.empty-state h2 { margin-bottom: 8px; }
+
 /* Shared two-column layout: intro/value-prop panel + primary content card.
    Used by the auth screen and reused by ListingForm/AnalysisResult, which
    already reference these classes (per the approved wireframes) but had no
@@ -143,6 +186,13 @@ button.ghost {
   .content-grid { grid-template-columns: 1fr; }
 }
 
+/* AuthForm is only ever rendered nested inside App.jsx's .landing-grid
+   (one column of it), so its own two cards stack instead of forming a
+   second grid -- a grid-in-a-grid was squeezing three narrow columns and
+   showing the "Why use TrustAI" pitch twice. .card's own margin-bottom
+   already spaces the two stacked cards, no gap needed here. */
+.auth-column { display: flex; flex-direction: column; }
+
 .eyebrow {
   font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--trust); margin: 0 0 6px;
@@ -153,6 +203,25 @@ button.ghost {
 .hero-card .eyebrow { color: #9fd8c9; }
 .hero-card .subtle { color: #b7c2c6; }
 .hero-card h1, .hero-card h2 { color: #fff; }
+
+/* Signed-out landing page (App.jsx): hero-card + AuthForm side by side. */
+.landing-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;
+}
+@media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } }
+
+.logo-mark {
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  background: var(--trust); color: #fff; border-radius: 10px;
+  font-family: var(--font-display); font-weight: 700; font-size: 1.4rem;
+  margin-bottom: 14px;
+}
+
+.promo-block, .value-prop { margin-top: 24px; }
+
+.hero-list { display: flex; flex-direction: column; gap: 14px; margin: 14px 0; }
+.hero-list strong { display: block; margin-bottom: 2px; }
+.hero-list p { margin: 0; color: #b7c2c6; font-size: 0.88rem; }
 
 .check-list { list-style: none; padding: 0; margin: 14px 0 0; }
 .check-list li { padding-left: 20px; position: relative; margin: 8px 0; font-size: 0.9rem; }
@@ -185,5 +254,5 @@ button.ghost {
 }
 
 a.link { color: var(--trust); cursor: pointer; text-decoration: underline; }
-ul.questions { padding-left: 20px; }
-ul.questions li { margin: 4px 0; }
+.questions-list { padding-left: 20px; margin: 0; }
+.questions-list li { margin: 4px 0; }
