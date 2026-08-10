@@ -1,3 +1,10 @@
+## [1.7.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.1...v1.7.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* history card contrast — style .history-card as a card, not a CTA button ([#49](https://github.com/Ranga-Schooling/trustai-marketplace/issues/49)) ([0a6101b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/0a6101bb50ffbf0cae00ca5ae03bd83bd2f9add5))
+
 ## [1.7.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.0...v1.7.1) (2026-08-09)
 
 
