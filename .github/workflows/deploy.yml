@@ -1,4 +1,4 @@
-# Build/push backend + frontend to ECR, then refresh containers on EC2.
+# Build/push backend + frontend to ECR, then refresh containers on EC2 via SSM.
 name: Deploy
 
 on:
@@ -50,17 +50,16 @@ jobs:
           docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
           docker push "$REGISTRY/$REPOSITORY:$GITHUB_SHA"
 
-      - name: Deploy on EC2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd "${{ secrets.EC2_APP_DIR }}"
-            aws ecr get-login-password --region "${{ secrets.AWS_REGION }}" \
-              | docker login --username AWS --password-stdin "${{ steps.login-ecr.outputs.registry }}"
-            docker compose pull
-            docker compose up -d
-            docker image prune -f
+      - name: Deploy on EC2 via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "set -e",
+              "cd ${{ secrets.EC2_APP_DIR }}",
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}",
+              "docker compose pull",
+              "docker compose up -d",
+              "docker image prune -f"
+            ]'
