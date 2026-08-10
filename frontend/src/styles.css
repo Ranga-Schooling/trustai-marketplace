@@ -111,6 +111,24 @@ button.ghost {
 }
 .history-item:hover { background: #f1f4f2; }
 
+/* History list rows (US-4.1). Each row is a <button>, which without an
+   override here inherits the base `button` rule (solid --trust background,
+   white text) -- fine for the title (<strong>, stays white) but `.subtle`
+   and `.risk-score` set their own dark --ink-soft color for use on light
+   `.card` backgrounds, so on an unstyled teal button that text became
+   near-invisible. Style the row as a card, not a CTA button, instead. */
+.history-list { display: flex; flex-direction: column; gap: 10px; }
+.history-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  width: 100%; text-align: left; font: inherit; font-weight: normal;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.history-card:hover { background: #f1f4f2; }
+.history-topline { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.history-card .link { color: var(--trust); font-weight: 600; flex-shrink: 0; }
+
 /* Shared two-column layout: intro/value-prop panel + primary content card.
    Used by the auth screen and reused by ListingForm/AnalysisResult, which
    already reference these classes (per the approved wireframes) but had no
