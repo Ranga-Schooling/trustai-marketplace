@@ -1,3 +1,24 @@
+## [1.7.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.1...v1.7.2) (2026-08-10)
+
+
+### Bug Fixes
+
+* history card contrast — style .history-card as a card, not a CTA button ([#49](https://github.com/Ranga-Schooling/trustai-marketplace/issues/49)) ([0a6101b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/0a6101bb50ffbf0cae00ca5ae03bd83bd2f9add5))
+
+## [1.7.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.0...v1.7.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* run Alembic migrations on container start; tolerate unknown .env keys ([#47](https://github.com/Ranga-Schooling/trustai-marketplace/issues/47)) ([d4baae7](https://github.com/Ranga-Schooling/trustai-marketplace/commit/d4baae71494bc08ee24ae2fdff119f9fec6deb96))
+
+## [1.7.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.1...v1.7.0) (2026-08-08)
+
+
+### Features
+
+* deterministic 0-100 risk score, resolving Card [#27](https://github.com/Ranga-Schooling/trustai-marketplace/issues/27) without reopening D-05 ([#43](https://github.com/Ranga-Schooling/trustai-marketplace/issues/43)) ([164b915](https://github.com/Ranga-Schooling/trustai-marketplace/commit/164b915e26544535a37f3408f8b58f9f4a0ef008)), closes [#31](https://github.com/Ranga-Schooling/trustai-marketplace/issues/31) [#32](https://github.com/Ranga-Schooling/trustai-marketplace/issues/32)
+
 ## [1.6.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.6.0...v1.6.1) (2026-08-08)
 
 

@@ -145,6 +145,7 @@ def test_low_risk_listing_gets_buy(client):
     assert body["risk_level"] == RiskLevel.low.value
     assert body["recommendation"] == Recommendation.buy.value
     assert body["price_plausibility"] == PricePlausibility.plausible.value
+    assert 0 <= body["risk_score"] <= 33
     assert len(body["seller_questions"]) >= 1
 
 
@@ -156,6 +157,7 @@ def test_high_risk_listing_gets_avoid(client):
     assert body["risk_level"] == RiskLevel.high.value
     assert body["recommendation"] == Recommendation.avoid.value
     assert body["price_plausibility"] == PricePlausibility.too_good_to_be_true.value
+    assert 67 <= body["risk_score"] <= 100
     categories = {i["category"] for i in body["risk_indicators"]}
     assert "Off-platform payment" in categories
 
@@ -168,6 +170,11 @@ def test_moderately_low_price_gets_suspicious_plausibility(client):
     assert body["price_plausibility"] == PricePlausibility.suspicious.value
     assert body["risk_level"] == RiskLevel.medium.value
     assert body["recommendation"] == Recommendation.caution.value
+def test_risk_score_never_contradicts_risk_level(client):
+    headers = register_and_login(client)
+    safe = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
+    scam = client.post("/api/analyses", json=SCAM_LISTING, headers=headers).json()
+    assert safe["risk_score"] < scam["risk_score"]
 
 
 def test_invalid_listing_rejected(client):

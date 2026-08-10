@@ -32,6 +32,12 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        # pydantic-settings forbids unrecognized keys by default, so any
+        # var in .env that isn't (yet) a declared field here crashes the
+        # whole app at startup instead of being harmlessly ignored -- hit
+        # this directly while testing (D-11). "ignore" is the intuitive
+        # behavior for a settings file: unknown keys are just unused.
+        extra = "ignore"
 
 
 @lru_cache

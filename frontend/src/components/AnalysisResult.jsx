@@ -16,6 +16,7 @@ export default function AnalysisResult({ analysis, onBack }) {
     avoid: 'Avoid',
   }[analysis.recommendation] || 'Review';
   const plausibility = PLAUSIBILITY_DISPLAY[analysis.price_plausibility] || null;
+  const riskScore = typeof analysis.risk_score === 'number' ? analysis.risk_score : null;
 
   const indicators = Array.isArray(analysis.risk_indicators) ? analysis.risk_indicators : [];
   const sellerQuestions = Array.isArray(analysis.seller_questions) ? analysis.seller_questions : [];
@@ -27,7 +28,10 @@ export default function AnalysisResult({ analysis, onBack }) {
           <div className="word">{recommendationLabel}</div>
           <p className="verdict-copy">{analysis.summary || 'The AI generated a structured review for this listing.'}</p>
         </div>
-        <span className={`badge ${riskLevel}`}>{riskLevel}</span>
+        <div className="verdict-meta">
+          {riskScore !== null ? <span className="risk-score">{riskScore} / 100</span> : null}
+          <span className={`badge ${riskLevel}`}>{riskLevel}</span>
+        </div>
       </div>
 
       <div className="content-grid">

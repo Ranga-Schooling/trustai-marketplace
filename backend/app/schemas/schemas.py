@@ -4,7 +4,12 @@
 must return. Any LLM output that fails this validation is rejected — this
 is the concrete implementation of the "AI inconsistency" safeguard from the
 kickoff pack. Risk is categorical (low/medium/high) by design decision:
-LLM-emitted numeric scores are not calibrated.
+LLM-emitted numeric scores are not calibrated (D-05).
+
+`AnalysisOut.risk_score` (D-09) is NOT part of that contract — no provider
+returns it, and it never will (`AIAnalysisResult` above has no numeric
+field). It's a display-only value computed server-side by
+`services/scoring.py` from the already-validated categorical result.
 """
 import datetime as dt
 from enum import Enum
@@ -110,6 +115,7 @@ class AnalysisOut(BaseModel):
     id: int
     listing_id: int
     risk_level: RiskLevel
+    risk_score: int = Field(ge=0, le=100)
     summary: str
     price_assessment: str
     price_plausibility: PricePlausibility

@@ -129,6 +129,36 @@ GitHub will remain the source of truth for:
 
 ---
 
+## Development & Testing
+
+Quick start — full walkthrough (manual smoke test checklist, Docker
+gotchas, etc.) is in [docs/testing/README.md](docs/testing/README.md).
+
+**Backend tests:**
+```bash
+cd backend
+python -m venv .venv && pip install -r requirements-dev.txt
+python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=85
+```
+
+**Frontend build:**
+```bash
+cd frontend
+npm install && npm run build
+```
+
+**Full stack (Docker Compose):**
+```bash
+docker compose up --build
+```
+Then visit `http://localhost:5173`.
+
+CI (`.github/workflows/ci.yml`) runs both the backend suite (against the
+mock AI provider, no secrets required) and the frontend build on every
+push and pull request; a PR can't merge with either red.
+
+---
+
 ## Repository Structure
 
 The repository is organized into the following main areas:

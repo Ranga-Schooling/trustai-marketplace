@@ -24,7 +24,7 @@ needed there.
 """
 import datetime as dt
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, create_engine
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -94,12 +94,19 @@ class Analysis(Base):
     """E3 owner defines: risk_level, summary, price_assessment,
     price_plausibility, recommendation, seller_questions (JSON), model_used,
     prompt_version, raw_response."""
+    """E3 owner defines: risk_level, risk_score, summary, price_assessment,
+    recommendation, seller_questions (JSON), model_used, prompt_version,
+    raw_response."""
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
     risk_level: Mapped[RiskLevel] = mapped_column(String(20))
+    # Deterministic, server-computed (services/scoring.py), never from an
+    # AIProvider -- see D-09. Persisted rather than computed on read so a
+    # future GET /analyses (US-4.1) doesn't need to re-run the formula.
+    risk_score: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
     price_assessment: Mapped[str] = mapped_column(Text)
     price_plausibility: Mapped[PricePlausibility] = mapped_column(String(20))
