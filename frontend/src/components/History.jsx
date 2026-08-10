@@ -55,6 +55,9 @@ export default function History({ onOpen }) {
             <div>
               <div className="history-topline">
                 <strong>{item.listing_title}</strong>
+                {typeof item.risk_score === 'number' ? (
+                  <span className="risk-score">{item.risk_score} / 100</span>
+                ) : null}
                 <span className={`badge ${item.risk_level}`}>{item.risk_level}</span>
               </div>
               <p className="subtle">

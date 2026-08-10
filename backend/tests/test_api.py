@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.db import Base, engine
+from app.schemas.schemas import Recommendation, RiskLevel
 
 pytestmark = []
 
@@ -133,8 +134,9 @@ def test_low_risk_listing_gets_buy(client):
     r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
     assert r.status_code == 201
     body = r.json()
-    assert body["risk_level"] == "low"
-    assert body["recommendation"] == "buy"
+    assert body["risk_level"] == RiskLevel.low.value
+    assert body["recommendation"] == Recommendation.buy.value
+    assert 0 <= body["risk_score"] <= 33
     assert len(body["seller_questions"]) >= 1
 
 
@@ -143,10 +145,18 @@ def test_high_risk_listing_gets_avoid(client):
     r = client.post("/api/analyses", json=SCAM_LISTING, headers=headers)
     assert r.status_code == 201
     body = r.json()
-    assert body["risk_level"] == "high"
-    assert body["recommendation"] == "avoid"
+    assert body["risk_level"] == RiskLevel.high.value
+    assert body["recommendation"] == Recommendation.avoid.value
+    assert 67 <= body["risk_score"] <= 100
     categories = {i["category"] for i in body["risk_indicators"]}
     assert "Off-platform payment" in categories
+
+
+def test_risk_score_never_contradicts_risk_level(client):
+    headers = register_and_login(client)
+    safe = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
+    scam = client.post("/api/analyses", json=SCAM_LISTING, headers=headers).json()
+    assert safe["risk_score"] < scam["risk_score"]
 
 
 def test_invalid_listing_rejected(client):
