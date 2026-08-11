@@ -1,8 +1,12 @@
-# TrustAI Marketplace — Design & Testing Notes (working draft)
+# TrustAI Marketplace — Design & Testing Notes (working log)
 
-A starting point for the capstone design and testing document. Expand each
-section as the project evolves; the rubric requires reasons for choices, not
-just the choices themselves.
+The organized, submission-ready version of this material — architecture,
+patterns, testing strategy, written for a reader who wasn't there when
+each decision was made — is `docs/DESIGN_AND_TESTING.md`. This file is
+that document's source material: a running, chronological log of
+decisions and the incidents that prompted them, added to as the project
+evolves. Keep adding entries here first; fold anything rubric-relevant
+into `DESIGN_AND_TESTING.md` when it's ready to be read out of order.
 
 ## Architecture decisions
 
