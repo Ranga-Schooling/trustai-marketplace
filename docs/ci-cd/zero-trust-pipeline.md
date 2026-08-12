@@ -15,69 +15,23 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 
 ## End-to-end architecture
 
-The diagram below matches the **current** implementation in `.github/workflows/deploy.yml` and `deploy/docker-compose.yml`.
+The diagram matches the **current** implementation in `.github/workflows/deploy.yml` and `deploy/docker-compose.yml`.
 
-> **Note on auth:** GitHub Actions authenticates with the IAM user **`github-actions-deployer`** using **access keys** stored in GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). This is **not** OIDC role assumption — if you maintain a separate PNG/draw.io diagram, label it accordingly (see [Diagram revision checklist](#diagram-revision-checklist) below).
+![Zero-Trust CI/CD Architecture (IAM + SSM)](./trustai-cicd-architecture.png)
 
-```mermaid
-flowchart LR
-  subgraph Dev["Development"]
-    DEV[Developer]
-    DEV -->|1. Push / merge to main| GH[(GitHub Repository)]
-  end
+> **Note on auth:** GitHub Actions authenticates with the IAM user **`github-actions-deployer`** using **access keys** stored in GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`). This is **not** OIDC role assumption.
 
-  subgraph GHA["GitHub Actions — Deploy workflow"]
-    GH -->|2. Trigger| WF[Deploy job]
-    WF --> CHK[Checkout]
-    CHK --> AWS[Configure AWS credentials\nIAM user access keys]
-    AWS --> ECRLOGIN[Login to ECR]
-    ECRLOGIN --> BUILD[Build & push Docker images\nbackend + frontend]
-    BUILD --> SSM[SSM send-command]
-    SSM --> WAIT[Wait command-executed\n+ fail if Status ≠ Success]
-  end
+### What the diagram shows
 
-  subgraph AWS["AWS Cloud — eu-north-1"]
-    IAM[(IAM user\ngithub-actions-deployer)]
-    ECR[(Amazon ECR\ntrustaimarketplace/backend\ntrustaimarketplace/frontend)]
-    EC2[(EC2 instance\nSSM agent)]
-
-    AWS -->|3. Authenticate| IAM
-    BUILD -->|4. Push images :latest + :SHA| ECR
-    WAIT -->|5. RunShellScript via SSM| EC2
-    ECR -->|6. docker compose pull| EC2
-  end
-
-  subgraph EC2Stack["EC2 — /opt/trustai"]
-    ENV[docker-compose.yml + .env\nJWT_SECRET, POSTGRES_PASSWORD]
-    FE[Frontend container\nNginx :80]
-    BE[Backend container\nFastAPI :8000 internal]
-    DB[(Postgres\npgdata volume)]
-    ENV --> FE
-    FE -->|"/api proxy"| BE
-    BE --> DB
-    BE -->|startup| ALEMBIC[alembic upgrade head]
-  end
-
-  EC2 --> EC2Stack
-  USER[Browser / HTTP :80] --> FE
-```
-
-### Diagram revision checklist
-
-If you export a PNG (e.g. for slides or the architecture folder), **revise the current draft** before committing it:
-
-| Item | Current draft issue | Correct for TrustAI |
-|------|---------------------|---------------------|
-| **Title** | Says "via OIDC" | Use **"via IAM + SSM"** (or "access keys + SSM") — OIDC is not configured in `deploy.yml`. |
-| **GitHub → AWS auth** | OIDC provider, temp tokens, IAM role | **IAM user `github-actions-deployer`** + secrets `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. |
-| **Deploy to EC2** | SSM command ✓ | Keep — matches `aws ssm send-command`. |
-| **Post-SSM step** | Missing | Add **SSM waiter** + `GetCommandInvocation` — job fails unless status is `Success`. |
-| **Backend port** | Implies public `:8000` | Backend is **internal only** (`expose: 8000`); users hit **Nginx :80**, which proxies `/api`. |
-| **Backend startup** | Missing | Add **`alembic upgrade head`** before Uvicorn (see D-11). |
-| **ECR image names** | Mostly correct | Full repos: `trustaimarketplace/backend`, `trustaimarketplace/frontend` (registry `585142511013.dkr.ecr.eu-north-1.amazonaws.com`). |
-| **Secrets removed** | Not shown | Drop `EC2_SSH_KEY`, `EC2_HOST`, `EC2_USER`; use **`EC2_INSTANCE_ID`**. |
-
-**Recommended location for a revised PNG:** `docs/ci-cd/trustai-cicd-architecture.png` (link from this file after export).
+| Element | Implementation |
+|---------|----------------|
+| Auth | IAM user `github-actions-deployer` via GitHub Secrets (not OIDC) |
+| Images | ECR repos `trustaimarketplace/backend` and `trustaimarketplace/frontend` (`:latest` + commit SHA) |
+| Deploy | SSM `send-command` to `EC2_INSTANCE_ID` (no SSH) |
+| Verification | SSM waiter + `GetCommandInvocation`; job fails unless status is `Success` |
+| Public surface | Nginx on **:80** only; FastAPI **:8000** is internal |
+| Config on host | `docker-compose.yml` + `.env` (`JWT_SECRET`, `POSTGRES_PASSWORD`) |
+| Schema | `alembic upgrade head` on backend container start (D-11) |
 
 ---
 
