@@ -146,10 +146,21 @@ As a buyer, I want to see my past analyses newest-first with title, price,
 date, and risk badge, and open any of them in full.
 - AC1: `GET /api/analyses` returns only the authenticated user's analyses, newest first.
 - AC2: `GET /api/analyses/{id}` returns the full result including indicators.
-- Implemented: list/detail routes with `selectinload`, History and AnalysisResult components, test `test_history_is_per_user`.
+- Implemented: `list_analyses`/`get_analysis` in `routes.py` (`joinedload`/
+  `selectinload` to avoid N+1), `_to_analysis_with_listing` helper flattening
+  `Analysis`+`Listing` into `AnalysisWithListingOut`, History and
+  AnalysisResult components, tests `test_history_is_per_user`,
+  `test_list_analyses_newest_first`, `test_get_analysis_returns_full_detail`,
+  `test_get_analysis_unknown_id_returns_404`.
 
 Tasks completed: listing-joined queries · history list UI with risk badges ·
 detail reuse of the result view.
+
+(This story was previously marked "Implemented" here while the routes
+still raised `NotImplementedError` -- flagged in
+`architecture-review-2026-08-01.md` §2.3 as overclaiming delivery status.
+Now genuinely true: all backend tests un-skipped, 0 remaining skips in
+`test_api.py`.)
 
 (Deferred per 2-month scoping: history search/filter, PDF export.)
 

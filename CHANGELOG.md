@@ -1,3 +1,10 @@
+## [1.8.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.2...v1.8.0) (2026-08-10)
+
+
+### Features
+
+* implement US-4.1 -- view analysis history (list + detail) ([#48](https://github.com/Ranga-Schooling/trustai-marketplace/issues/48)) ([dd71b05](https://github.com/Ranga-Schooling/trustai-marketplace/commit/dd71b05acb6cffdfa94b7398f9e2f54fd5af4b05))
+
 ## [1.7.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.7.1...v1.7.2) (2026-08-10)
 
 
