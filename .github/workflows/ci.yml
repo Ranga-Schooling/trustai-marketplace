@@ -6,15 +6,19 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: backend } }
+    env:
+      AI_PROVIDER: mock
+      JWT_SECRET: ci-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=85
-        env:
-          AI_PROVIDER: mock
-          JWT_SECRET: ci-secret
+      - name: Contract tests
+        run: python -m pytest tests/ -v -m contract
+      - name: Full suite (with coverage)
+        if: ${{ !cancelled() }}
+        run: python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=85
   frontend:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: frontend } }
