@@ -192,6 +192,7 @@ def _to_analysis_with_listing(analysis: Analysis) -> AnalysisWithListingOut:
         risk_score=analysis.risk_score,
         summary=analysis.summary,
         price_assessment=analysis.price_assessment,
+        price_plausibility=analysis.price_plausibility,
         recommendation=analysis.recommendation,
         seller_questions=analysis.seller_questions,
         risk_indicators=analysis.risk_indicators,
