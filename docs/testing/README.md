@@ -53,6 +53,13 @@ Brings up `db` (Postgres 16) + `api` (FastAPI, `:8000`) + `frontend`
 (Vite dev server, `:5173`) together — the closest local approximation of
 the deployed environment. Visit **http://localhost:5173**.
 
+**`backend/.env` now wins over your shell.** The `api` service reads
+`AI_PROVIDER`/`*_API_KEY` from `backend/.env` (`env_file:`, see D-10 in
+`DESIGN_NOTES.md`), not from variables exported in the shell that runs
+`docker compose up`. If you're used to `export AI_PROVIDER=groq` before
+`up` to switch providers for a session, that no longer has any effect —
+edit `backend/.env` instead.
+
 **Known gotcha:** if the `api` container fails on startup with a Postgres
 `DatatypeMismatch` error on `listings.user_id`, that's stale schema data
 left in the `pgdata` volume from an earlier model version — wipe it and
