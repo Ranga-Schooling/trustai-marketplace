@@ -187,10 +187,28 @@ def preview_listing(
     body: ListingPreviewIn,
     user: User = Depends(get_current_user),
 ):
-    """[US-2.3] Extract listing preview metadata from raw text or a URL."""
-    body.validate_input()
+    """[US-2.3] Extract listing preview metadata from raw text or a URL.
+    Enforces settings.max_description_chars on text with 413, matching the
+    guard create_analysis already puts on the field this text is destined
+    to become (PR #45 review, comment 8)."""
+    if body.text and len(body.text) > settings.max_description_chars:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"Text exceeds {settings.max_description_chars} characters",
+        )
     try:
-        if body.text is not None:
+        # validate_input() moved inside the try -- it was called before
+        # this block started, so the ValueError it raises for "neither
+        # text nor url" propagated unhandled as a 500 instead of the 422
+        # every other validation failure on this route returns (PR #45
+        # review, comment 2).
+        body.validate_input()
+        # `is not None` truthiness bug: whitespace-only text passes
+        # min_length=1, gets stripped to "" by the validator, and "" is
+        # not None -- so a blank text with a valid url was routed to the
+        # text branch and failed, silently discarding a usable url
+        # (PR #45 review, comment 6).
+        if body.text:
             return preview_listing_from_text(body.text)
         return preview_listing_from_url(str(body.url))
     except ValueError as exc:

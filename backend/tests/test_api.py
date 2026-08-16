@@ -207,6 +207,43 @@ def test_preview_listing_from_url(client, monkeypatch):
     assert response["currency"] == "USD"
 
 
+def test_preview_listing_requires_text_or_url(client):
+    """PR #45 review, comment 2: validate_input()'s ValueError used to run
+    before the try/except started, so this returned an unhandled 500."""
+    headers = register_and_login(client)
+    r = client.post("/api/listings/preview", json={}, headers=headers)
+    assert r.status_code == 422
+
+
+def test_preview_listing_whitespace_text_falls_back_to_url(client, monkeypatch):
+    """PR #45 review, comment 6: blank-but-non-None text used to win the
+    `body.text is not None` check and silently discard a valid url."""
+    headers = register_and_login(client)
+
+    def fake_fetch_html(url: str) -> str:
+        return "<html><head><title>From URL</title></head></html>"
+
+    monkeypatch.setattr("app.services.listing_parser._fetch_html", fake_fetch_html)
+    r = client.post(
+        "/api/listings/preview",
+        json={"text": "   ", "url": "https://example.com/listing/123"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["title"] == "From URL"
+
+
+def test_preview_listing_text_over_cap_returns_413(client):
+    """PR #45 review, comment 8: text has no size guard, unlike
+    ListingIn.description's route-level 413 cap it's destined to become."""
+    headers = register_and_login(client)
+    from app.core.config import get_settings
+
+    too_long = "a" * (get_settings().max_description_chars + 1)
+    r = client.post("/api/listings/preview", json={"text": too_long}, headers=headers)
+    assert r.status_code == 413
+
+
 def test_history_is_per_user(client):
     alice = register_and_login(client, "alice@example.com")
     bob = register_and_login(client, "bob@example.com")
