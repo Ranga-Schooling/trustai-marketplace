@@ -88,8 +88,12 @@ exact IP (pinning TLS SNI/cert validation to the original hostname via
 `sni_hostname`), following at most 3 redirects with a fresh
 resolve-and-validate at every hop instead of trusting `httpx`'s own
 resolution. It also restricts to `http(s)` and `text/html` responses, caps
-response size (2 MB) and total wall-clock time (8s, enforced across the
-whole redirect chain and body read, not per request), and bounds
+response size (2 MB) and total wall-clock time (8s, enforced by an
+explicit deadline check across the whole redirect chain and body read,
+not by httpx's own per-request timeout alone — that timeout is
+inter-chunk, so on its own it lets a server that trickles data resist it
+indefinitely; the read component is additionally capped to a small fixed
+value so no single stall rides the full remaining budget), and bounds
 concurrent fetches so a burst of requests can't exhaust the shared
 FastAPI threadpool. This is a best-effort mitigation appropriate to a
 capstone project, not an exhaustive SSRF defense.

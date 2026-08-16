@@ -12,6 +12,7 @@ access; consistent with the project's "no network in tests" constraint
 (CLAUDE.md).
 """
 import socket
+import time
 
 import httpx
 import pytest
@@ -208,6 +209,37 @@ def test_long_hostname_is_truncated_in_source(monkeypatch):
 
     assert result.source is not None
     assert len(result.source) <= 120
+
+
+def test_slow_trickle_is_bounded_by_total_deadline(monkeypatch):
+    """A server that dribbles a byte at a time must not hold the worker
+    far past TIMEOUT_SECONDS -- PR #21 review comment 7. httpx's own read
+    timeout is inter-chunk (resets after every byte), so a trickle never
+    trips it on its own; this exercises the explicit elapsed-time check
+    in the streaming loop, which is what actually bounds the total."""
+    _patch_public_dns(monkeypatch)
+    monkeypatch.setattr(listing_fetch, "TIMEOUT_SECONDS", 0.3)
+
+    def trickling_iter_bytes():
+        while True:
+            time.sleep(0.05)
+            yield b"x"
+
+    def fake_send(request, **kwargs):
+        resp = httpx.Response(200, headers={"content-type": "text/html"}, request=request)
+        resp.iter_bytes = trickling_iter_bytes
+        return resp
+
+    _install_fake_client(monkeypatch, fake_send)
+
+    start = time.monotonic()
+    with pytest.raises(FetchError, match="timed out"):
+        fetch_listing_preview(URL)
+    elapsed = time.monotonic() - start
+
+    # Bounded near the (patched) total budget -- not free to keep running
+    # as long as bytes keep trickling in.
+    assert elapsed < 1.0
 
 
 def test_concurrent_fetch_limit_rejects_extra_requests(monkeypatch):

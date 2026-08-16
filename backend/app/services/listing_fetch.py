@@ -34,6 +34,15 @@ from app.schemas.schemas import ListingPreviewOut
 ALLOWED_SCHEMES = {"http", "https"}
 MAX_BYTES = 2_000_000
 TIMEOUT_SECONDS = 8.0  # total wall-clock budget for the whole fetch, not per hop
+# httpx's own "read" timeout is inter-chunk, not total -- it resets after
+# every byte received, so a server trickling data just under it can hold a
+# connection open indefinitely without ever tripping it. Capping it small
+# and fixed (independent of the remaining overall budget) means any single
+# stall longer than this trips httpx's own timeout immediately; combined
+# with the explicit deadline check in fetch_listing_preview, that bounds
+# the worst-case overrun past TIMEOUT_SECONDS to about this many seconds,
+# not up to another full TIMEOUT_SECONDS.
+READ_CHUNK_TIMEOUT_SECONDS = 2.0
 MAX_REDIRECTS = 3
 MAX_CONCURRENT_FETCHES = 4
 USER_AGENT = "TrustAI-Marketplace-Fetcher/1.0"
@@ -104,7 +113,10 @@ def _fetch_url(client: httpx.Client, url: str, deadline: float) -> httpx.Respons
     pinned_netloc = f"{pinned_host}:{parsed.port}" if parsed.port else pinned_host
     pinned_url = parsed._replace(netloc=pinned_netloc).geturl()
 
-    request = client.build_request("GET", pinned_url, headers={"Host": parsed.hostname}, timeout=remaining)
+    # `read` capped separately (see READ_CHUNK_TIMEOUT_SECONDS) so a slow
+    # trickle can't ride the full remaining budget on every single chunk.
+    timeout = httpx.Timeout(remaining, read=min(remaining, READ_CHUNK_TIMEOUT_SECONDS))
+    request = client.build_request("GET", pinned_url, headers={"Host": parsed.hostname}, timeout=timeout)
     # Keep TLS certificate validation (and origin-side virtual-host
     # routing) working against the real hostname even though we connect
     # to its IP literal.
