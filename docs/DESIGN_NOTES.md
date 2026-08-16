@@ -201,6 +201,23 @@ would be a dedicated Postgres instance and an always-on API instance.
   a contract test replaying recorded Groq responses through the validator,
   and load-testing the analysis endpoint.
 
+## Open questions (need a team decision before merge)
+
+- **Two open PRs implement `POST /listings/preview` for US-2.3
+  incompatibly.** `feat/us-2.3-listing-url-fetch` (PR #21, merged D-06
+  below) fetches a URL server-side and scrapes `og:title`/`og:description`
+  (`ListingUrlIn` -> `ListingPreviewOut` with no price/currency).
+  `feat/us-2.3-listing-url-preview` (PR #45) accepts either pasted text or
+  a URL and regex-extracts title/price/currency/seller details
+  (`ListingPreviewIn` -> a differently-shaped `ListingPreviewOut`). Neither
+  is merged to `main` yet, so nothing has actually collided, but whichever
+  lands second will conflict with the other's route and schema. This needs
+  a team call on which implementation (or a reconciled combination of both)
+  is the one to keep before either merges -- not a call one PR's fixes
+  should make unilaterally. Deliberately not writing a D-0x decision entry
+  for PR #45's schema additions until this is resolved, since it would
+  contradict D-06 below for the same route.
+
 ## Known limitations (state these honestly in the final doc)
 
 - Heuristic/LLM analysis can miss scams and flag legitimate listings.
