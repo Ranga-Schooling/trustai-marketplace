@@ -42,18 +42,6 @@ export default function AuthForm({ onSignedIn }) {
   }
 
   return (
-    <div className="content-grid">
-      <section className="card hero-card compact">
-        <p className="eyebrow">Why use TrustAI</p>
-        <h1>Safer buying decisions for online marketplace users</h1>
-        <ul className="check-list">
-          <li>AI listing summary</li>
-          <li>Risk indicators</li>
-          <li>Seller questions</li>
-          <li>Saved history</li>
-        </ul>
-      </section>
-
       <div className="card auth-card">
         <p className="eyebrow">Login form</p>
         <div className="auth-toggle" role="tablist" aria-label="Authentication mode">
@@ -115,6 +103,5 @@ export default function AuthForm({ onSignedIn }) {
 
         <p className="security-copy">TrustAI stores analysis history for signed-in users.</p>
       </div>
-    </div>
   );
 }
