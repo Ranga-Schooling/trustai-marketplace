@@ -156,6 +156,30 @@ instead of just ignoring it. Added `extra = "ignore"` to `Settings.Config`;
 an unrecognized `.env` key is now inert, which is the behavior anyone
 editing a settings file would actually expect.
 
+**Delete account (D-12, additive to SCHEMA-0).** US-1.5 adds
+`DELETE /auth/me`, letting a signed-in user permanently delete their own
+account. Hard delete, no soft-delete/undo: `User.listings` and
+`Listing.analyses` (`models/db.py`) now carry `cascade="all,
+delete-orphan"`, the same pattern already used for
+`Analysis.risk_indicators`, so `db.delete(user)` removes every listing,
+analysis and risk indicator the user owns in one transaction — no
+orphaned rows, no separate cleanup query. No confirmation step or
+re-authentication server-side (the client owns confirming intent before
+calling this, same minimal-auth stance as D-07's "no password change on
+profile edit" — a delete-account flow needing its own re-auth check is a
+separate, larger decision if the team wants it later). The bearer token
+used to authenticate stops working immediately after, since
+`get_current_user` 401s once the encoded user id no longer exists
+(already covered by `test_get_current_user_rejects_unknown_user_id`).
+
+Traced to PR #52 (`feature/account-management`): that PR's description
+claimed this route (plus the schema/tests) already existed, but the
+actual diff only touched `frontend/src/api.js`, which called
+`DELETE /api/auth/me` against a route that didn't exist anywhere. This
+closes that specific gap as its own backend PR; the PR #52 diff's
+unrelated `updateProfile` → `updateMe` rename (which still breaks
+`Profile.jsx`'s existing caller) is out of scope here.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
