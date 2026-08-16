@@ -1,3 +1,10 @@
+## [1.9.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.8.1...v1.9.0) (2026-08-16)
+
+
+### Features
+
+* add DELETE /api/auth/me for account deletion (US-1.5) ([#58](https://github.com/Ranga-Schooling/trustai-marketplace/issues/58)) ([ed4dc9f](https://github.com/Ranga-Schooling/trustai-marketplace/commit/ed4dc9f7dd9876d6fa27025d66964426e8cd90f9)), closes [#52](https://github.com/Ranga-Schooling/trustai-marketplace/issues/52) [#52](https://github.com/Ranga-Schooling/trustai-marketplace/issues/52)
+
 ## [1.8.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.8.0...v1.8.1) (2026-08-16)
 
 
