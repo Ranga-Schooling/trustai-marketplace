@@ -30,6 +30,7 @@ Design decisions already agreed (docs/DESIGN_NOTES.md):
 """
 import json
 import logging
+from collections.abc import Callable
 from typing import Protocol
 
 import httpx
@@ -212,6 +213,46 @@ def _listing_prompt(listing: ListingIn) -> str:
     )
 
 
+def _post_and_validate(
+    endpoint: str,
+    headers: dict[str, str],
+    payload: dict,
+    extract_raw_json: Callable[[dict], str],
+    provider_label: str,
+) -> tuple[AIAnalysisResult, str]:
+    """Shared two-attempt retry-then-AnalysisFailure control flow (D-10).
+
+    OpenAICompatibleProvider and GeminiProvider POST a different-shaped
+    request and pull the embedded JSON text out of a different-shaped
+    response (`extract_raw_json`), but the retry/validate/fail contract
+    itself was identical, duplicated almost verbatim between the two.
+    Factored here so a future change to that contract (a third attempt,
+    a different backoff, ...) only needs to be made once (PR #46 review,
+    maintainability nit).
+    """
+    for attempt in range(2):
+        try:
+            response = httpx.post(endpoint, headers=headers, json=payload, timeout=30.0)
+            response.raise_for_status()
+
+            raw_json = extract_raw_json(response.json())
+            result = AIAnalysisResult.model_validate_json(raw_json)
+            return result, raw_json
+        except (
+            httpx.HTTPError,
+            json.JSONDecodeError,
+            ValidationError,
+            KeyError,
+            IndexError,
+            TypeError,
+        ) as exc:
+            if attempt == 1:
+                raise AnalysisFailure(
+                    f"{provider_label} could not produce a valid analysis after two attempts"
+                ) from exc
+            # Let the loop naturally advance to the second (and final) retry.
+
+
 class OpenAICompatibleProvider:
     """Base for chat-completions APIs that speak the OpenAI request/response
     shape (messages/choices, JSON mode) -- Groq and OpenAI's own API both do
@@ -244,34 +285,13 @@ class OpenAICompatibleProvider:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-
-        for attempt in range(2):
-            try:
-                response = httpx.post(
-                    self.ENDPOINT,
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
-
-                raw_json = response.json()["choices"][0]["message"]["content"]
-                result = AIAnalysisResult.model_validate_json(raw_json)
-                return result, raw_json
-            except (
-                httpx.HTTPError,
-                json.JSONDecodeError,
-                ValidationError,
-                KeyError,
-                IndexError,
-                TypeError,
-            ) as exc:
-                if attempt == 1:
-                    raise AnalysisFailure(
-                        f"{self._provider_label} could not produce a valid analysis "
-                        "after two attempts"
-                    ) from exc
-                # Let the loop naturally advance to the second (and final) retry.
+        return _post_and_validate(
+            self.ENDPOINT,
+            headers,
+            payload,
+            lambda body: body["choices"][0]["message"]["content"],
+            self._provider_label,
+        )
 
 
 class GroqProvider(OpenAICompatibleProvider):
@@ -298,7 +318,9 @@ class GeminiProvider:
     Gemini's request/response shape isn't OpenAI-compatible (contents/parts,
     not messages/choices), so unlike GPTProvider this can't reuse
     OpenAICompatibleProvider -- but the external contract (validate into
-    AIAnalysisResult, one retry, then AnalysisFailure) is identical.
+    AIAnalysisResult, one retry, then AnalysisFailure) is identical, and
+    analyze() shares that retry/validate/fail control flow with
+    OpenAICompatibleProvider via _post_and_validate.
     """
 
     def __init__(self) -> None:
@@ -326,33 +348,13 @@ class GeminiProvider:
             "x-goog-api-key": settings.gemini_api_key,
             "Content-Type": "application/json",
         }
-
-        for attempt in range(2):
-            try:
-                response = httpx.post(
-                    self._endpoint,
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
-
-                raw_json = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-                result = AIAnalysisResult.model_validate_json(raw_json)
-                return result, raw_json
-            except (
-                httpx.HTTPError,
-                json.JSONDecodeError,
-                ValidationError,
-                KeyError,
-                IndexError,
-                TypeError,
-            ) as exc:
-                if attempt == 1:
-                    raise AnalysisFailure(
-                        "Gemini could not produce a valid analysis after two attempts"
-                    ) from exc
-                # Let the loop naturally advance to the second (and final) retry.
+        return _post_and_validate(
+            self._endpoint,
+            headers,
+            payload,
+            lambda body: body["candidates"][0]["content"]["parts"][0]["text"],
+            "Gemini",
+        )
 
 
 def get_provider() -> AIProvider:
