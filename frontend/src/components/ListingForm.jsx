@@ -21,10 +21,15 @@ export default function ListingForm({ onResult }) {
   // through the same handleSubmit/POST /analyses path as manual entry.
   const [fetchingUrl, setFetchingUrl] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  // Which fields the user has personally typed into -- a fetch only fills
+  // in fields the user hasn't touched, so it never silently clobbers
+  // something they already entered (PR #21 review).
+  const [touched, setTouched] = useState({});
 
   function updateField(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setTouched((current) => ({ ...current, [name]: true }));
   }
 
   async function handleFetchUrl() {
@@ -36,9 +41,9 @@ export default function ListingForm({ onResult }) {
       const preview = await api.previewListingUrl(url);
       setForm((current) => ({
         ...current,
-        title: preview.title || current.title,
-        description: preview.description || current.description,
-        source: preview.source || current.source,
+        title: touched.title ? current.title : preview.title || current.title,
+        description: touched.description ? current.description : preview.description || current.description,
+        source: touched.source ? current.source : preview.source || current.source,
       }));
     } catch (err) {
       setFetchError(err instanceof ApiError ? err.message : 'Unable to fetch that URL right now.');
