@@ -129,8 +129,7 @@ These actions must be scoped to:
 The same IAM user typically also requires:
 
 - **ECR**: push images from GitHub Actions (`GetAuthorizationToken`, `BatchCheckLayerAvailability`, `PutImage`, etc.).
-- **SSM messaging** (if using the standard SSM document): `ssm:UpdateInstanceInformation` is handled by the **instance role**, not GitHub.
-
+- **SSM agent permissions (EC2 instance role)**: grant `AmazonSSMManagedInstanceCore` (covers `ssm:UpdateInstanceInformation`, `ssmmessages:*`, `ec2messages:*`) to the instance role — not to the GitHub deployer user.
 ### EC2 instance requirements
 
 The EC2 host must:
