@@ -91,12 +91,9 @@ class Listing(Base):
 
 
 class Analysis(Base):
-    """E3 owner defines: risk_level, summary, price_assessment,
+    """E3 owner defines: risk_level, risk_score, summary, price_assessment,
     price_plausibility, recommendation, seller_questions (JSON), model_used,
     prompt_version, raw_response."""
-    """E3 owner defines: risk_level, risk_score, summary, price_assessment,
-    recommendation, seller_questions (JSON), model_used, prompt_version,
-    raw_response."""
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
