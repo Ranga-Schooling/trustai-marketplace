@@ -8,7 +8,7 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 |----------|----------|
 | Deploy workflow | `.github/workflows/deploy.yml` |
 | EC2 production stack | `deploy/docker-compose.yml` |
-| Operational runbook (ECR, `.env`, first-time setup) | `deploy/README.md` |
+| Operational runbook (ECR, `.env`, first-time setup — note: `deploy/README.md` still references the legacy SSH workflow) | `deploy/README.md` |
 | Migration-on-start decision | `docs/DESIGN_NOTES.md` (D-11) |
 
 ---
