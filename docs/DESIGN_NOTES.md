@@ -107,6 +107,7 @@ of scope here — consistent with the existing minimal-auth stance (no
 refresh tokens, no password reset, no email verification); adding it would
 need its own story and a re-authentication/current-password check to be
 safe.
+
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the
