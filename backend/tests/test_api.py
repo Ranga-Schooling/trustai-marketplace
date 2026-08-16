@@ -207,7 +207,6 @@ def test_preview_listing_from_url(client, monkeypatch):
     assert response["currency"] == "USD"
 
 
-@pytest.mark.skip(reason="US-1.3 AC2 + US-4.1: per-user history isolation (E1+E2)")
 def test_history_is_per_user(client):
     alice = register_and_login(client, "alice@example.com")
     bob = register_and_login(client, "bob@example.com")
@@ -216,6 +215,37 @@ def test_history_is_per_user(client):
     assert len(client.get("/api/analyses", headers=bob).json()) == 0
     aid = client.get("/api/analyses", headers=alice).json()[0]["id"]
     assert client.get(f"/api/analyses/{aid}", headers=bob).status_code == 404
+
+
+def test_list_analyses_newest_first(client):
+    headers = register_and_login(client)
+    first = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
+    second = client.post("/api/analyses", json=SCAM_LISTING, headers=headers).json()
+
+    body = client.get("/api/analyses", headers=headers).json()
+
+    assert [item["id"] for item in body] == [second["id"], first["id"]]
+    assert body[0]["listing_title"] == SCAM_LISTING["title"]
+    assert body[0]["listing_price"] == SCAM_LISTING["price"]
+    assert body[0]["listing_currency"] == SCAM_LISTING["currency"].upper()
+
+
+def test_get_analysis_returns_full_detail(client):
+    headers = register_and_login(client)
+    created = client.post("/api/analyses", json=SCAM_LISTING, headers=headers).json()
+
+    r = client.get(f"/api/analyses/{created['id']}", headers=headers)
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["listing_title"] == SCAM_LISTING["title"]
+    assert len(body["risk_indicators"]) > 0
+    assert body["risk_score"] == created["risk_score"]
+
+
+def test_get_analysis_unknown_id_returns_404(client):
+    headers = register_and_login(client)
+    assert client.get("/api/analyses/999999", headers=headers).status_code == 404
 
 
 def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch):

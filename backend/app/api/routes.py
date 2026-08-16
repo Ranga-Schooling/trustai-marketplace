@@ -24,7 +24,7 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   unchanged. [Trello #27]
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.config import get_settings
 from app.core.security import (
@@ -197,11 +197,42 @@ def preview_listing(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
+def _to_analysis_with_listing(analysis: Analysis) -> AnalysisWithListingOut:
+    """Flatten an Analysis (with .listing and .risk_indicators loaded) into
+    the joined response shape. AnalysisWithListingOut.listing_* fields live
+    on the related Listing row, not on Analysis itself, so from_attributes
+    alone can't produce them -- built explicitly instead."""
+    return AnalysisWithListingOut(
+        id=analysis.id,
+        listing_id=analysis.listing_id,
+        risk_level=analysis.risk_level,
+        risk_score=analysis.risk_score,
+        summary=analysis.summary,
+        price_assessment=analysis.price_assessment,
+        recommendation=analysis.recommendation,
+        seller_questions=analysis.seller_questions,
+        risk_indicators=analysis.risk_indicators,
+        model_used=analysis.model_used,
+        created_at=analysis.created_at,
+        listing_title=analysis.listing.title,
+        listing_price=analysis.listing.price,
+        listing_currency=analysis.listing.currency,
+    )
+
+
 @router.get("/analyses", response_model=list[AnalysisWithListingOut])
 def list_analyses(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """[US-4.1 AC1] The authenticated user's analyses, newest first, joined
     with listing title/price/currency."""
-    raise NotImplementedError("E2/US-4.1")
+    analyses = (
+        db.query(Analysis)
+        .join(Listing)
+        .filter(Listing.user_id == user.id)
+        .options(joinedload(Analysis.listing), selectinload(Analysis.risk_indicators))
+        .order_by(Analysis.created_at.desc())
+        .all()
+    )
+    return [_to_analysis_with_listing(analysis) for analysis in analyses]
 
 
 @router.get("/analyses/{analysis_id}", response_model=AnalysisWithListingOut)
@@ -212,4 +243,13 @@ def get_analysis(
 ):
     """[US-4.1 AC2] Full analysis with indicators; 404 if not found OR not
     owned by this user."""
-    raise NotImplementedError("E2/US-4.1")
+    analysis = (
+        db.query(Analysis)
+        .join(Listing)
+        .filter(Analysis.id == analysis_id, Listing.user_id == user.id)
+        .options(joinedload(Analysis.listing), selectinload(Analysis.risk_indicators))
+        .first()
+    )
+    if analysis is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
+    return _to_analysis_with_listing(analysis)
