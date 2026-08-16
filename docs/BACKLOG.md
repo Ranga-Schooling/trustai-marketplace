@@ -99,7 +99,7 @@ keys.
 - AC1: `AI_PROVIDER=mock` selects a deterministic heuristic provider satisfying the same contract.
 - Implemented: `MockProvider`, provider selection in `get_provider()`, CI env config.
 
-**US-3.4 — Price plausibility category (Trello #28)**
+**US-3.5 — Price plausibility category (Trello #28)**
 As a buyer, I want to know whether the asking price is plausible, suspicious,
 or too good to be true, without the tool claiming to know the real market
 value.
@@ -115,6 +115,7 @@ value.
   updates, `AnalysisResult.jsx` badge, tests `test_low_risk_listing_gets_buy`,
   `test_high_risk_listing_gets_avoid`, `test_moderately_low_price_gets_suspicious_plausibility`.
   Decision log: `docs/DESIGN_NOTES.md` D-08.
+
 **US-3.4 — Deterministic 0-100 risk score (Trello #27)**
 As a buyer, I want a 0-100 risk score combining rule-based and AI signals,
 without the tool inventing an uncalibrated number.
@@ -134,7 +135,7 @@ without the tool inventing an uncalibrated number.
 Tasks completed: provider Protocol · system prompt with schema + honesty rules ·
 Groq JSON-mode call with timeout and single retry · Pydantic validation gate ·
 deterministic heuristic signal table · categorical risk derivation logic ·
-categorical price plausibility derivation (US-3.4).
+categorical price plausibility derivation (US-3.5).
 deterministic rule-based risk scoring (US-3.4).
 
 ---
