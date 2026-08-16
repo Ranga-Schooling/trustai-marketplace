@@ -170,6 +170,8 @@ def test_moderately_low_price_gets_suspicious_plausibility(client):
     assert body["price_plausibility"] == PricePlausibility.suspicious.value
     assert body["risk_level"] == RiskLevel.medium.value
     assert body["recommendation"] == Recommendation.caution.value
+
+
 def test_risk_score_never_contradicts_risk_level(client):
     headers = register_and_login(client)
     safe = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
