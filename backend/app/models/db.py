@@ -64,7 +64,12 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="buyer")
 
-    listings: Mapped[list["Listing"]] = relationship(back_populates="user")
+    # delete-orphan: deleting a User must not leave orphaned Listing rows
+    # (US-1.5 account deletion) -- same pattern as Analysis.risk_indicators
+    # below.
+    listings: Mapped[list["Listing"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Listing(Base):
@@ -87,7 +92,9 @@ class Listing(Base):
     url: Mapped[str | None] = mapped_column(String(2048), default=None)
 
     user: Mapped[User] = relationship(back_populates="listings")
-    analyses: Mapped[list["Analysis"]] = relationship(back_populates="listing")
+    analyses: Mapped[list["Analysis"]] = relationship(
+        back_populates="listing", cascade="all, delete-orphan"
+    )
 
 
 class Analysis(Base):
