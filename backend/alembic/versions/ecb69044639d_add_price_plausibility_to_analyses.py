@@ -1,7 +1,7 @@
 """add price_plausibility to analyses
 
 Revision ID: ecb69044639d
-Revises: ddee9423a6c1
+Revises: 3cc9cb43e9e6
 Create Date: 2026-08-08 18:59:39.839433
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'ecb69044639d'
-down_revision: Union[str, Sequence[str], None] = 'ddee9423a6c1'
+down_revision: Union[str, Sequence[str], None] = '3cc9cb43e9e6'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
