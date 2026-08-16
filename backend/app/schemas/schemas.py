@@ -102,7 +102,9 @@ class ListingPreviewOut(BaseModel):
     url: str
     title: str
     description: str
-    source: str | None = None
+    # max_length matches ListingIn.source above -- a suggestion that can't
+    # fit the field it's suggesting a value for isn't useful (PR #21 review).
+    source: str | None = Field(default=None, max_length=120)
 
 
 class RiskIndicatorOut(BaseModel):
