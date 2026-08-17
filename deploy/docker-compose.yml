@@ -5,14 +5,39 @@
 #   aws ecr get-login-password --region eu-north-1 \
 #     | docker login --username AWS --password-stdin \
 #       585142511013.dkr.ecr.eu-north-1.amazonaws.com
-#   docker compose pull && docker compose up -d
+#   IMAGE_TAG=<commit-sha> docker compose pull
+#   IMAGE_TAG=<commit-sha> docker compose up -d
 #
 # Required in .env beside this file: JWT_SECRET, POSTGRES_PASSWORD
 # Optional: GROQ_API_KEY, AI_PROVIDER
+# IMAGE_TAG is supplied by the deployment command and is not stored in .env.
 
 services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -qO- -T 2 http://127.0.0.1:8080/api/health |
+          grep -q '"status":"ok"'
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    restart: unless-stopped
+
   backend:
-    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:latest
+    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:${IMAGE_TAG:?set IMAGE_TAG for deployment}
     # No host port: API is reached via frontend nginx (/api → backend:8000).
     expose:
       - "8000"
@@ -27,9 +52,9 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:latest
-    ports:
-      - "80:80"
+    image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:${IMAGE_TAG:?set IMAGE_TAG for deployment}
+    expose:
+      - "80"
     depends_on:
       - backend
     restart: unless-stopped
@@ -50,4 +75,6 @@ services:
     restart: unless-stopped
 
 volumes:
+  caddy_data:
+  caddy_config:
   pgdata:
