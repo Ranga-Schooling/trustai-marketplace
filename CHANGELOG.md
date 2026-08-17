@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.0...v1.15.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* restore production analysis and session handling ([#81](https://github.com/Ranga-Schooling/trustai-marketplace/issues/81)) ([6e0f51d](https://github.com/Ranga-Schooling/trustai-marketplace/commit/6e0f51dc31cca1edc5d1633f9975b3e13d33e67e))
+
 ## [1.15.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.14.0...v1.15.0) (2026-08-17)
 
 
