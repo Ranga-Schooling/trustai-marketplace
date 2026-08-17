@@ -83,7 +83,8 @@ no Caddy).
 ## Database backups
 
 The `pgdata` Docker volume (declared in `deploy/docker-compose.yml`) survives every normal
-redeploy — `deploy.yml` only ever runs `docker compose pull && up -d`, never `down -v` — but
+redeploy — `deploy.yml`'s remote script only ever runs `docker compose pull`/`up -d` (plus config
+validation and health checks), never `down -v` — but
 it lives on this one EC2 instance's disk. If the instance is ever replaced, or the disk
 fails, there's no recovery path without a separate backup.
 

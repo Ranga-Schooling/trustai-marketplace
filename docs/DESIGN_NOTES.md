@@ -282,8 +282,9 @@ unrelated `updateProfile` → `updateMe` rename (which still breaks
 during final-weeks review: does the production database survive a
 redeploy on the single-EC2 setup? Yes for normal redeploys — the `pgdata`
 Docker volume (`deploy/docker-compose.yml`) is decoupled from container
-lifecycle, and `deploy.yml` only ever runs `docker compose pull && up -d`,
-never `down -v`. But the volume lives on that one instance's disk, so
+lifecycle, and `deploy.yml`'s remote script only ever runs `docker compose
+pull`/`up -d` (plus config validation and health checks), never
+`down -v`. But the volume lives on that one instance's disk, so
 instance replacement or disk failure had no recovery path at all. Rather
 than add always-on infrastructure (a sidecar cron container, a managed DB
 migration — both larger changes this late), `.github/workflows/backup.yml`
