@@ -1,3 +1,10 @@
+## [1.11.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.10.0...v1.11.0) (2026-08-17)
+
+
+### Features
+
+* categorical price plausibility (plausible/suspicious/too_good_t… ([#41](https://github.com/Ranga-Schooling/trustai-marketplace/issues/41)) ([4edc85c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4edc85c0594e4e62c2514d67aa2243e4e84aa950)), closes [#28](https://github.com/Ranga-Schooling/trustai-marketplace/issues/28)
+
 ## [1.10.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.9.0...v1.10.0) (2026-08-17)
 
 
