@@ -34,7 +34,7 @@ from sqlalchemy.orm import (
 )
 
 from app.core.config import get_settings
-from app.schemas.schemas import Recommendation, RiskLevel
+from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 settings = get_settings()
 
@@ -64,7 +64,12 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), default="buyer")
 
-    listings: Mapped[list["Listing"]] = relationship(back_populates="user")
+    # delete-orphan: deleting a User must not leave orphaned Listing rows
+    # (US-1.5 account deletion) -- same pattern as Analysis.risk_indicators
+    # below.
+    listings: Mapped[list["Listing"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Listing(Base):
@@ -87,13 +92,15 @@ class Listing(Base):
     url: Mapped[str | None] = mapped_column(String(2048), default=None)
 
     user: Mapped[User] = relationship(back_populates="listings")
-    analyses: Mapped[list["Analysis"]] = relationship(back_populates="listing")
+    analyses: Mapped[list["Analysis"]] = relationship(
+        back_populates="listing", cascade="all, delete-orphan"
+    )
 
 
 class Analysis(Base):
     """E3 owner defines: risk_level, risk_score, summary, price_assessment,
-    recommendation, seller_questions (JSON), model_used, prompt_version,
-    raw_response."""
+    price_plausibility, recommendation, seller_questions (JSON), model_used,
+    prompt_version, raw_response."""
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -106,6 +113,7 @@ class Analysis(Base):
     risk_score: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
     price_assessment: Mapped[str] = mapped_column(Text)
+    price_plausibility: Mapped[PricePlausibility] = mapped_column(String(20))
     recommendation: Mapped[Recommendation] = mapped_column(String(20))
     seller_questions: Mapped[list[str]] = mapped_column(JSON)
     model_used: Mapped[str] = mapped_column(String(120))

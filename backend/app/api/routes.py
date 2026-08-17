@@ -5,9 +5,10 @@ agreed API contract (they generate the OpenAPI docs at /docs that the
 frontend builds against). Keep the signatures; implement the bodies.
 
 Ownership:
-- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4
+- /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4, US-1.5
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
+- POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
 
 Agreed behaviors (docs/DESIGN_NOTES.md):
 - The listing row is committed BEFORE the AI call, so a provider outage
@@ -15,9 +16,17 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   the listing was saved. [US-2.2]
 - History queries are scoped to the authenticated user; fetching another
   user's analysis by id returns 404, not 403. [US-1.3 AC2]
+- POST /listings/preview is additive, not a change to the frozen
+  ListingIn/POST /analyses contract (CLAUDE.md SCHEMA-0): it only suggests
+  values, the user still submits through the unchanged endpoint. [US-2.3]
 - PATCH /auth/me is additive to the frozen register/login contract
   (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
   consistent with the existing minimal-auth stance. [US-1.4]
+- DELETE /auth/me is additive to the frozen contract (D-12): hard-deletes
+  the user and cascades to their listings/analyses/risk_indicators via the
+  ORM relationships in models/db.py. No soft-delete, no confirmation step
+  server-side (the client owns confirming intent), no re-auth/password
+  check -- consistent with the existing minimal-auth stance. [US-1.5]
 - AnalysisOut.risk_score (D-09) is computed server-side by
   services/scoring.py from the already-validated risk_level/
   risk_indicators; no AIProvider returns it, AIAnalysisResult is
@@ -40,12 +49,15 @@ from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
     ListingIn,
+    ListingPreviewOut,
+    ListingUrlIn,
     TokenResponse,
     UserLogin,
     UserOut,
     UserRegister,
     UserUpdate,
 )
+from app.services.listing_fetch import FetchError, fetch_listing_preview
 
 router = APIRouter()
 settings = get_settings()
@@ -91,6 +103,22 @@ def me(user: User = Depends(get_current_user)):
     return user
 
 
+@router.post("/listings/preview", response_model=ListingPreviewOut)
+def preview_listing_url(
+    body: ListingUrlIn,
+    user: User = Depends(get_current_user),
+):
+    """[US-2.3] Fetch a listing URL server-side and suggest title/description
+    values for the submission form. Does not persist anything and does not
+    touch the frozen ListingIn/POST /analyses contract — the user still
+    reviews and submits manually. 422 if the URL cannot be safely or
+    successfully fetched."""
+    try:
+        return fetch_listing_preview(str(body.url))
+    except FetchError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
 @router.patch("/auth/me", response_model=UserOut)
 def update_me(
     body: UserUpdate,
@@ -116,6 +144,21 @@ def update_me(
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.delete("/auth/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[US-1.5] Permanently delete the authenticated user and every listing/
+    analysis/risk_indicator they own (hard delete, cascaded via the ORM
+    relationships in models/db.py -- no soft-delete, no undo). The client
+    is responsible for confirming intent before calling this; the token
+    used to authenticate stops working immediately after (get_current_user
+    401s on an unknown user id)."""
+    db.delete(user)
+    db.commit()
 
 
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)
@@ -159,6 +202,7 @@ def create_analysis(
         risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
         summary=result.summary,
         price_assessment=result.price_assessment,
+        price_plausibility=result.price_plausibility.value,
         recommendation=result.recommendation.value,
         seller_questions=result.seller_questions,
         model_used=provider.model_name,
@@ -191,6 +235,7 @@ def _to_analysis_with_listing(analysis: Analysis) -> AnalysisWithListingOut:
         risk_score=analysis.risk_score,
         summary=analysis.summary,
         price_assessment=analysis.price_assessment,
+        price_plausibility=analysis.price_plausibility,
         recommendation=analysis.recommendation,
         seller_questions=analysis.seller_questions,
         risk_indicators=analysis.risk_indicators,
