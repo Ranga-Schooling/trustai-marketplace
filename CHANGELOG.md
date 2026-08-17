@@ -1,3 +1,10 @@
+## [1.13.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.2...v1.13.3) (2026-08-17)
+
+
+### Bug Fixes
+
+* self-heal startup migration for pre-Alembic create_all() bootstraps ([#73](https://github.com/Ranga-Schooling/trustai-marketplace/issues/73)) ([4703d5c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4703d5cc09915902badfbb2e1ebf43a8dd12e0e8)), closes [#69](https://github.com/Ranga-Schooling/trustai-marketplace/issues/69)
+
 ## [1.13.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.1...v1.13.2) (2026-08-17)
 
 
