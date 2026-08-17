@@ -37,7 +37,15 @@ jobs:
                 "DNS=$(curl -fsS -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/public-hostname || true)",
                 "MAC=$(curl -fsS -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/mac)",
                 "SG_IDS=$(curl -fsS -H \"X-aws-ec2-metadata-token: $TOKEN\" http://169.254.169.254/latest/meta-data/network/interfaces/macs/$MAC/security-group-ids || true)",
-                "printf \"Public IPv4: %s\\nPublic DNS: %s\\nSecurity Group IDs: %s\\n\" \"${IP:-not assigned}\" \"${DNS:-not assigned}\" \"${SG_IDS:-not available}\""
+                "printf \"Public IPv4: %s\\nPublic DNS: %s\\nSecurity Group IDs: %s\\n\" \"${IP:-not assigned}\" \"${DNS:-not assigned}\" \"${SG_IDS:-not available}\"",
+                "echo \"=== Listening TCP ports ===\"",
+                "ss -lntp || true",
+                "echo \"=== Docker published ports ===\"",
+                "docker ps --format \"table {{.Names}}\\t{{.Ports}}\" || true",
+                "echo \"=== UFW status ===\"",
+                "if command -v ufw >/dev/null 2>&1; then ufw status verbose || true; else echo \"ufw not installed\"; fi",
+                "echo \"=== nftables rules ===\"",
+                "if command -v nft >/dev/null 2>&1; then nft list ruleset || true; else echo \"nft not installed\"; fi"
               ]' \
               --query "Command.CommandId" \
               --output text
