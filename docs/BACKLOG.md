@@ -43,7 +43,10 @@ details stay current.
 - AC1: `GET /auth/me` returns the current name/email (already implemented under US-1.3).
 - AC2: `PATCH /auth/me` updates name and/or email; at least one field required (400 otherwise).
 - AC3: Changing to an already-registered email returns 409, same as registration.
-- Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
+- Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, the account
+  section in `App.jsx` (`Profile.jsx` was retired in favor of this — see
+  the "Fixed" note in `docs/DESIGN_NOTES.md`), `api.updateMe`, tests
+  `test_update_profile_*`.
 
 **US-1.5 — Delete account**
 As a user, I want to permanently delete my account, so my data isn't kept
@@ -55,7 +58,7 @@ once I no longer want to use the product.
 - AC3: Deleting one user's account never affects another user's listings
   or analyses.
 - Implemented: `DELETE /api/auth/me`, cascade relationships in
-  `models/db.py`, tests `test_delete_account_*` (D-12).
+  `models/db.py`, `api.deleteMe`, tests `test_delete_account_*` (D-12).
 
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
@@ -260,6 +263,21 @@ floor so untested code can't silently creep in.
 - AC2: `test_listing_schema.py` unit-tests `ListingIn` validation directly (currency shape/normalization, positive price, description length, optional URL).
 - AC3: CI fails if backend coverage drops below 85% (`--cov-fail-under=85`); `app` gained `__init__.py` files so untested modules (e.g. `services/ai.py`) are honestly counted instead of silently excluded.
 - Implemented: `tests/test_security.py`, `tests/test_listing_schema.py`, `backend/.coveragerc`, `.github/workflows/ci.yml`.
+
+**US-6.5 — Frontend test coverage**
+As the team, we want the frontend build step to catch a client/server API
+naming mismatch, not just a JSX/syntax error, so a fully-broken feature
+can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
+`api.deleteMe`, neither of which existed on the API client).
+- AC1: Every component that calls `api.*` has at least one test asserting
+  it invokes the correct method, by spying on the real `api` module
+  (not a hand-authored mock) so a renamed/removed method fails the test
+  the same way it fails at runtime.
+- AC2: CI runs the frontend test suite as its own step, separate from
+  (and before) `npm run build`.
+- Implemented: Vitest + React Testing Library, `App.test.jsx`,
+  `AuthForm.test.jsx`, `ListingForm.test.jsx`, `History.test.jsx`,
+  `.github/workflows/ci.yml`'s `frontend` job.
 
 ---
 
