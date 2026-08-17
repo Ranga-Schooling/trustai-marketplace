@@ -44,6 +44,8 @@ export default function ListingForm({ onResult }) {
         title: touched.title ? current.title : preview.title || current.title,
         description: touched.description ? current.description : preview.description || current.description,
         source: touched.source ? current.source : preview.source || current.source,
+        price: touched.price || preview.price == null ? current.price : String(preview.price),
+        currency: touched.currency || !preview.currency ? current.currency : preview.currency,
       }));
     } catch (err) {
       setFetchError(err instanceof ApiError ? err.message : 'Unable to fetch that URL right now.');
@@ -159,7 +161,7 @@ export default function ListingForm({ onResult }) {
                 {fetchingUrl ? 'Fetching…' : 'Fetch details'}
               </button>
             </div>
-            <p className="field-hint">Suggests the title, description, and source below — review before submitting.</p>
+            <p className="field-hint">Suggests the title, price, currency, description, and source below — review before submitting.</p>
             {fetchError ? <div className="error">{fetchError}</div> : null}
           </div>
 
