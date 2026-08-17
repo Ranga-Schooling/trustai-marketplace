@@ -45,10 +45,23 @@ details stay current.
 - AC3: Changing to an already-registered email returns 409, same as registration.
 - Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
 
+**US-1.5 — Delete account**
+As a user, I want to permanently delete my account, so my data isn't kept
+once I no longer want to use the product.
+- AC1: `DELETE /auth/me` deletes the authenticated user and all listings/
+  analyses/risk indicators they own (hard delete, no undo).
+- AC2: The bearer token used to authenticate no longer works after
+  deletion (any further request with it returns 401).
+- AC3: Deleting one user's account never affects another user's listings
+  or analyses.
+- Implemented: `DELETE /api/auth/me`, cascade relationships in
+  `models/db.py`, tests `test_delete_account_*` (D-12).
+
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
 session token storage and 401 auto-signout in the frontend API client ·
-profile view/edit route and UI (US-1.4).
+profile view/edit route and UI (US-1.4) · delete-account backend route and
+cascade delete (US-1.5).
 
 ---
 
@@ -69,8 +82,17 @@ retry without retyping everything.
 - AC2: On AI failure the API returns 502 with a message stating the listing was saved.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
+**US-2.3 — Submit a listing URL and get suggested details**
+As a buyer, I want to paste just a listing URL and have the title and
+description suggested for me, so I don't have to retype them by hand.
+- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description; the user still reviews and edits before submitting.
+- AC2: Non-HTTP(S) URLs, and URLs resolving to a private/loopback/link-local address, are rejected (SSRF guardrail) with a 422.
+- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06).
+- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py`, `POST /api/listings/preview`, test `test_url_preview_returns_suggested_fields`.
+
 Tasks completed: Listing ORM model · input schema with currency normalization ·
-description length guard · submission form UI with inline errors.
+description length guard · submission form UI with inline errors · URL fetch
+preview endpoint with SSRF guardrails (US-2.3).
 
 ---
 
@@ -99,6 +121,23 @@ keys.
 - AC1: `AI_PROVIDER=mock` selects a deterministic heuristic provider satisfying the same contract.
 - Implemented: `MockProvider`, provider selection in `get_provider()`, CI env config.
 
+**US-3.5 — Price plausibility category (Trello #28)**
+As a buyer, I want to know whether the asking price is plausible, suspicious,
+or too good to be true, without the tool claiming to know the real market
+value.
+- AC1: `price_plausibility` is one of `plausible` / `suspicious` /
+  `too_good_to_be_true` (categorical, no numeric score — same rationale as
+  risk level, D-05).
+- AC2: `price_assessment` (the existing free-text explanation) never states a
+  specific figure, range, or market-data source as fact.
+- AC3: Both providers populate the field; `MockProvider` derives it
+  deterministically from its existing price threshold.
+- Implemented: `PricePlausibility` schema, `Analysis.price_plausibility`
+  column + Alembic migration `ecb69044639d`, `MockProvider`/`SYSTEM_PROMPT`
+  updates, `AnalysisResult.jsx` badge, tests `test_low_risk_listing_gets_buy`,
+  `test_high_risk_listing_gets_avoid`, `test_moderately_low_price_gets_suspicious_plausibility`.
+  Decision log: `docs/DESIGN_NOTES.md` D-08.
+
 **US-3.4 — Deterministic 0-100 risk score (Trello #27)**
 As a buyer, I want a 0-100 risk score combining rule-based and AI signals,
 without the tool inventing an uncalibrated number.
@@ -115,10 +154,32 @@ without the tool inventing an uncalibrated number.
   `test_risk_score_never_contradicts_risk_level`. Decision log:
   `docs/DESIGN_NOTES.md` D-09 (amends D-05's scope).
 
+**US-3.6 — Multi-LLM provider abstraction (Trello #20)**
+As the team, we want the backend to switch between Groq/GPT/Gemini via
+configuration, so we're not locked to one vendor.
+- AC1: `AI_PROVIDER=mock|groq|gpt|gemini` selects the active provider;
+  each real provider fails fast (`AnalysisFailure`) if its own API key
+  isn't configured.
+- AC2: All three real providers satisfy the same `AIProvider` Protocol and
+  external contract (validate into `AIAnalysisResult`, one retry, then
+  `AnalysisFailure`) — swapping providers changes no other code.
+- AC3: Groq and GPT share implementation (`OpenAICompatibleProvider`) since
+  their APIs are the same shape; Gemini doesn't, since its API isn't.
+- Implemented: `OpenAICompatibleProvider`/`GroqProvider`/`GPTProvider`/
+  `GeminiProvider` in `services/ai.py`, `config.py`
+  gemini/openai settings, tests `test_gpt_provider_*`,
+  `test_gemini_provider_*`, `test_get_provider_returns_*`. Decision log:
+  `docs/DESIGN_NOTES.md` D-10.
+- Out of scope (deliberately, see D-10): switching still requires an env
+  var change + restart, not a live/runtime toggle — that's tracked
+  separately as a GitHub issue (admin-gated runtime config + analytics).
+
 Tasks completed: provider Protocol · system prompt with schema + honesty rules ·
 Groq JSON-mode call with timeout and single retry · Pydantic validation gate ·
 deterministic heuristic signal table · categorical risk derivation logic ·
-deterministic rule-based risk scoring (US-3.4).
+categorical price plausibility derivation (US-3.5) ·
+deterministic rule-based risk scoring (US-3.4) · GPT/Gemini providers behind
+the same interface (US-3.6).
 
 ---
 
@@ -204,6 +265,6 @@ floor so untested code can't silently creep in.
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.4, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
-| Could (future) | PDF export, URL auto-fetch, browser extension, reverse image search |
+| Could (future) | PDF export, browser extension, reverse image search |

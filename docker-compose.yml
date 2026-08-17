@@ -4,12 +4,21 @@ services:
   api:
     build: ./backend
     ports: ["8000:8000"]
+    # `${VAR}` below only ever resolves from the shell running `docker
+    # compose` (or a .env next to this file) -- it does NOT read
+    # backend/.env, so AI_PROVIDER/*_API_KEY set there were silently
+    # ignored and every provider setting fell back to its hardcoded
+    # default (mock, empty key) no matter what backend/.env said. env_file
+    # loads backend/.env's values into the container directly; `required:
+    # false` keeps a from-scratch clone with no backend/.env yet working
+    # (Settings' own field defaults apply, same as running uvicorn locally).
+    env_file:
+      - path: ./backend/.env
+        required: false
     environment:
-      # Use Compose service name `db` as the Postgres hostname.
+      # Force the Compose service name as the Postgres host regardless of
+      # what backend/.env has (it may point at sqlite for non-Docker use).
       DATABASE_URL: postgresql+psycopg2://trustai:trustai@db:5432/trustai
-      AI_PROVIDER: ${AI_PROVIDER:-mock}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
-      JWT_SECRET: ${JWT_SECRET:-dev-only-secret}
     depends_on:
       db:
         condition: service_healthy

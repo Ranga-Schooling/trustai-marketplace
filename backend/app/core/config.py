@@ -21,10 +21,17 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_minutes: int = 60 * 24
 
-    # AI provider: "mock" (deterministic heuristics, no network) or "groq".
+    # AI provider: "mock" (deterministic heuristics, no network), "groq",
+    # "gpt" (OpenAI), or "gemini" (Card #20). Deploy-time only -- changing
+    # this requires a process restart, same as it always has (see
+    # docs/DESIGN_NOTES.md D-10 for why a runtime switch is separate scope).
     ai_provider: str = "mock"
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
     prompt_version: str = "v1"
 
     # Basic abuse guardrails for the public analysis endpoint.

@@ -58,18 +58,75 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           set -euo pipefail
+
+          COMPOSE_B64="$(base64 -w 0 deploy/docker-compose.yml)"
+          CADDYFILE_B64="$(base64 -w 0 deploy/Caddyfile)"
+          printf -v APP_DIR_Q '%q' "$EC2_APP_DIR"
+          printf -v AWS_REGION_Q '%q' "$AWS_REGION_NAME"
+          printf -v ECR_REGISTRY_Q '%q' "$ECR_REGISTRY"
+          printf -v IMAGE_TAG_Q '%q' "$GITHUB_SHA"
+
+          REMOTE_SCRIPT="$(cat <<EOF
+          set -euo pipefail
+          cd ${APP_DIR_Q}
+          test -f .env || { echo "Missing deployment .env"; exit 1; }
+          export IMAGE_TAG=${IMAGE_TAG_Q}
+          printf '%s' '${COMPOSE_B64}' | base64 --decode > docker-compose.yml.next
+          printf '%s' '${CADDYFILE_B64}' | base64 --decode > Caddyfile.next
+          docker compose -f docker-compose.yml.next config --quiet
+          aws ecr get-login-password --region ${AWS_REGION_Q} | docker login --username AWS --password-stdin ${ECR_REGISTRY_Q}
+          docker compose -f docker-compose.yml.next pull
+          docker run --rm -v "\$PWD/Caddyfile.next:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          test ! -f docker-compose.yml || cp docker-compose.yml docker-compose.yml.previous
+          test ! -f Caddyfile || cp Caddyfile Caddyfile.previous
+          mv docker-compose.yml.next docker-compose.yml
+          mv Caddyfile.next Caddyfile
+          if ! docker compose up -d; then
+            echo "Docker Compose activation failed"
+            docker compose ps || true
+            docker compose logs --no-color --tail=100 caddy frontend backend || true
+            exit 1
+          fi
+
+          HEALTHY=0
+          HEALTH_MAX_ATTEMPTS=30
+          HEALTH_RETRY_SECONDS=3
+          echo "Waiting approximately 90 seconds for application health"
+          for attempt in \$(seq 1 "\$HEALTH_MAX_ATTEMPTS"); do
+            CADDY_CONTAINER_ID="\$(docker compose ps -q caddy)"
+            HEALTH_STATUS="\$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}unavailable{{end}}' "\$CADDY_CONTAINER_ID" 2>/dev/null || true)"
+            if [ "\$HEALTH_STATUS" = "healthy" ]; then
+              HEALTHY=1
+              echo "Application health check passed on attempt \$attempt/\$HEALTH_MAX_ATTEMPTS"
+              break
+            fi
+            echo "Waiting for application health (attempt \$attempt/\$HEALTH_MAX_ATTEMPTS, status=\$HEALTH_STATUS)"
+            if [ "\$attempt" -lt "\$HEALTH_MAX_ATTEMPTS" ]; then
+              sleep "\$HEALTH_RETRY_SECONDS"
+            fi
+          done
+
+          if [ "\$HEALTHY" -ne 1 ]; then
+            echo "Application failed to become healthy after approximately 90 seconds"
+            docker compose ps || true
+            docker compose logs --no-color --tail=100 caddy frontend backend || true
+            exit 1
+          fi
+
+          echo "Deployment of image tag \${IMAGE_TAG} is healthy"
+          docker compose ps
+          docker image prune -f
+          EOF
+          )"
+          REMOTE_SCRIPT_B64="$(printf '%s' "$REMOTE_SCRIPT" | base64 -w 0)"
+          PARAMETERS="$(jq -n --arg script "$REMOTE_SCRIPT_B64" \
+            '{commands: [("printf %s " + $script + " | base64 --decode | bash")]}')"
+
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$EC2_INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
             --comment "TrustAI deploy ${GITHUB_SHA}" \
-            --parameters commands="[
-              \"set -e\",
-              \"cd ${EC2_APP_DIR}\",
-              \"aws ecr get-login-password --region ${AWS_REGION_NAME} | docker login --username AWS --password-stdin ${ECR_REGISTRY}\",
-              \"docker compose pull\",
-              \"docker compose up -d\",
-              \"docker image prune -f\"
-            ]" \
+            --parameters "$PARAMETERS" \
             --query "Command.CommandId" \
             --output text)
 
