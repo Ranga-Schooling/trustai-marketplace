@@ -1,3 +1,10 @@
+## [1.15.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.14.0...v1.15.0) (2026-08-17)
+
+
+### Features
+
+* extract price/currency/seller signals in URL listing preview ([#77](https://github.com/Ranga-Schooling/trustai-marketplace/issues/77)) ([b907654](https://github.com/Ranga-Schooling/trustai-marketplace/commit/b907654c48b5eaec7afa89dc82e675cacad2b6a5)), closes [#65](https://github.com/Ranga-Schooling/trustai-marketplace/issues/65) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#62](https://github.com/Ranga-Schooling/trustai-marketplace/issues/62) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21)
+
 ## [1.14.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.3...v1.14.0) (2026-08-17)
 
 
