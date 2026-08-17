@@ -11,4 +11,7 @@ EXPOSE 8000
 # never actually copied into the image (or run anywhere), so schema changes
 # landed in code but never reached deployed databases -- see
 # docs/DESIGN_NOTES.md D-11.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# app.core.migrate wraps `alembic upgrade head` and self-heals the specific
+# case D-11 required a manual fix for (tables exist, no alembic_version row,
+# columns exactly match current models) instead of crash-looping forever.
+CMD ["sh", "-c", "python -m app.core.migrate && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

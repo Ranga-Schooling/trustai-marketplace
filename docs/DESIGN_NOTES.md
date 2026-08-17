@@ -245,6 +245,32 @@ Fixed two ways:
    scratch, no stamping needed; this was a one-time repair for a database
    that predated Alembic being used at all.
 
+**Startup migration is now self-healing for that same scenario (also D-11,
+2026-08-17).** The manual `alembic stamp` above was a one-time human fix,
+not an automated recovery path — a full e2e review reproduced the identical
+crash-loop with a fresh volume in the same starting state (tables present,
+no `alembic_version` row), confirming any other environment that hits this
+(a teammate's stale Docker volume, an EC2 snapshot, a restored backup)
+would crash-loop indefinitely under `restart: unless-stopped` with no
+automated recovery. `backend/Dockerfile`'s `CMD` now runs
+`python -m app.core.migrate` instead of a bare `alembic upgrade head`:
+if `alembic_version` is missing but existing tables' columns are an *exact*
+match for the current models (i.e. verifiably a `create_all()` bootstrap,
+nothing more), it stamps `head` automatically and proceeds. If the tables
+don't match exactly — a genuinely older, partial schema like the original
+incident — it deliberately does **not** guess which revision to stamp
+(a wrong guess would silently skip a real `ALTER TABLE` and leave the app
+querying columns that don't exist, which is worse than the crash), and
+instead fails fast with a message naming exactly which columns differ, so
+the manual `alembic stamp <revision>` from this same incident is still the
+right recovery, it's just diagnosable in seconds instead of from a bare
+`psycopg2.errors.DuplicateTable` traceback. Verified against real Postgres
+in both directions (Docker container built and run locally): a
+column-matching bootstrap now starts cleanly instead of crash-looping, and
+a genuinely mismatched schema exits with the diagnostic message instead of
+either crash-looping or silently mis-stamping. Unit tests:
+`backend/tests/test_startup_migrate.py`.
+
 **Unknown `.env` keys no longer crash the app (also D-11).** Found via the
 same incident: `Settings` (pydantic-settings) forbids unrecognized keys by
 default, so a `.env` file containing a variable not yet declared as a
