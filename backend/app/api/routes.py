@@ -32,6 +32,8 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   risk_indicators; no AIProvider returns it, AIAnalysisResult is
   unchanged. [Trello #27]
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -61,6 +63,7 @@ from app.services.listing_fetch import FetchError, fetch_listing_preview
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/health")
@@ -192,6 +195,15 @@ def create_analysis(
         provider = get_provider()
         result, raw_response = provider.analyze(body)
     except AnalysisFailure as exc:
+        cause_type = type(exc.__cause__).__name__ if exc.__cause__ is not None else "none"
+        logger.error(
+            "AI analysis failed listing_id=%s provider=%s "
+            "failure_type=%s cause_type=%s",
+            listing.id,
+            settings.ai_provider,
+            type(exc).__name__,
+            cause_type,
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI analysis failed; the listing was saved.",

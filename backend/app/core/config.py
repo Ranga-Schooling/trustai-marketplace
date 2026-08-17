@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # docs/DESIGN_NOTES.md D-10 for why a runtime switch is separate scope).
     ai_provider: str = "mock"
     groq_api_key: str = ""
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""

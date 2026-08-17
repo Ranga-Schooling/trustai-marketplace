@@ -1,6 +1,7 @@
 import httpx
 import pytest
 
+from app.core.config import Settings
 from app.schemas.schemas import (
     AIAnalysisResult,
     ListingIn,
@@ -67,6 +68,17 @@ class FakeGeminiResponse:
                 }
             ]
         }
+
+
+class HttpErrorResponse:
+    def raise_for_status(self):
+        request = httpx.Request("POST", GroqProvider.ENDPOINT)
+        response = httpx.Response(400, request=request)
+        raise httpx.HTTPStatusError(
+            "Simulated provider rejection",
+            request=request,
+            response=response,
+        )
 
 
 def test_groq_provider_success(monkeypatch):
@@ -148,6 +160,52 @@ def test_groq_provider_raises_analysis_failure_after_two_failures(monkeypatch):
         provider.analyze(listing)
 
     assert calls == 2
+
+
+def test_default_groq_model_uses_supported_replacement():
+    assert Settings.model_fields["groq_model"].default == "openai/gpt-oss-120b"
+
+
+def test_groq_provider_logs_sanitized_http_failure(monkeypatch, caplog):
+    monkeypatch.setattr(
+        "app.services.ai.httpx.post",
+        lambda *args, **kwargs: HttpErrorResponse(),
+    )
+    monkeypatch.setattr("app.services.ai.settings.groq_api_key", "secret-test-key")
+    monkeypatch.setattr(
+        "app.services.ai.settings.groq_model",
+        "openai/gpt-oss-120b",
+    )
+    listing = ListingIn(
+        title="IKEA Billy bookcase, white",
+        price=450.0,
+        currency="ZAR",
+        source="Facebook Marketplace",
+        description="Used bookcase in good condition, collection in Randburg.",
+    )
+
+    with caplog.at_level("WARNING", logger="app.services.ai"):
+        with pytest.raises(AnalysisFailure):
+            GroqProvider().analyze(listing)
+
+    assert "provider=groq" in caplog.text
+    assert "model=openai/gpt-oss-120b" in caplog.text
+    assert "attempt=1/2" in caplog.text
+    assert "attempt=2/2" in caplog.text
+    assert "error_type=HTTPStatusError" in caplog.text
+    assert "http_status=400" in caplog.text
+    assert "secret-test-key" not in caplog.text
+
+
+def test_groq_provider_logs_missing_key_name_without_value(monkeypatch, caplog):
+    monkeypatch.setattr("app.services.ai.settings.groq_api_key", "")
+
+    with caplog.at_level("ERROR", logger="app.services.ai"):
+        with pytest.raises(AnalysisFailure):
+            GroqProvider()
+
+    assert "provider=groq" in caplog.text
+    assert "missing_setting=GROQ_API_KEY" in caplog.text
 
 
 def test_get_provider_returns_mock_provider(monkeypatch):

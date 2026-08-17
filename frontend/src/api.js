@@ -16,9 +16,10 @@ export function hasToken() {
 
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const hadToken = Boolean(token);
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
-  if (res.status === 401) {
+  if (res.status === 401 && hadToken) {
     setToken(null);
     throw new ApiError('Your session has expired. Please sign in again.', 401);
   }
