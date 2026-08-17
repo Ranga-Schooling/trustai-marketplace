@@ -307,7 +307,7 @@ def test_get_analysis_unknown_id_returns_404(client):
     assert client.get("/api/analyses/999999", headers=headers).status_code == 404
 
 
-def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch):
+def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch, caplog):
     headers = register_and_login(client)
 
     from app.services import ai as ai_module
@@ -321,6 +321,13 @@ def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch):
     from app.api import routes
     monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
 
-    r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+    with caplog.at_level("ERROR", logger="app.api.routes"):
+        r = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+
     assert r.status_code == 502
     assert "saved" in r.json()["detail"]
+    assert "AI analysis failed listing_id=" in caplog.text
+    assert "provider=mock" in caplog.text
+    assert "failure_type=AnalysisFailure" in caplog.text
+    assert "cause_type=none" in caplog.text
+    assert "simulated outage" not in caplog.text

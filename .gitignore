@@ -152,6 +152,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!**/.env.example
 .envrc
 .venv
 env/
@@ -189,7 +191,7 @@ cython_debug/
 #   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #   and can be added to the global gitignore or merged into this file.  For a more nuclear
 #   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
+.idea/
 
 # Abstra
 #   Abstra is an AI-powered process automation framework.
@@ -205,7 +207,16 @@ cython_debug/
 #   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #   and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+.vscode/
+
+# Local editor and tool state
+.fleet/
+.zed/
+*.swp
+*.swo
+*~
+*.tmp
+tmp/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
@@ -228,6 +239,14 @@ __marimo__/
 
 # Databases
 *.db
+*.sqlite
+*.sqlite3
+
+# Private keys and certificate bundles
+*.key
+*.pem
+*.p12
+*.pfx
 
 # macOS
 .DS_Store
