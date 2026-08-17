@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models.db import Base, engine
+from app.models.db import Analysis, Base, Listing, SessionLocal, engine
 from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 pytestmark = []
@@ -102,6 +102,46 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
+def test_url_preview_requires_auth(client):
+    r = client.post("/api/listings/preview", json={"url": "https://example.com/item/1"})
+    assert r.status_code == 401
+
+
+def test_url_preview_returns_suggested_fields(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    from app.schemas.schemas import ListingPreviewOut
+
+    def fake_fetch(url):
+        return ListingPreviewOut(
+            url=url,
+            title="IKEA Billy bookcase, white",
+            description="Used bookcase in good condition.",
+            source="example.com",
+        )
+
+    monkeypatch.setattr(routes, "fetch_listing_preview", fake_fetch)
+
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "https://example.com/item/1"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "IKEA Billy bookcase, white"
+    assert body["source"] == "example.com"
+
+
+def test_url_preview_rejects_private_address(client):
+    headers = register_and_login(client)
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "http://127.0.0.1:8000/whatever"},
+        headers=headers,
+    )
+    assert r.status_code == 422
 def test_update_profile_requires_auth(client):
     r = client.patch("/api/auth/me", json={"name": "New Name"})
     assert r.status_code == 401
@@ -135,6 +175,45 @@ def test_update_profile_requires_a_field(client):
     headers = register_and_login(client)
     r = client.patch("/api/auth/me", json={}, headers=headers)
     assert r.status_code == 400
+
+
+def test_delete_account_requires_auth(client):
+    assert client.delete("/api/auth/me").status_code == 401
+
+
+def test_delete_account_removes_user_and_owned_data(client):
+    headers = register_and_login(client, "alice@example.com")
+    analysis = client.post("/api/analyses", json=SAFE_LISTING, headers=headers).json()
+
+    assert client.delete("/api/auth/me", headers=headers).status_code == 204
+
+    # the token used to authenticate no longer works
+    assert client.get("/api/auth/me", headers=headers).status_code == 401
+
+    # the email is free again -- proves the user row is actually gone, not
+    # just inaccessible
+    again = client.post("/api/auth/register", json={
+        "email": "alice@example.com", "name": "Alice", "password": "s3curepass",
+    })
+    assert again.status_code == 201
+
+    db = SessionLocal()
+    try:
+        assert db.query(Listing).filter(Listing.id == analysis["listing_id"]).first() is None
+        assert db.query(Analysis).filter(Analysis.id == analysis["id"]).first() is None
+    finally:
+        db.close()
+
+
+def test_delete_account_does_not_affect_other_users(client):
+    alice = register_and_login(client, "alice@example.com")
+    bob = register_and_login(client, "bob@example.com")
+    bob_analysis = client.post("/api/analyses", json=SAFE_LISTING, headers=bob).json()
+
+    assert client.delete("/api/auth/me", headers=alice).status_code == 204
+
+    assert client.get("/api/auth/me", headers=bob).status_code == 200
+    assert client.get(f"/api/analyses/{bob_analysis['id']}", headers=bob).status_code == 200
 
 
 def test_low_risk_listing_gets_buy(client):

@@ -45,10 +45,23 @@ details stay current.
 - AC3: Changing to an already-registered email returns 409, same as registration.
 - Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
 
+**US-1.5 — Delete account**
+As a user, I want to permanently delete my account, so my data isn't kept
+once I no longer want to use the product.
+- AC1: `DELETE /auth/me` deletes the authenticated user and all listings/
+  analyses/risk indicators they own (hard delete, no undo).
+- AC2: The bearer token used to authenticate no longer works after
+  deletion (any further request with it returns 401).
+- AC3: Deleting one user's account never affects another user's listings
+  or analyses.
+- Implemented: `DELETE /api/auth/me`, cascade relationships in
+  `models/db.py`, tests `test_delete_account_*` (D-12).
+
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
 session token storage and 401 auto-signout in the frontend API client ·
-profile view/edit route and UI (US-1.4).
+profile view/edit route and UI (US-1.4) · delete-account backend route and
+cascade delete (US-1.5).
 
 ---
 
@@ -69,8 +82,17 @@ retry without retyping everything.
 - AC2: On AI failure the API returns 502 with a message stating the listing was saved.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
+**US-2.3 — Submit a listing URL and get suggested details**
+As a buyer, I want to paste just a listing URL and have the title and
+description suggested for me, so I don't have to retype them by hand.
+- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description; the user still reviews and edits before submitting.
+- AC2: Non-HTTP(S) URLs, and URLs resolving to a private/loopback/link-local address, are rejected (SSRF guardrail) with a 422.
+- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06).
+- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py`, `POST /api/listings/preview`, test `test_url_preview_returns_suggested_fields`.
+
 Tasks completed: Listing ORM model · input schema with currency normalization ·
-description length guard · submission form UI with inline errors.
+description length guard · submission form UI with inline errors · URL fetch
+preview endpoint with SSRF guardrails (US-2.3).
 
 ---
 
@@ -224,4 +246,4 @@ floor so untested code can't silently creep in.
 |---|---|
 | Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.4, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
-| Could (future) | PDF export, URL auto-fetch, browser extension, reverse image search |
+| Could (future) | PDF export, browser extension, reverse image search |

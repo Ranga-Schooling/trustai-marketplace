@@ -4,13 +4,16 @@ import AnalysisResult from './components/AnalysisResult';
 import AuthForm from './components/AuthForm';
 import History from './components/History';
 import ListingForm from './components/ListingForm';
-import Profile from './components/Profile';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [view, setView] = useState('submit'); // submit | history | profile
+  const [view, setView] = useState('submit');
   const [result, setResult] = useState(null);
   const [booting, setBooting] = useState(hasToken());
+  const [accountForm, setAccountForm] = useState({ email: '', name: '', password: '' });
+  const [accountError, setAccountError] = useState('');
+  const [accountSuccess, setAccountSuccess] = useState('');
+  const [accountLoading, setAccountLoading] = useState(false);
 
   useEffect(() => {
     if (!hasToken()) {
@@ -45,6 +48,51 @@ export default function App() {
     setView('history');
   }
 
+  function openAccount() {
+    setResult(null);
+    setView('account');
+    if (user) {
+      setAccountForm({ email: user.email, name: user.name, password: '' });
+      setAccountError('');
+      setAccountSuccess('');
+    }
+  }
+
+  async function handleAccountSave(event) {
+    event.preventDefault();
+    setAccountError('');
+    setAccountSuccess('');
+    setAccountLoading(true);
+
+    try {
+      const updatedUser = await api.updateMe({
+        email: accountForm.email,
+        name: accountForm.name,
+        password: accountForm.password || undefined,
+      });
+      setUser(updatedUser);
+      setAccountForm((current) => ({ ...current, password: '' }));
+      setAccountSuccess('Account details updated successfully.');
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : 'Unable to update your account right now.');
+    } finally {
+      setAccountLoading(false);
+    }
+  }
+
+  async function handleAccountDelete() {
+    if (!window.confirm('Delete your account? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.deleteMe();
+      signOut();
+    } catch (err) {
+      setAccountError(err instanceof Error ? err.message : 'Unable to delete your account right now.');
+    }
+  }
+
   if (booting) {
     return (
       <div className="shell">
@@ -69,10 +117,12 @@ export default function App() {
             <button type="button" className={`nav-pill ${view === 'history' ? 'active' : ''}`} onClick={openHistory}>
               History
             </button>
-            <a className="link" onClick={() => { setResult(null); setView('profile'); }}>
+            <button type="button" className={`nav-pill ${view === 'account' ? 'active' : ''}`} onClick={openAccount}>
               Account
-            </a>
-            <button className="ghost" onClick={signOut}>Sign out</button>
+            </button>
+            <button type="button" className="ghost" onClick={signOut}>
+              Sign out
+            </button>
           </nav>
         ) : null}
       </header>
@@ -137,9 +187,62 @@ export default function App() {
         <History onOpen={(item) => setResult(item)} onNewListing={openSubmit} />
       ) : null}
 
-      {user && !result && view === 'profile' && (
-        <Profile user={user} onUpdated={setUser} />
-      )}
+      {user && !result && view === 'account' ? (
+        <section className="card account-panel">
+          <p className="eyebrow">Account</p>
+          <h1>Account details</h1>
+          <p className="subtle">Manage your TrustAI account and session.</p>
+
+          {accountError ? <div className="error">{accountError}</div> : null}
+          {accountSuccess ? <div className="success">{accountSuccess}</div> : null}
+
+          <form onSubmit={handleAccountSave}>
+            <div className="field">
+              <label htmlFor="account-name">Name</label>
+              <input
+                id="account-name"
+                name="name"
+                value={accountForm.name}
+                onChange={(event) => setAccountForm((current) => ({ ...current, name: event.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="account-email">Email</label>
+              <input
+                id="account-email"
+                name="email"
+                type="email"
+                value={accountForm.email}
+                onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label htmlFor="account-password">New password</label>
+              <input
+                id="account-password"
+                name="password"
+                type="password"
+                value={accountForm.password}
+                onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))}
+                placeholder="Leave blank to keep current password"
+              />
+            </div>
+
+            <div className="row two-col">
+              <button type="submit" disabled={accountLoading}>
+                {accountLoading ? 'Saving…' : 'Save changes'}
+              </button>
+              <button type="button" className="ghost" onClick={handleAccountDelete}>
+                Delete account
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <p className="disclaimer">
         TrustAI provides heuristic risk analysis to support your own judgment. It does not detect every scam and makes no financial guarantees.

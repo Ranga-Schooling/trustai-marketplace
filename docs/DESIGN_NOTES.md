@@ -62,6 +62,42 @@ schema (Compose/Neon/Supabase) going forward. `alembic upgrade head` now
 runs automatically on every container start (D-11) — see below for why
 this stopped being a "candidate for later" and became urgent.
 
+**URL fetch preview (D-06, additive to SCHEMA-0).** US-2.3 asks for
+"submit a listing URL and the system fetches the page content." Rather than
+changing the frozen `ListingIn`/`POST /analyses` contract to accept a
+URL-only submission, this is implemented as a separate, additive endpoint —
+`POST /listings/preview` — that fetches the page server-side and returns
+best-effort `title`/`description` suggestions (`ListingUrlIn`/
+`ListingPreviewOut`, new schemas alongside the frozen ones, not replacing
+them). The frontend uses these to prefill `ListingForm`; the user still
+reviews and submits through the unchanged `POST /analyses`, so nothing
+unvalidated from a scraped page ever reaches the AI provider or the
+database directly. This keeps `BeautifulSoup`/`lxml` parsing (a new failure
+surface) isolated from the existing, tested submission path.
+
+Fetching an arbitrary user-supplied URL server-side is a textbook SSRF
+vector. An earlier version of `app/services/listing_fetch.py` resolved and
+validated the hostname up front, then let `httpx` do its own DNS lookup to
+connect and to follow redirects (re-checking only the final URL after the
+whole redirect chain had already completed) — leaving both a DNS-rebinding
+TOCTOU window (a rebinding nameserver can answer the validation lookup and
+the connect lookup differently) and a window where an intermediate
+redirect hop was never checked at all (PR #21 review). It now resolves
+each hop itself, validates that address as public, and connects to that
+exact IP (pinning TLS SNI/cert validation to the original hostname via
+`sni_hostname`), following at most 3 redirects with a fresh
+resolve-and-validate at every hop instead of trusting `httpx`'s own
+resolution. It also restricts to `http(s)` and `text/html` responses, caps
+response size (2 MB) and total wall-clock time (8s, enforced by an
+explicit deadline check across the whole redirect chain and body read,
+not by httpx's own per-request timeout alone — that timeout is
+inter-chunk, so on its own it lets a server that trickles data resist it
+indefinitely; the read component is additionally capped to a small fixed
+value so no single stall rides the full remaining budget), and bounds
+concurrent fetches so a burst of requests can't exhaust the shared
+FastAPI threadpool. This is a best-effort mitigation appropriate to a
+capstone project, not an exhaustive SSRF defense.
+
 **View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
 `PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
 user update their `name` and/or `email` (`UserUpdate`, a new schema
@@ -178,6 +214,30 @@ instead of just ignoring it. Added `extra = "ignore"` to `Settings.Config`;
 an unrecognized `.env` key is now inert, which is the behavior anyone
 editing a settings file would actually expect.
 
+**Delete account (D-12, additive to SCHEMA-0).** US-1.5 adds
+`DELETE /auth/me`, letting a signed-in user permanently delete their own
+account. Hard delete, no soft-delete/undo: `User.listings` and
+`Listing.analyses` (`models/db.py`) now carry `cascade="all,
+delete-orphan"`, the same pattern already used for
+`Analysis.risk_indicators`, so `db.delete(user)` removes every listing,
+analysis and risk indicator the user owns in one transaction — no
+orphaned rows, no separate cleanup query. No confirmation step or
+re-authentication server-side (the client owns confirming intent before
+calling this, same minimal-auth stance as D-07's "no password change on
+profile edit" — a delete-account flow needing its own re-auth check is a
+separate, larger decision if the team wants it later). The bearer token
+used to authenticate stops working immediately after, since
+`get_current_user` 401s once the encoded user id no longer exists
+(already covered by `test_get_current_user_rejects_unknown_user_id`).
+
+Traced to PR #52 (`feature/account-management`): that PR's description
+claimed this route (plus the schema/tests) already existed, but the
+actual diff only touched `frontend/src/api.js`, which called
+`DELETE /api/auth/me` against a route that didn't exist anywhere. This
+closes that specific gap as its own backend PR; the PR #52 diff's
+unrelated `updateProfile` → `updateMe` rename (which still breaks
+`Profile.jsx`'s existing caller) is out of scope here.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
@@ -200,15 +260,36 @@ would be a dedicated Postgres instance and an always-on API instance.
   - Analysis happy paths for a benign and a scam-signal listing — verifies categorical derivation end to end.
   - Input validation (negative price, bad currency) — confirms bad input is rejected before any AI spend.
   - AI failure branch — confirms the 502 + saved-listing behavior.
-- **CI:** GitHub Actions runs the suite (mock provider) and a frontend
-  production build on every push/PR. No secrets in CI by design.
-- **Unit vs. acceptance tests.** `test_api.py` is acceptance-level (full
-  HTTP round trips via `TestClient`). `test_security.py` and
+- **CI:** GitHub Actions runs two jobs in parallel on every push/PR: the
+  backend job (a dedicated contract-tests step, then the full suite with
+  coverage — mock provider, no secrets) and an independent frontend
+  production build. The two jobs don't depend on each other; only the
+  two backend steps run in sequence, and the full-suite step still runs
+  (and still gates on coverage) even if the contract step fails, so a
+  contract regression doesn't hide the rest of that run's signal.
+- **Unit vs. acceptance vs. integration vs. contract tests.** `test_api.py`
+  is acceptance-level (full HTTP round trips via `TestClient`, one story's
+  acceptance criterion per test). `test_security.py` and
   `test_listing_schema.py` are unit-level: they call `core/security.py`
   and the `ListingIn` schema directly, no DB session beyond a throwaway
   SQLite one for `get_current_user`, no HTTP. Faster, and failures point
   straight at the auth or listing-validation logic instead of a whole
-  request/response cycle.
+  request/response cycle. `test_integration.py` chains several endpoints
+  into one simulated user session (register → login → submit → history →
+  cross-user isolation, a provider outage mid-session followed by
+  recovery) instead of one acceptance criterion at a time — it catches
+  state-threading bugs (a token or a listing row not surviving into a
+  later call) that isolated per-criterion tests can't see. `test_contract.py`
+  pins the structural guarantees other code depends on: every `AIProvider`
+  satisfies the Protocol and its output round-trips through
+  `AIAnalysisResult`; that schema structurally has no numeric field
+  (D-05), including one hidden in a nested model; a hand-authored,
+  Groq-shaped response replays through the same validator (this is a
+  synthetic fixture, same category as `test_ai_provider.py`'s fakes — see
+  the "not yet covered" note below, which is still open); and the frozen
+  HTTP surface (paths, status codes, `AnalysisOut`'s field set) behaves
+  as `routes.py` documents. All run on `MockProvider` only, same as
+  everything else in CI.
 - **Coverage gate (`--cov-fail-under=85`).** `app` had no `__init__.py`
   anywhere, which meant `coverage` silently excluded never-imported
   files (`services/ai.py`) from its report instead of counting them as
@@ -220,8 +301,13 @@ would be a dedicated Postgres instance and an always-on API instance.
   should ratchet up as US-2.1/US-3.1/US-3.3 land and those stubs get
   implemented and tested.
 - **Not yet covered (candidates for Sprint 3):** frontend component tests,
-  a contract test replaying recorded Groq responses through the validator,
-  and load-testing the analysis endpoint.
+  load-testing the analysis endpoint, and a contract test replaying an
+  *actual captured* Groq response (with real-world quirks: key ordering,
+  whitespace, occasional extra fields). `test_contract.py`'s
+  `test_groq_shaped_response_replays_through_the_validator` replays a
+  hand-authored payload through the same validator, which is useful but
+  not a substitute for a real capture — don't read it as this item
+  being done.
 
 ## Known limitations (state these honestly in the final doc)
 
