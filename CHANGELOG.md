@@ -1,3 +1,10 @@
+## [1.10.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.9.0...v1.10.0) (2026-08-17)
+
+
+### Features
+
+* fetch listing URL content to suggest submission fields (US-2.3) ([#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21)) ([cc6803e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/cc6803ea521cd45b95c731085f6d5a82d44f4197))
+
 ## [1.9.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.8.1...v1.9.0) (2026-08-16)
 
 
