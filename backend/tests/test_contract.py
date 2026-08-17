@@ -81,7 +81,8 @@ def test_llm_extra_numeric_field_never_enters_the_domain():
     not part of AIAnalysisResult and never reaches the domain."""
     content = (
         '{"summary": "x", "risk_level": "low", "risk_indicators": [], '
-        '"price_assessment": "x", "seller_questions": ["x"], '
+        '"price_assessment": "x", "price_plausibility": "plausible", '
+        '"seller_questions": ["x"], '
         '"recommendation": "buy", "confidence_score": 87}'
     )
 
@@ -155,6 +156,7 @@ GROQ_SHAPED_CONTENT = """{
     }
   ],
   "price_assessment": "The asking price cannot be verified without comparable market data.",
+  "price_plausibility": "plausible",
   "seller_questions": [
     "Can you provide proof of ownership or purchase?",
     "Can I inspect the item before making payment?"
