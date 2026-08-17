@@ -141,10 +141,10 @@ python -m venv .venv && pip install -r requirements-dev.txt
 python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=85
 ```
 
-**Frontend build:**
+**Frontend tests and build:**
 ```bash
 cd frontend
-npm install && npm run build
+npm install && npm run test:ci && npm run build
 ```
 
 **Full stack (Docker Compose):**
