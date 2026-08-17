@@ -380,3 +380,27 @@ Root causes and fixes:
   `pg_isready` healthcheck on `db` and `depends_on: db: condition:
   service_healthy` on `api`, rather than adding retry logic in the app —
   keeps the fix in the infra layer where the problem actually is.
+
+## Fixed: account edit/delete UI shipped disconnected from its API client (2026-08-17)
+
+A commit consolidating review feedback across PRs #52/#54/#55/#56 landed
+`App.jsx`'s account section (replacing `Profile.jsx`) calling `api.updateMe()`
+and `api.deleteMe()`, but never added those methods to `api.js` — only the
+older `api.updateProfile` (now dead code, nothing called it) existed, and
+`deleteMe` didn't exist at all. `PATCH`/`DELETE /auth/me` were already live
+server-side (D-07, D-12), so this was purely a disconnected frontend: both
+account editing and account deletion were unusable on `main` immediately
+after that merge, with no CI signal (backend tests don't exercise the JS
+client). Fixed by adding `updateMe`/`deleteMe` to `api.js`.
+
+Also removed while touching this code: the account form had a "New
+password" field with placeholder "Leave blank to keep current password",
+but `UserUpdate` (D-07) deliberately has no `password` field — password
+change was explicitly scoped out pending a re-authentication story (see
+below). Pydantic's default `extra="ignore"` behavior silently dropped the
+field rather than erroring, so submitting a new password showed "Account
+details updated successfully" without changing anything — a misleading
+UI, not a backend bug. Removed the field rather than leave it; a real
+password-change flow needs the re-auth work tracked in the GitHub issue
+below, not a client-only fix. Also added the missing `.success` CSS class
+(only `.error` existed) so the save-confirmation message is styled at all.
