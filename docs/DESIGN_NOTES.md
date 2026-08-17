@@ -153,6 +153,7 @@ one. `Analysis.price_plausibility` is a new Postgres column (Alembic
 revision `ecb69044639d`); its `server_default='plausible'` exists only to
 backfill any pre-existing rows harmlessly and is not a live escape hatch —
 `routes.create_analysis` always supplies a real value on insert.
+
 **Deterministic risk score (D-09, amends D-05's scope).** Trello card #27
 asked for "a 0-100 risk score combining rule-based and AI signals." Two
 PRs (#31, #32) were already built against a `risk_score` field that didn't
@@ -199,8 +200,9 @@ already had.
 Deliberately **not** in scope here: switching providers still requires
 setting `AI_PROVIDER` and restarting the process — `Settings` stays a
 `@lru_cache`d singleton, unchanged. A live, no-restart switch is a
-separate, bigger piece of work (tracked as a GitHub issue: admin-gated
-runtime configuration + analytics), not bundled into this card.
+separate, bigger piece of work (tracked as GitHub issue #42: admin-gated
+runtime configuration + analytics; design sketch in D-13), not bundled
+into this card.
 
 **Compose gap found while dogfooding D-10 (fixed same PR).** `docker-compose.yml`'s
 `api` service set `AI_PROVIDER`/`*_API_KEY` via `${VAR:-default}`
@@ -218,6 +220,7 @@ defaults, same as running `uvicorn` directly. Also added a `logger.warning`
 in `get_provider()` for an unrecognized `AI_PROVIDER` value, since silently
 falling back to mock with zero signal is exactly what made this gap hard to
 notice in the first place.
+
 **Migrations now run automatically on container start (D-11).** The "not
 yet wired up" gap noted above stopped being theoretical: `backend/Dockerfile`
 only ever did `COPY app ./app` — `alembic/` and `alembic.ini` were never
@@ -277,6 +280,71 @@ actual diff only touched `frontend/src/api.js`, which called
 closes that specific gap as its own backend PR; the PR #52 diff's
 unrelated `updateProfile` → `updateMe` rename (which still breaks
 `Profile.jsx`'s existing caller) is out of scope here.
+
+**Admin RBAC + runtime provider config + analytics (D-13, design sketch
+for issue #42, additive to SCHEMA-0).** Issue #42 bundles two unrelated
+gaps: (1) `User.role` (`models/db.py`) exists, defaults to `"buyer"`, and
+is never read anywhere — no `require_admin`, no admin routes; (2)
+`AI_PROVIDER` only ever changes at deploy time (D-10). This is a design
+sketch, not an implementation — posted here so the actual PR(s) have
+something concrete to build against, per CLAUDE.md's contract-change
+process. Nothing below changes any frozen contract (`ListingIn`,
+`AIProvider`, `RiskLevel`); it's new, additive surface area only.
+
+*Authorization.* A `UserRole` enum (`buyer` / `admin`) alongside the
+existing `RiskLevel`/`Recommendation`/`PricePlausibility` categorical
+enums, and a `require_admin` dependency in `core/security.py` layered on
+`get_current_user` the same way every other protected route already
+composes dependencies:
+```python
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != UserRole.admin.value:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    return user
+```
+No self-serve "become an admin" path — that's a privilege-escalation
+surface a capstone MVP doesn't need. The *first* admin is promoted with a
+direct `UPDATE users SET role='admin' WHERE email=...`, documented as an
+ops step, consistent with the project's already-minimal auth stance (D-07:
+no password reset, no email verification either). **Open question:**
+whether existing admins should then be able to promote others via
+`PATCH /admin/users/{id}/role`, or whether direct-DB-only is fine for the
+whole capstone lifetime — small either way, but it's a real access-control
+decision, not mine to make unilaterally.
+
+*Runtime provider switching.* `get_settings()`'s `@lru_cache`d `Settings`
+stays exactly as-is — this does not touch it, to avoid re-litigating
+D-10/D-11's already-settled config machinery. Instead, a new one-row
+`AppConfig` table (`active_provider: str`) is the mutable source of truth
+`get_provider()` reads from (falling back to `settings.ai_provider` to
+seed the row on first read, so a fresh deploy with no admin action yet
+behaves exactly as it does today). Deliberately **not** an in-memory
+module-level variable: this app can run multiple worker processes
+(Render/gunicorn/uvicorn `--workers`), and an in-memory flip in one
+worker wouldn't be visible to the others — DB-backed is the only option
+that's actually consistent across workers *and* survives a restart, which
+is the whole point of the issue. API keys stay env-only, never
+DB/admin-settable — they're secrets, and this doesn't extend "no secrets
+in the repo" into "secrets settable via a web form." `PATCH /admin/config`
+validates the new value against the existing `KNOWN_PROVIDERS` set (same
+guard `get_provider()` already applies) before writing it.
+
+*Analytics.* Most of what issue #42 asks for is already queryable with
+zero schema changes — `GET /admin/analytics` behind `require_admin` can
+aggregate submissions/day (`Listing.created_at`), risk/recommendation/
+price-plausibility distribution, and even which model actually served
+each analysis (`Analysis.model_used`), all group-by-count queries over
+existing columns. Returns aggregates only, not raw listing content, so an
+admin dashboard isn't also a way to read every user's submitted text.
+**Open question, the one real gap:** "provider failure rates" (named
+explicitly in the issue) isn't queryable today — `AnalysisFailure` only
+ever becomes a 502 response; the listing is saved ("Persist-before-
+analyze" above) but the failed *attempt* leaves no row anywhere. Two ways to
+close that: a small `AnalysisFailureLog` table written in
+`create_analysis`'s `except AnalysisFailure` branch, or just structured
+logging without a new table if the team doesn't want another table for a
+capstone-scale MVP. Needs a call before either analytics or the
+provider-failure part of this issue can actually be built.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
