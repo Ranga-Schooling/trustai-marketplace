@@ -1,3 +1,10 @@
+## [1.13.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.1...v1.13.2) (2026-08-17)
+
+
+### Bug Fixes
+
+* wire up History's dead onNewListing prop to an empty-state button ([#72](https://github.com/Ranga-Schooling/trustai-marketplace/issues/72)) ([9c005c5](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9c005c58e065f8a28ff751be2d38a04c8cd0c424)), closes [#71](https://github.com/Ranga-Schooling/trustai-marketplace/issues/71)
+
 ## [1.13.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.0...v1.13.1) (2026-08-17)
 
 
