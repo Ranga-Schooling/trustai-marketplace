@@ -1,3 +1,10 @@
+## [1.14.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.3...v1.14.0) (2026-08-17)
+
+
+### Features
+
+* scheduled Postgres backups to S3 ([#76](https://github.com/Ranga-Schooling/trustai-marketplace/issues/76)) ([7b913bd](https://github.com/Ranga-Schooling/trustai-marketplace/commit/7b913bd648cf0f7c16d812e8445009397b81e529))
+
 ## [1.13.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.2...v1.13.3) (2026-08-17)
 
 
