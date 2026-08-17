@@ -7,8 +7,9 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 | Artifact | Location |
 |----------|----------|
 | Deploy workflow | `.github/workflows/deploy.yml` |
+| Postgres backup workflow (same SSM pattern, separate schedule) | `.github/workflows/backup.yml` |
 | EC2 production stack | `deploy/docker-compose.yml` |
-| Operational runbook (ECR, `.env`, first-time setup) | `deploy/README.md` |
+| Operational runbook (ECR, `.env`, first-time setup, backups/restore) | `deploy/README.md` |
 | Migration-on-start decision | `docs/DESIGN_NOTES.md` (D-11) |
 
 ---
@@ -100,6 +101,7 @@ These secrets are **no longer used** by `.github/workflows/deploy.yml`.
 | `AWS_REGION` | AWS region (e.g. `eu-north-1`). |
 | `ECR_BACKEND_REPO` | ECR repository name for the API image (`trustaimarketplace/backend`). |
 | `ECR_FRONTEND_REPO` | ECR repository name for the UI image (`trustaimarketplace/frontend`). |
+| `BACKUP_S3_BUCKET` | **New.** S3 bucket `.github/workflows/backup.yml` uploads Postgres dumps to. Only used by that workflow, not `deploy.yml`. |
 
 Configure under **Repository → Settings → Secrets and variables → Actions**.
 
@@ -135,7 +137,7 @@ The same IAM user typically also requires:
 The EC2 host must:
 
 1. Run the **SSM agent** (preinstalled on Amazon Linux / Ubuntu AMIs from AWS).
-2. Have an **instance IAM role** allowing ECR pull and any local AWS CLI calls used in the deploy script.
+2. Have an **instance IAM role** allowing ECR pull and any local AWS CLI calls used in the deploy script — including `s3:PutObject` on `BACKUP_S3_BUCKET` for `backup.yml`'s `pg_dump | gzip | aws s3 cp`. That command runs *on* the instance via SSM, so it authenticates as this role, not as `github-actions-deployer` — `backup.yml` needs no new GitHub-side IAM permission, only this instance-role addition.
 3. Have **`deploy/docker-compose.yml`** and a local **`.env`** at `EC2_APP_DIR` (secrets are never committed to the repository).
 
 ---
@@ -222,3 +224,4 @@ After merging deploy changes or rotating secrets:
 | Date | Change |
 |------|--------|
 | 2026-08-12 | Initial documentation of SSH → SSM zero-trust deploy model. |
+| 2026-08-17 | Added `backup.yml`, a daily scheduled Postgres backup to S3 using the same SSM `send-command` pattern. `pgdata` survives normal redeploys already (no `down -v` in `deploy.yml`), but had no protection against instance replacement or disk failure. |
