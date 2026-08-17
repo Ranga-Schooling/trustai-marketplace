@@ -1,3 +1,10 @@
+## [1.12.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.11.0...v1.12.0) (2026-08-17)
+
+
+### Features
+
+* multi-LLM provider abstraction -- GPT and Gemini (Card [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)) ([#46](https://github.com/Ranga-Schooling/trustai-marketplace/issues/46)) ([9fcf69e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9fcf69ed1ee1d8e44420161a25fdcbec0b66dd1a))
+
 ## [1.11.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.10.0...v1.11.0) (2026-08-17)
 
 
