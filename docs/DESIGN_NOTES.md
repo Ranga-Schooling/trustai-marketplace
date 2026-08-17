@@ -62,6 +62,42 @@ schema (Compose/Neon/Supabase) going forward. `alembic upgrade head` now
 runs automatically on every container start (D-11) — see below for why
 this stopped being a "candidate for later" and became urgent.
 
+**URL fetch preview (D-06, additive to SCHEMA-0).** US-2.3 asks for
+"submit a listing URL and the system fetches the page content." Rather than
+changing the frozen `ListingIn`/`POST /analyses` contract to accept a
+URL-only submission, this is implemented as a separate, additive endpoint —
+`POST /listings/preview` — that fetches the page server-side and returns
+best-effort `title`/`description` suggestions (`ListingUrlIn`/
+`ListingPreviewOut`, new schemas alongside the frozen ones, not replacing
+them). The frontend uses these to prefill `ListingForm`; the user still
+reviews and submits through the unchanged `POST /analyses`, so nothing
+unvalidated from a scraped page ever reaches the AI provider or the
+database directly. This keeps `BeautifulSoup`/`lxml` parsing (a new failure
+surface) isolated from the existing, tested submission path.
+
+Fetching an arbitrary user-supplied URL server-side is a textbook SSRF
+vector. An earlier version of `app/services/listing_fetch.py` resolved and
+validated the hostname up front, then let `httpx` do its own DNS lookup to
+connect and to follow redirects (re-checking only the final URL after the
+whole redirect chain had already completed) — leaving both a DNS-rebinding
+TOCTOU window (a rebinding nameserver can answer the validation lookup and
+the connect lookup differently) and a window where an intermediate
+redirect hop was never checked at all (PR #21 review). It now resolves
+each hop itself, validates that address as public, and connects to that
+exact IP (pinning TLS SNI/cert validation to the original hostname via
+`sni_hostname`), following at most 3 redirects with a fresh
+resolve-and-validate at every hop instead of trusting `httpx`'s own
+resolution. It also restricts to `http(s)` and `text/html` responses, caps
+response size (2 MB) and total wall-clock time (8s, enforced by an
+explicit deadline check across the whole redirect chain and body read,
+not by httpx's own per-request timeout alone — that timeout is
+inter-chunk, so on its own it lets a server that trickles data resist it
+indefinitely; the read component is additionally capped to a small fixed
+value so no single stall rides the full remaining budget), and bounds
+concurrent fetches so a burst of requests can't exhaust the shared
+FastAPI threadpool. This is a best-effort mitigation appropriate to a
+capstone project, not an exhaustive SSRF defense.
+
 **View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
 `PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
 user update their `name` and/or `email` (`UserUpdate`, a new schema
@@ -71,6 +107,7 @@ of scope here — consistent with the existing minimal-auth stance (no
 refresh tokens, no password reset, no email verification); adding it would
 need its own story and a re-authentication/current-password check to be
 safe.
+
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the

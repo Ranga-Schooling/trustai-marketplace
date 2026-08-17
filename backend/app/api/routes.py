@@ -8,6 +8,7 @@ Ownership:
 - /auth/*            E1 (Ranga)     US-1.1, US-1.2, US-1.3, US-1.4, US-1.5
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
+- POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
 
 Agreed behaviors (docs/DESIGN_NOTES.md):
 - The listing row is committed BEFORE the AI call, so a provider outage
@@ -15,6 +16,9 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   the listing was saved. [US-2.2]
 - History queries are scoped to the authenticated user; fetching another
   user's analysis by id returns 404, not 403. [US-1.3 AC2]
+- POST /listings/preview is additive, not a change to the frozen
+  ListingIn/POST /analyses contract (CLAUDE.md SCHEMA-0): it only suggests
+  values, the user still submits through the unchanged endpoint. [US-2.3]
 - PATCH /auth/me is additive to the frozen register/login contract
   (CLAUDE.md SCHEMA-0): profile editing (name/email), no password change,
   consistent with the existing minimal-auth stance. [US-1.4]
@@ -45,12 +49,15 @@ from app.schemas.schemas import (
     AnalysisOut,
     AnalysisWithListingOut,
     ListingIn,
+    ListingPreviewOut,
+    ListingUrlIn,
     TokenResponse,
     UserLogin,
     UserOut,
     UserRegister,
     UserUpdate,
 )
+from app.services.listing_fetch import FetchError, fetch_listing_preview
 
 router = APIRouter()
 settings = get_settings()
@@ -94,6 +101,22 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 def me(user: User = Depends(get_current_user)):
     """[US-1.3] Return the authenticated user's profile."""
     return user
+
+
+@router.post("/listings/preview", response_model=ListingPreviewOut)
+def preview_listing_url(
+    body: ListingUrlIn,
+    user: User = Depends(get_current_user),
+):
+    """[US-2.3] Fetch a listing URL server-side and suggest title/description
+    values for the submission form. Does not persist anything and does not
+    touch the frozen ListingIn/POST /analyses contract — the user still
+    reviews and submits manually. 422 if the URL cannot be safely or
+    successfully fetched."""
+    try:
+        return fetch_listing_preview(str(body.url))
+    except FetchError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
 
 @router.patch("/auth/me", response_model=UserOut)
