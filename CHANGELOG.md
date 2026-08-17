@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.12.0...v1.12.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* remove duplicate content block in AuthForm breaking landing layout ([#64](https://github.com/Ranga-Schooling/trustai-marketplace/issues/64)) ([c453e43](https://github.com/Ranga-Schooling/trustai-marketplace/commit/c453e430be439db1834fbd1fdccb5dcb9adf9333)), closes [#52](https://github.com/Ranga-Schooling/trustai-marketplace/issues/52) [#54](https://github.com/Ranga-Schooling/trustai-marketplace/issues/54) [#55](https://github.com/Ranga-Schooling/trustai-marketplace/issues/55) [#56](https://github.com/Ranga-Schooling/trustai-marketplace/issues/56) [#60](https://github.com/Ranga-Schooling/trustai-marketplace/issues/60)
+
 ## [1.12.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.11.0...v1.12.0) (2026-08-17)
 
 
