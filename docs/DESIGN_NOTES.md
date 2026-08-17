@@ -201,7 +201,7 @@ Deliberately **not** in scope here: switching providers still requires
 setting `AI_PROVIDER` and restarting the process — `Settings` stays a
 `@lru_cache`d singleton, unchanged. A live, no-restart switch is a
 separate, bigger piece of work (tracked as GitHub issue #42: admin-gated
-runtime configuration + analytics; design sketch in D-13), not bundled
+runtime configuration + analytics; design sketch in D-15), not bundled
 into this card.
 
 **Compose gap found while dogfooding D-10 (fixed same PR).** `docker-compose.yml`'s
@@ -307,7 +307,7 @@ closes that specific gap as its own backend PR; the PR #52 diff's
 unrelated `updateProfile` → `updateMe` rename (which still breaks
 `Profile.jsx`'s existing caller) is out of scope here.
 
-**Admin RBAC + runtime provider config + analytics (D-13, design sketch
+**Admin RBAC + runtime provider config + analytics (D-15, design sketch
 for issue #42, additive to SCHEMA-0).** Issue #42 bundles two unrelated
 gaps: (1) `User.role` (`models/db.py`) exists, defaults to `"buyer"`, and
 is never read anywhere — no `require_admin`, no admin routes; (2)
@@ -371,6 +371,7 @@ close that: a small `AnalysisFailureLog` table written in
 logging without a new table if the team doesn't want another table for a
 capstone-scale MVP. Needs a call before either analytics or the
 provider-failure part of this issue can actually be built.
+
 **Scheduled Postgres backups to S3 (D-13).** Raised as a direct question
 during final-weeks review: does the production database survive a
 redeploy on the single-EC2 setup? Yes for normal redeploys — the `pgdata`
