@@ -62,6 +62,42 @@ schema (Compose/Neon/Supabase) going forward. `alembic upgrade head` now
 runs automatically on every container start (D-11) — see below for why
 this stopped being a "candidate for later" and became urgent.
 
+**URL fetch preview (D-06, additive to SCHEMA-0).** US-2.3 asks for
+"submit a listing URL and the system fetches the page content." Rather than
+changing the frozen `ListingIn`/`POST /analyses` contract to accept a
+URL-only submission, this is implemented as a separate, additive endpoint —
+`POST /listings/preview` — that fetches the page server-side and returns
+best-effort `title`/`description` suggestions (`ListingUrlIn`/
+`ListingPreviewOut`, new schemas alongside the frozen ones, not replacing
+them). The frontend uses these to prefill `ListingForm`; the user still
+reviews and submits through the unchanged `POST /analyses`, so nothing
+unvalidated from a scraped page ever reaches the AI provider or the
+database directly. This keeps `BeautifulSoup`/`lxml` parsing (a new failure
+surface) isolated from the existing, tested submission path.
+
+Fetching an arbitrary user-supplied URL server-side is a textbook SSRF
+vector. An earlier version of `app/services/listing_fetch.py` resolved and
+validated the hostname up front, then let `httpx` do its own DNS lookup to
+connect and to follow redirects (re-checking only the final URL after the
+whole redirect chain had already completed) — leaving both a DNS-rebinding
+TOCTOU window (a rebinding nameserver can answer the validation lookup and
+the connect lookup differently) and a window where an intermediate
+redirect hop was never checked at all (PR #21 review). It now resolves
+each hop itself, validates that address as public, and connects to that
+exact IP (pinning TLS SNI/cert validation to the original hostname via
+`sni_hostname`), following at most 3 redirects with a fresh
+resolve-and-validate at every hop instead of trusting `httpx`'s own
+resolution. It also restricts to `http(s)` and `text/html` responses, caps
+response size (2 MB) and total wall-clock time (8s, enforced by an
+explicit deadline check across the whole redirect chain and body read,
+not by httpx's own per-request timeout alone — that timeout is
+inter-chunk, so on its own it lets a server that trickles data resist it
+indefinitely; the read component is additionally capped to a small fixed
+value so no single stall rides the full remaining budget), and bounds
+concurrent fetches so a burst of requests can't exhaust the shared
+FastAPI threadpool. This is a best-effort mitigation appropriate to a
+capstone project, not an exhaustive SSRF defense.
+
 **View/edit profile (D-07, additive to SCHEMA-0).** US-1.4 adds
 `PATCH /auth/me` alongside the existing `GET /auth/me`, letting a signed-in
 user update their `name` and/or `email` (`UserUpdate`, a new schema
@@ -71,6 +107,7 @@ of scope here — consistent with the existing minimal-auth stance (no
 refresh tokens, no password reset, no email verification); adding it would
 need its own story and a re-authentication/current-password check to be
 safe.
+
 **MockProvider heuristics.** Deterministic keyword/price signals, not a
 model: urgency language ("urgent", "today only", "act now"), off-platform
 payment requests (gift card/wire transfer/crypto — high severity, the
@@ -95,6 +132,27 @@ unconditional assignment, not `setdefault` — the point is to guarantee
 an isolated test config regardless of the ambient environment, not to
 merely fill in gaps.
 
+**Price plausibility category (D-08, additive to SCHEMA-0).** Trello card
+#28 asked for "is the asking price plausible, suspicious, or too-good-to-
+be-true (no factual market-value claim)." The free-text `price_assessment`
+field already honored the "no factual market-value claim" half — both
+providers were already instructed never to invent a figure — but had no
+structured category, so "suspicious" vs. "too good to be true" wasn't a
+queryable/testable distinction, just prose a human had to read. Added
+`PricePlausibility` (`plausible` / `suspicious` / `too_good_to_be_true`) as
+a new field on `AIAnalysisResult`/`AnalysisOut`, following the exact D-05
+precedent: categorical, not numeric, because an LLM-invented number here
+would have the same calibration problem `risk_level` was built to avoid.
+`price_assessment` is unchanged and still carries the qualitative
+explanation; this is purely additive, no existing field renamed or
+removed. `MockProvider` splits its existing single low-price threshold in
+two: below half the threshold is `too_good_to_be_true`, below the full
+threshold is `suspicious`, otherwise `plausible` — same deterministic,
+zero-network heuristic as the rest of the mock, just two tiers instead of
+one. `Analysis.price_plausibility` is a new Postgres column (Alembic
+revision `ecb69044639d`); its `server_default='plausible'` exists only to
+backfill any pre-existing rows harmlessly and is not a live escape hatch —
+`routes.create_analysis` always supplies a real value on insert.
 **Deterministic risk score (D-09, amends D-05's scope).** Trello card #27
 asked for "a 0-100 risk score combining rule-based and AI signals." Two
 PRs (#31, #32) were already built against a `risk_score` field that didn't
@@ -120,6 +178,46 @@ Persisted on `Analysis` (Alembic revision `3cc9cb43e9e6`) rather than
 computed on read, so a future `GET /analyses` (US-4.1) doesn't need to
 re-run the formula or re-fetch `risk_indicators` for a list view.
 
+**Multi-LLM provider abstraction (D-10, Trello card #20).** Card #20 asks
+for Groq/Gemini/GPT to be selectable via configuration. Already largely
+solved by the existing `AIProvider` Protocol + `get_provider()` strategy
+(`architecture-review-2026-08-01.md` §4: "no rework needed, just more
+`elif` branches and providers") — this decision just fills in that gap.
+`GroqProvider` was refactored into a thin subclass of a new
+`OpenAICompatibleProvider` base (request/response shape, JSON mode,
+retry-once-then-`AnalysisFailure` — all now written once); `GPTProvider`
+is a second ~5-line subclass, since OpenAI's own API is the shape Groq
+already mirrors. `GeminiProvider` does **not** subclass that base — Google's
+`generateContent` API uses `contents`/`parts`, not `messages`/`choices` —
+but implements the identical external contract (validate into
+`AIAnalysisResult`, one retry, then `AnalysisFailure`), so `get_provider()`
+treats all three uniformly. `AI_PROVIDER` now accepts `gpt` and `gemini`
+alongside `mock`/`groq`; each real provider raises `AnalysisFailure`
+immediately if its own API key isn't configured, same pattern as `GroqProvider`
+already had.
+
+Deliberately **not** in scope here: switching providers still requires
+setting `AI_PROVIDER` and restarting the process — `Settings` stays a
+`@lru_cache`d singleton, unchanged. A live, no-restart switch is a
+separate, bigger piece of work (tracked as a GitHub issue: admin-gated
+runtime configuration + analytics), not bundled into this card.
+
+**Compose gap found while dogfooding D-10 (fixed same PR).** `docker-compose.yml`'s
+`api` service set `AI_PROVIDER`/`*_API_KEY` via `${VAR:-default}`
+interpolation. That syntax only ever resolves from the shell invoking
+`docker compose` (or a `.env` next to `docker-compose.yml`, which doesn't
+exist) — it does **not** read `backend/.env`. Practical effect: setting
+`AI_PROVIDER=gpt` and `OPENAI_API_KEY=...` in `backend/.env` (the file
+`.env.example` and every other doc point developers at) silently had zero
+effect on the containerized API, which kept running `MockProvider` with no
+error. Fixed by pointing the `api` service at
+`env_file: [{path: ./backend/.env, required: false}]` instead, and
+dropping the dead `${VAR}` interpolations — `required: false` keeps a
+fresh clone with no `backend/.env` yet working via `Settings`' own field
+defaults, same as running `uvicorn` directly. Also added a `logger.warning`
+in `get_provider()` for an unrecognized `AI_PROVIDER` value, since silently
+falling back to mock with zero signal is exactly what made this gap hard to
+notice in the first place.
 **Migrations now run automatically on container start (D-11).** The "not
 yet wired up" gap noted above stopped being theoretical: `backend/Dockerfile`
 only ever did `COPY app ./app` — `alembic/` and `alembic.ini` were never

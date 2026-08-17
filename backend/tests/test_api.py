@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.db import Analysis, Base, Listing, SessionLocal, engine
-from app.schemas.schemas import Recommendation, RiskLevel
+from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 pytestmark = []
 
@@ -60,6 +60,14 @@ SCAM_LISTING = {
                    "transfer only, contact me on WhatsApp.",
 }
 
+MODERATELY_LOW_PRICE_LISTING = {
+    "title": "Samsung Galaxy S22, lightly used",
+    "price": 35.0,
+    "currency": "USD",
+    "source": "OLX",
+    "description": "Selling my phone, works perfectly, minor scratches on the back.",
+}
+
 
 def test_health(client):
     """Sprint 0: deploy skeleton exposes a liveness endpoint."""
@@ -94,6 +102,46 @@ def test_analyses_requires_auth(client):
     assert client.get("/api/analyses").status_code == 401
 
 
+def test_url_preview_requires_auth(client):
+    r = client.post("/api/listings/preview", json={"url": "https://example.com/item/1"})
+    assert r.status_code == 401
+
+
+def test_url_preview_returns_suggested_fields(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    from app.schemas.schemas import ListingPreviewOut
+
+    def fake_fetch(url):
+        return ListingPreviewOut(
+            url=url,
+            title="IKEA Billy bookcase, white",
+            description="Used bookcase in good condition.",
+            source="example.com",
+        )
+
+    monkeypatch.setattr(routes, "fetch_listing_preview", fake_fetch)
+
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "https://example.com/item/1"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["title"] == "IKEA Billy bookcase, white"
+    assert body["source"] == "example.com"
+
+
+def test_url_preview_rejects_private_address(client):
+    headers = register_and_login(client)
+    r = client.post(
+        "/api/listings/preview",
+        json={"url": "http://127.0.0.1:8000/whatever"},
+        headers=headers,
+    )
+    assert r.status_code == 422
 def test_update_profile_requires_auth(client):
     r = client.patch("/api/auth/me", json={"name": "New Name"})
     assert r.status_code == 401
@@ -175,6 +223,7 @@ def test_low_risk_listing_gets_buy(client):
     body = r.json()
     assert body["risk_level"] == RiskLevel.low.value
     assert body["recommendation"] == Recommendation.buy.value
+    assert body["price_plausibility"] == PricePlausibility.plausible.value
     assert 0 <= body["risk_score"] <= 33
     assert len(body["seller_questions"]) >= 1
 
@@ -186,9 +235,20 @@ def test_high_risk_listing_gets_avoid(client):
     body = r.json()
     assert body["risk_level"] == RiskLevel.high.value
     assert body["recommendation"] == Recommendation.avoid.value
+    assert body["price_plausibility"] == PricePlausibility.too_good_to_be_true.value
     assert 67 <= body["risk_score"] <= 100
     categories = {i["category"] for i in body["risk_indicators"]}
     assert "Off-platform payment" in categories
+
+
+def test_moderately_low_price_gets_suspicious_plausibility(client):
+    headers = register_and_login(client)
+    r = client.post("/api/analyses", json=MODERATELY_LOW_PRICE_LISTING, headers=headers)
+    assert r.status_code == 201
+    body = r.json()
+    assert body["price_plausibility"] == PricePlausibility.suspicious.value
+    assert body["risk_level"] == RiskLevel.medium.value
+    assert body["recommendation"] == Recommendation.caution.value
 
 
 def test_risk_score_never_contradicts_risk_level(client):

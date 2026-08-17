@@ -184,6 +184,7 @@ h3 { font-size: 1rem; }
     border-radius:8px;
     padding:12px;
     font-weight:600;
+    white-space:nowrap;
 }
 
 .pill.active{
@@ -240,6 +241,11 @@ textarea { min-height: 120px; resize: vertical; }
   .auth-card { max-width: none; margin-left: 0; }
   .landing-grid { padding-top: 24px; gap: 32px; }
 }
+
+/* US-2.3: URL input + "Fetch details" button, side by side. */
+.url-fetch-row { display: flex; gap: 8px; }
+.url-fetch-row input { flex: 1; }
+.url-fetch-row button { flex-shrink: 0; }
 
 button {
   background: var(--trust);
