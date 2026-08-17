@@ -19,8 +19,11 @@ python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=
 No `DATABASE_URL`/`AI_PROVIDER`/`JWT_SECRET` env vars are needed — `tests/conftest.py`
 sets them unconditionally before any test module is imported, overriding
 whatever is already in your shell (see the "Coverage gate" note in
-`DESIGN_NOTES.md` for why that has to be unconditional). This is exactly
-what CI runs (`.github/workflows/ci.yml`).
+`DESIGN_NOTES.md` for why that has to be unconditional). This is the same
+full-suite command CI's "Full suite" step runs
+(`.github/workflows/ci.yml`); CI also runs a quicker `-m contract`-only
+step first, as an early, separately-labeled signal — see "Test layers"
+below.
 
 **Test layers:**
 - `test_api.py` — acceptance-level: full HTTP round trips through FastAPI's
@@ -33,6 +36,26 @@ what CI runs (`.github/workflows/ci.yml`).
   `core/security.py` and the `ListingIn` schema directly, no HTTP. Add a
   unit test here when you're testing one function's logic in isolation,
   not a whole request/response cycle.
+- `test_integration.py` — chains several endpoints into one simulated
+  user session (register → login → submit listing → view history →
+  cross-user isolation → an AI outage followed by recovery), instead of
+  one acceptance criterion per test. Marked `@pytest.mark.integration`.
+  Run just this layer with `pytest tests/ -m integration`.
+- `test_contract.py` — pins structural guarantees other code depends on:
+  every `AIProvider` satisfies the Protocol and its output validates
+  against `AIAnalysisResult`; that schema has no numeric field (D-05),
+  including one hidden in a nested model; a hand-authored, Groq-shaped
+  response (not a captured real one — see "Planned coverage" below)
+  replays through the same validator; and the frozen HTTP surface
+  (paths, status codes, `AnalysisOut`'s field set) matches what
+  `routes.py` documents. Marked
+  `@pytest.mark.contract` and run as its own CI step
+  (`.github/workflows/ci.yml`) so a contract break fails loudly and
+  separately from the rest of the suite. Run just this layer with
+  `pytest tests/ -m contract`.
+
+All layers run on `MockProvider` only — no network call or API key
+required, matching CLAUDE.md's CI constraint.
 
 ## Running the frontend build
 
@@ -98,8 +121,13 @@ it's a throwaway SQLite file, not something to commit.
 ## Planned coverage (not yet built)
 
 - Frontend component tests
-- A contract test replaying recorded Groq responses through the
-  `AIAnalysisResult` validator (current Groq tests use synthetic fakes,
-  not recorded real responses)
 - Load-testing `/api/analyses`
 - End-to-end tests (Playwright or similar) driving the deployed app
+- Integration tests against Postgres (via compose), not just SQLite —
+  see the "Known limitations" note in `docs/DESIGN_NOTES.md`
+- A contract test replaying an *actual captured* Groq response (real key
+  ordering, whitespace, occasional extra fields). `test_contract.py`'s
+  `test_groq_shaped_response_replays_through_the_validator` replays a
+  hand-authored payload through the same validator, which is useful but
+  synthetic, same as the existing Groq fakes in `test_ai_provider.py` —
+  not a substitute for a real capture.

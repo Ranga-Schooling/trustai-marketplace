@@ -45,10 +45,23 @@ details stay current.
 - AC3: Changing to an already-registered email returns 409, same as registration.
 - Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
 
+**US-1.5 — Delete account**
+As a user, I want to permanently delete my account, so my data isn't kept
+once I no longer want to use the product.
+- AC1: `DELETE /auth/me` deletes the authenticated user and all listings/
+  analyses/risk indicators they own (hard delete, no undo).
+- AC2: The bearer token used to authenticate no longer works after
+  deletion (any further request with it returns 401).
+- AC3: Deleting one user's account never affects another user's listings
+  or analyses.
+- Implemented: `DELETE /api/auth/me`, cascade relationships in
+  `models/db.py`, tests `test_delete_account_*` (D-12).
+
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
 session token storage and 401 auto-signout in the frontend API client ·
-profile view/edit route and UI (US-1.4).
+profile view/edit route and UI (US-1.4) · delete-account backend route and
+cascade delete (US-1.5).
 
 ---
 
