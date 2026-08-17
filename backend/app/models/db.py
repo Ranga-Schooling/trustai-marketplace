@@ -34,7 +34,7 @@ from sqlalchemy.orm import (
 )
 
 from app.core.config import get_settings
-from app.schemas.schemas import Recommendation, RiskLevel
+from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 settings = get_settings()
 
@@ -99,8 +99,8 @@ class Listing(Base):
 
 class Analysis(Base):
     """E3 owner defines: risk_level, risk_score, summary, price_assessment,
-    recommendation, seller_questions (JSON), model_used, prompt_version,
-    raw_response."""
+    price_plausibility, recommendation, seller_questions (JSON), model_used,
+    prompt_version, raw_response."""
     __tablename__ = "analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -113,6 +113,7 @@ class Analysis(Base):
     risk_score: Mapped[int] = mapped_column(Integer)
     summary: Mapped[str] = mapped_column(Text)
     price_assessment: Mapped[str] = mapped_column(Text)
+    price_plausibility: Mapped[PricePlausibility] = mapped_column(String(20))
     recommendation: Mapped[Recommendation] = mapped_column(String(20))
     seller_questions: Mapped[list[str]] = mapped_column(JSON)
     model_used: Mapped[str] = mapped_column(String(120))
