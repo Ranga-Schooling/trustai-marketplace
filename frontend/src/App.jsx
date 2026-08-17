@@ -10,7 +10,7 @@ export default function App() {
   const [view, setView] = useState('submit');
   const [result, setResult] = useState(null);
   const [booting, setBooting] = useState(hasToken());
-  const [accountForm, setAccountForm] = useState({ email: '', name: '', password: '' });
+  const [accountForm, setAccountForm] = useState({ email: '', name: '' });
   const [accountError, setAccountError] = useState('');
   const [accountSuccess, setAccountSuccess] = useState('');
   const [accountLoading, setAccountLoading] = useState(false);
@@ -52,7 +52,7 @@ export default function App() {
     setResult(null);
     setView('account');
     if (user) {
-      setAccountForm({ email: user.email, name: user.name, password: '' });
+      setAccountForm({ email: user.email, name: user.name });
       setAccountError('');
       setAccountSuccess('');
     }
@@ -68,10 +68,8 @@ export default function App() {
       const updatedUser = await api.updateMe({
         email: accountForm.email,
         name: accountForm.name,
-        password: accountForm.password || undefined,
       });
       setUser(updatedUser);
-      setAccountForm((current) => ({ ...current, password: '' }));
       setAccountSuccess('Account details updated successfully.');
     } catch (err) {
       setAccountError(err instanceof Error ? err.message : 'Unable to update your account right now.');
@@ -217,18 +215,6 @@ export default function App() {
                 value={accountForm.email}
                 onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
                 required
-              />
-            </div>
-
-            <div className="field">
-              <label htmlFor="account-password">New password</label>
-              <input
-                id="account-password"
-                name="password"
-                type="password"
-                value={accountForm.password}
-                onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Leave blank to keep current password"
               />
             </div>
 
