@@ -252,6 +252,7 @@ def _post_and_validate(
     payload: dict,
     extract_raw_json: Callable[[dict], str],
     provider_label: str,
+    model_name: str,
 ) -> tuple[AIAnalysisResult, str]:
     """Shared two-attempt retry-then-AnalysisFailure control flow (D-10).
 
@@ -279,6 +280,20 @@ def _post_and_validate(
             IndexError,
             TypeError,
         ) as exc:
+            http_status = (
+                exc.response.status_code
+                if isinstance(exc, httpx.HTTPStatusError)
+                else None
+            )
+            logger.warning(
+                "AI provider attempt failed provider=%s model=%s "
+                "attempt=%d/2 error_type=%s http_status=%s",
+                provider_label.lower(),
+                model_name,
+                attempt + 1,
+                type(exc).__name__,
+                http_status if http_status is not None else "none",
+            )
             if attempt == 1:
                 raise AnalysisFailure(
                     f"{provider_label} could not produce a valid analysis after two attempts"
@@ -299,6 +314,11 @@ class OpenAICompatibleProvider:
 
     def __init__(self, api_key: str, model_name: str, provider_label: str) -> None:
         if not api_key:
+            logger.error(
+                "AI provider configuration invalid provider=%s missing_setting=%s_API_KEY",
+                provider_label.lower(),
+                provider_label.upper(),
+            )
             raise AnalysisFailure(f"{provider_label} API key is not configured")
         self.api_key = api_key
         self.model_name = model_name
@@ -324,6 +344,7 @@ class OpenAICompatibleProvider:
             payload,
             lambda body: body["choices"][0]["message"]["content"],
             self._provider_label,
+            self.model_name,
         )
 
 
@@ -358,6 +379,10 @@ class GeminiProvider:
 
     def __init__(self) -> None:
         if not settings.gemini_api_key:
+            logger.error(
+                "AI provider configuration invalid provider=gemini "
+                "missing_setting=GEMINI_API_KEY"
+            )
             raise AnalysisFailure("Gemini API key is not configured")
         self.model_name = settings.gemini_model
 
@@ -387,6 +412,7 @@ class GeminiProvider:
             payload,
             lambda body: body["candidates"][0]["content"]["parts"][0]["text"],
             "Gemini",
+            self.model_name,
         )
 
 
