@@ -304,6 +304,27 @@ script is a way to lose backups, not protect them. Restore is documented
 then `gunzip | psql` round-trips data correctly (confirmed by dumping a
 table, restoring into a fresh database, and diffing the result).
 
+**Price/currency/seller-signal extraction for URL preview (D-14, extends
+D-06).** Tracked as issue #65 after the PR #21 vs PR #45 route collision
+(#62) was resolved in favor of #21: #21 shipped with frontend integration
+and correct SSRF handling, but only extracted title/description via
+og:title/og:description meta tags. #45's closed branch had genuinely more
+capable extraction — price/currency via regex, off-platform
+contact/payment signals — reusing the same fraud-signal categories
+`MockProvider` already flags (`services/ai.py`). Ported into
+`services/listing_fetch.py` rather than kept as a separate module: #21's
+`BeautifulSoup`/SSRF-hardened fetch already produces clean page text
+(`soup.body.get_text()`), so the regex extraction only needed the same
+`PRICE_PATTERNS`/`PRICE_SYMBOL_MAP` and contact/payment regexes from #45,
+not its own fetch pipeline. `ListingPreviewOut` gains `price`/`currency`/
+`seller_details`, all optional and additive — a missed match just leaves
+the field for the user to fill in by hand, same as before this existed.
+`ListingForm.jsx`'s existing `touched`-field guard (added in #21, so a
+fetch never clobbers what the user already typed) extends naturally to
+price/currency; `seller_details` is returned by the API but not yet
+surfaced in the UI, left for a follow-up since the issue's own scope
+only asked for the price/currency prefill extension.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.

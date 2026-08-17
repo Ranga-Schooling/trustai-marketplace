@@ -83,12 +83,14 @@ retry without retyping everything.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
 **US-2.3 — Submit a listing URL and get suggested details**
-As a buyer, I want to paste just a listing URL and have the title and
-description suggested for me, so I don't have to retype them by hand.
-- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description; the user still reviews and edits before submitting.
+As a buyer, I want to paste just a listing URL and have the title,
+price, currency, and description suggested for me, so I don't have to
+retype them by hand.
+- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description/price/currency; the user still reviews and edits before submitting.
 - AC2: Non-HTTP(S) URLs, and URLs resolving to a private/loopback/link-local address, are rejected (SSRF guardrail) with a 422.
-- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06).
-- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py`, `POST /api/listings/preview`, test `test_url_preview_returns_suggested_fields`.
+- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06, extended by D-14).
+- AC4: Price/currency/seller-signal extraction is best-effort — a missed match leaves the field for the user to fill in by hand, never a wrong guess passed through as fact.
+- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py` (`_extract_price`/`_extract_seller_details`, D-14), `POST /api/listings/preview`, `ListingForm.jsx` price/currency prefill, tests `test_url_preview_returns_suggested_fields`, `test_extract_price_formats`, `test_fetch_listing_preview_populates_price_currency_and_seller_details`.
 
 Tasks completed: Listing ORM model · input schema with currency normalization ·
 description length guard · submission form UI with inline errors · URL fetch

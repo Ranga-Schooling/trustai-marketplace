@@ -255,3 +255,85 @@ def test_concurrent_fetch_limit_rejects_extra_requests(monkeypatch):
     finally:
         for _ in range(listing_fetch.MAX_CONCURRENT_FETCHES):
             listing_fetch._fetch_slots.release()
+
+
+# ---------- price/seller extraction (D-14, ported from PR #45) ----------
+
+@pytest.mark.parametrize(
+    "text,expected_price,expected_currency",
+    [
+        ("Selling for $450, firm.", 450.0, "USD"),
+        ("Price: 1200 ZAR, negotiable.", 1200.0, "ZAR"),
+        ("EUR 75 for the pair.", 75.0, "EUR"),
+        ("R1500 collection only.", 1500.0, "ZAR"),
+        ("Contains no discernible price at all.", None, None),
+        # Zero/negative amounts aren't a usable signal (ListingIn.price requires gt=0).
+        ("Was $0, now free to a good home.", None, None),
+    ],
+)
+def test_extract_price_formats(text, expected_price, expected_currency):
+    price, currency = listing_fetch._extract_price(text)
+    assert price == expected_price
+    assert currency == expected_currency
+
+
+def test_extract_price_prefers_earliest_match_over_pattern_order():
+    """A price mentioned up front (the listing price) should win over one
+    mentioned later (e.g. a shipping fee), regardless of which
+    PRICE_PATTERNS entry matches which -- PR #45 review comment 5."""
+    text = "Selling for $200. Shipping is a flat R50 if you need delivery."
+    price, currency = listing_fetch._extract_price(text)
+    assert price == 200.0
+    assert currency == "USD"
+
+
+def test_extract_seller_details_flags_off_platform_signals():
+    text = "Contact me on WhatsApp, pay via gift card only, or email me at seller@example.com."
+    details = listing_fetch._extract_seller_details(text)
+    assert details is not None
+    assert "whatsapp" in details.lower()
+    assert "off-platform payment" in details.lower()
+    assert "seller@example.com" in details
+
+
+def test_extract_seller_details_returns_none_when_nothing_found():
+    assert listing_fetch._extract_seller_details("Just a plain, ordinary listing description.") is None
+
+
+def test_fetch_listing_preview_populates_price_currency_and_seller_details(monkeypatch):
+    _patch_public_dns(monkeypatch)
+
+    html = (
+        b"<html><head><title>iPhone 14 Pro</title></head>"
+        b"<body><p>Selling my iPhone 14 Pro for $650, barely used. "
+        b"Contact me on WhatsApp only, no calls.</p></body></html>"
+    )
+
+    def fake_send(request, **kwargs):
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=html, request=request)
+
+    _install_fake_client(monkeypatch, fake_send)
+
+    result = fetch_listing_preview(URL)
+
+    assert result.price == 650.0
+    assert result.currency == "USD"
+    assert result.seller_details is not None
+    assert "whatsapp" in result.seller_details.lower()
+
+
+def test_fetch_listing_preview_leaves_price_fields_none_when_nothing_extracted(monkeypatch):
+    _patch_public_dns(monkeypatch)
+
+    html = b"<html><head><title>Plain listing</title></head><body><p>Nothing notable here.</p></body></html>"
+
+    def fake_send(request, **kwargs):
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=html, request=request)
+
+    _install_fake_client(monkeypatch, fake_send)
+
+    result = fetch_listing_preview(URL)
+
+    assert result.price is None
+    assert result.currency is None
+    assert result.seller_details is None
