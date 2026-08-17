@@ -262,6 +262,21 @@ floor so untested code can't silently creep in.
 - AC3: CI fails if backend coverage drops below 85% (`--cov-fail-under=85`); `app` gained `__init__.py` files so untested modules (e.g. `services/ai.py`) are honestly counted instead of silently excluded.
 - Implemented: `tests/test_security.py`, `tests/test_listing_schema.py`, `backend/.coveragerc`, `.github/workflows/ci.yml`.
 
+**US-6.5 — Frontend test coverage**
+As the team, we want the frontend build step to catch a client/server API
+naming mismatch, not just a JSX/syntax error, so a fully-broken feature
+can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
+`api.deleteMe`, neither of which existed on the API client).
+- AC1: Every component that calls `api.*` has at least one test asserting
+  it invokes the correct method, by spying on the real `api` module
+  (not a hand-authored mock) so a renamed/removed method fails the test
+  the same way it fails at runtime.
+- AC2: CI runs the frontend test suite as its own step, separate from
+  (and before) `npm run build`.
+- Implemented: Vitest + React Testing Library, `App.test.jsx`,
+  `AuthForm.test.jsx`, `ListingForm.test.jsx`, `History.test.jsx`,
+  `.github/workflows/ci.yml`'s `frontend` job.
+
 ---
 
 ## Priority summary
