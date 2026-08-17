@@ -1,3 +1,10 @@
+## [1.13.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.12.1...v1.13.0) (2026-08-17)
+
+
+### Features
+
+* enable HTTPS with Caddy ([#63](https://github.com/Ranga-Schooling/trustai-marketplace/issues/63)) ([7939dd4](https://github.com/Ranga-Schooling/trustai-marketplace/commit/7939dd47e58184f383f086ad4077a12f7c6f7c5e))
+
 ## [1.12.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.12.0...v1.12.1) (2026-08-17)
 
 

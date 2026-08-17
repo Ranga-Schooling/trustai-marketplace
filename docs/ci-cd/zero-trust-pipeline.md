@@ -16,7 +16,10 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 
 ## End-to-end architecture
 
-The diagram matches the **current** implementation in `.github/workflows/deploy.yml` and `deploy/docker-compose.yml`.
+> **Diagram is stale as of the Caddy/HTTPS change below.** It still shows nginx as the public
+> listener on :80. As of that change, **Caddy** is the public listener (ports 80 + 443,
+> automatic HTTPS) and reverse-proxies to nginx, which is now internal-only. The diagram needs
+> regenerating; the table below is corrected to match the current implementation.
 
 ![Zero-Trust CI/CD Architecture (IAM + SSM)](./trustai-cicd-architecture.png)
 
@@ -30,7 +33,7 @@ The diagram matches the **current** implementation in `.github/workflows/deploy.
 | Images | ECR repos `trustaimarketplace/backend` and `trustaimarketplace/frontend` (`:latest` + commit SHA) |
 | Deploy | SSM `send-command` to `EC2_INSTANCE_ID` (no SSH) |
 | Verification | SSM waiter + `GetCommandInvocation`; job fails unless status is `Success` |
-| Public surface | Nginx on **:80** only; FastAPI **:8000** is internal |
+| Public surface | Caddy on **:80/:443** (automatic HTTPS, `deploy/Caddyfile`); nginx and FastAPI are internal-only |
 | Config on host | `docker-compose.yml` + `.env` (`JWT_SECRET`, `POSTGRES_PASSWORD`) |
 | Schema | `alembic upgrade head` on backend container start (D-11) |
 
@@ -213,7 +216,7 @@ After merging deploy changes or rotating secrets:
 - [ ] GitHub Actions **Deploy** workflow completes with SSM status **Success**.
 - [ ] ECR shows new images tagged with the merge commit SHA.
 - [ ] EC2 containers are running: `docker compose ps` under `EC2_APP_DIR`.
-- [ ] API health: `GET /api/health` via the frontend/nginx proxy (port 80).
+- [ ] API health: `GET /api/health` via the public HTTPS domain (Caddy → nginx → backend).
 - [ ] Backend logs show Alembic upgrade (or "already at head") before Uvicorn startup.
 - [ ] No SSH secrets remain in GitHub Actions for deployment.
 
@@ -224,4 +227,5 @@ After merging deploy changes or rotating secrets:
 | Date | Change |
 |------|--------|
 | 2026-08-12 | Initial documentation of SSH → SSM zero-trust deploy model. |
+| 2026-08-17 | Caddy added as the public HTTPS listener (ports 80/443), replacing nginx as the public surface — nginx and FastAPI are now internal-only. Deploy script also switched to commit-SHA-pinned images with config validation and a full health-check gate before success. Text corrected below; diagram still needs regenerating. |
 | 2026-08-17 | Added `backup.yml`, a daily scheduled Postgres backup to S3 using the same SSM `send-command` pattern. `pgdata` survives normal redeploys already (no `down -v` in `deploy.yml`), but had no protection against instance replacement or disk failure. |

@@ -4,18 +4,30 @@ On every push to `main`, `.github/workflows/deploy.yml`:
 
 1. Builds and pushes `trustaimarketplace/backend` and `trustaimarketplace/frontend` to ECR
    (tags: `latest` and the commit SHA)
-2. Sends an AWS SSM `send-command` to EC2 that runs
-   `docker compose pull && docker compose up -d` — no SSH, no inbound port 22.
+2. Sends an AWS SSM `send-command` to EC2 that transfers the current `docker-compose.yml`
+   and `Caddyfile`, validates both, activates them pinned to the commit SHA (not `latest`),
+   and gates success on the full Caddy → nginx → backend health path — no SSH, no inbound port 22.
+   Previous `docker-compose.yml`/`Caddyfile` are kept as `.previous` for manual rollback;
+   **there is no automatic rollback** on a failed health check.
 
 Full architecture, IAM policy, and rationale: [`docs/ci-cd/zero-trust-pipeline.md`](../docs/ci-cd/zero-trust-pipeline.md).
 This page is the shorter operational runbook.
+
+Public HTTPS is terminated by **Caddy** (`deploy/Caddyfile`), which automatically obtains and
+renews a Let's Encrypt certificate for the configured domain and reverse-proxies to `frontend`.
+nginx (`frontend/nginx.conf`) is no longer reached directly from the internet — Caddy is the
+only public listener, on ports 80 (ACME challenge + HTTP→HTTPS) and 443.
 
 ## Image names (must match ECR)
 
 | Service  | ECR repository                 | Full image |
 |----------|--------------------------------|------------|
-| Backend  | `trustaimarketplace/backend`   | `585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:latest` |
-| Frontend | `trustaimarketplace/frontend`  | `585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:latest` |
+| Backend  | `trustaimarketplace/backend`   | `585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:<commit-sha>` |
+| Frontend | `trustaimarketplace/frontend`  | `585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:<commit-sha>` |
+
+Both are also pushed as `:latest`, but the deploy script always activates the commit-SHA tag —
+`docker-compose.yml` requires `IMAGE_TAG` to be set (`${IMAGE_TAG:?set IMAGE_TAG for deployment}`)
+rather than defaulting to `latest`, so a stale or bad `latest` can't silently get pulled in.
 
 ## GitHub Actions secrets
 
@@ -39,8 +51,12 @@ This page is the shorter operational runbook.
 2. Attach an **instance IAM role** granting `AmazonSSMManagedInstanceCore` (so the SSM agent
    can register and receive commands) and ECR pull permissions. The SSM agent itself ships
    preinstalled on Amazon Linux / Ubuntu AMIs from AWS.
-3. Copy `deploy/docker-compose.yml` → `$EC2_APP_DIR/docker-compose.yml`.
-4. Create `$EC2_APP_DIR/.env` with strong secrets (required — compose will refuse to start without them):
+3. Point DNS for the deployed domain (currently `trustai.mandalawi.ca`) at the instance's
+   public IP — Caddy's automatic HTTPS depends on this resolving before the first deploy.
+4. The deploy script transfers `deploy/docker-compose.yml` and `deploy/Caddyfile` itself on
+   every deploy; no manual copy needed after the first run (the very first run has nothing to
+   diff against, so it activates directly).
+5. Create `$EC2_APP_DIR/.env` with strong secrets (required — compose will refuse to start without them):
 
    ```bash
    JWT_SECRET=replace-with-a-long-random-string
@@ -50,16 +66,19 @@ This page is the shorter operational runbook.
    # GROQ_API_KEY=
    ```
 
-5. Open security group port **80** only (API is reached via nginx `/api`, not public `:8000`).
+   `IMAGE_TAG` is supplied by the deploy script per-run and must **not** be set in `.env`.
+6. Open security group ports **80 and 443**. Port 80 is still needed — Caddy uses it for the
+   ACME HTTP-01 challenge and to redirect plain HTTP to HTTPS, not just historical compatibility.
    Port 22 does not need to be open — SSM doesn't require inbound access.
-6. Manual first run (via `aws ssm start-session --target $EC2_INSTANCE_ID`, not SSH):
-   ECR login → `docker compose pull && up -d`.
-7. For backups (see below): create an S3 bucket and grant the **EC2 instance's own IAM
+7. Manual first run (via `aws ssm start-session --target $EC2_INSTANCE_ID`, not SSH):
+   ECR login → `IMAGE_TAG=<commit-sha> docker compose pull && IMAGE_TAG=<commit-sha> docker compose up -d`.
+8. For backups (see below): create an S3 bucket and grant the **EC2 instance's own IAM
    role** (not the `github-actions-deployer` user) `s3:PutObject` on it. The backup command
    runs *on* the instance via SSM, so it authenticates as the instance role, not as
    GitHub Actions.
 
-Local development still uses the root `docker-compose.yml` (builds from source).
+Local development still uses the root `docker-compose.yml` (builds from source, plain HTTP,
+no Caddy).
 
 ## Database backups
 
