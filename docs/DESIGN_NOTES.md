@@ -304,6 +304,32 @@ closes that specific gap as its own backend PR; the PR #52 diff's
 unrelated `updateProfile` → `updateMe` rename (which still breaks
 `Profile.jsx`'s existing caller) is out of scope here.
 
+**Scheduled Postgres backups to S3 (D-13).** Raised as a direct question
+during final-weeks review: does the production database survive a
+redeploy on the single-EC2 setup? Yes for normal redeploys — the `pgdata`
+Docker volume (`deploy/docker-compose.yml`) is decoupled from container
+lifecycle, and `deploy.yml`'s remote script only ever runs `docker compose
+pull`/`up -d` (plus config validation and health checks), never
+`down -v`. But the volume lives on that one instance's disk, so
+instance replacement or disk failure had no recovery path at all. Rather
+than add always-on infrastructure (a sidecar cron container, a managed DB
+migration — both larger changes this late), `.github/workflows/backup.yml`
+reuses the exact zero-trust SSM `send-command` pattern already established
+in `deploy.yml`: a scheduled (daily) and on-demand GitHub Actions workflow
+runs `pg_dump | gzip` inside the `db` container via SSM, then `aws s3 cp`
+to `BACKUP_S3_BUCKET`. Authenticates as the **EC2 instance's own IAM
+role**, not `github-actions-deployer` — the command executes on the
+instance, so no new GitHub-side IAM permission is needed, only an
+instance-role addition (`s3:PutObject`, scoped to the bucket). The
+workflow fails loudly (a red Action run, via the same
+`wait command-executed` → check `Status` pattern `deploy.yml` uses) rather
+than swallowing a failed dump. Retention is deliberately left to an S3
+lifecycle rule, not scripted deletion — a bug in a delete-old-backups
+script is a way to lose backups, not protect them. Restore is documented
+(not automated) in `deploy/README.md`, verified locally: `pg_dump | gzip`
+then `gunzip | psql` round-trips data correctly (confirmed by dumping a
+table, restoring into a fresh database, and diffing the result).
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
