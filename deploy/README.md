@@ -40,6 +40,7 @@ rather than defaulting to `latest`, so a stale or bad `latest` can't silently ge
 | `ECR_FRONTEND_REPO` | `trustaimarketplace/frontend` |
 | `EC2_INSTANCE_ID` | Target instance for SSM (`i-…`) |
 | `EC2_APP_DIR` | Dir containing compose file, e.g. `/opt/trustai` |
+| `BACKUP_S3_BUCKET` | S3 bucket for scheduled Postgres backups (see "Database backups" below) — used by `.github/workflows/backup.yml` only, not `deploy.yml` |
 
 `EC2_HOST`/`EC2_USER`/`EC2_SSH_KEY` are **no longer used** — SSM targets the instance by
 `EC2_INSTANCE_ID`, not by host/user/key.
@@ -71,6 +72,41 @@ rather than defaulting to `latest`, so a stale or bad `latest` can't silently ge
    Port 22 does not need to be open — SSM doesn't require inbound access.
 7. Manual first run (via `aws ssm start-session --target $EC2_INSTANCE_ID`, not SSH):
    ECR login → `IMAGE_TAG=<commit-sha> docker compose pull && IMAGE_TAG=<commit-sha> docker compose up -d`.
+8. For backups (see below): create an S3 bucket and grant the **EC2 instance's own IAM
+   role** (not the `github-actions-deployer` user) `s3:PutObject` on it. The backup command
+   runs *on* the instance via SSM, so it authenticates as the instance role, not as
+   GitHub Actions.
 
 Local development still uses the root `docker-compose.yml` (builds from source, plain HTTP,
 no Caddy).
+
+## Database backups
+
+The `pgdata` Docker volume (declared in `deploy/docker-compose.yml`) survives every normal
+redeploy — `deploy.yml`'s remote script only ever runs `docker compose pull`/`up -d` (plus config
+validation and health checks), never `down -v` — but
+it lives on this one EC2 instance's disk. If the instance is ever replaced, or the disk
+fails, there's no recovery path without a separate backup.
+
+`.github/workflows/backup.yml` runs daily (03:00 UTC) plus on-demand via
+**Actions → Postgres backup → Run workflow**. It uses the same zero-trust SSM
+`send-command` pattern as `deploy.yml` (no SSH, no inbound access): `pg_dump | gzip`
+inside the `db` container, upload to `s3://$BACKUP_S3_BUCKET/postgres-backups/`, done.
+The workflow fails loudly (a red Action run) if the dump or upload fails — a silent
+backup failure is worse than an obvious one.
+
+**Retention** is deliberately not scripted (a bug in a delete-old-backups script is a way
+to lose backups, not protect them) — set an [S3 lifecycle
+rule](https://docs.aws.amazon.com/AmazonS3/latest/userguide/intro-lifecycle-rules.html) on
+the bucket instead, e.g. expire objects under `postgres-backups/` after 30 days.
+
+**To restore** a backup (via `aws ssm start-session --target $EC2_INSTANCE_ID`, then):
+```bash
+aws s3 cp s3://$BACKUP_S3_BUCKET/postgres-backups/<file>.sql.gz - \
+  | gunzip \
+  | docker compose exec -T db psql -U trustai -d trustai
+```
+This replays the dump's `COPY`/`INSERT` statements into the existing database — for a
+full disaster-recovery restore into an *empty* database (e.g. after standing up a
+replacement instance), create the empty `trustai` database first, same as `docker-compose.yml`'s
+`db` service does automatically on first boot.

@@ -86,12 +86,14 @@ retry without retyping everything.
 - Implemented: commit-before-analyze in `routes.create_analysis`, test `test_ai_failure_returns_502_and_saves_listing`.
 
 **US-2.3 — Submit a listing URL and get suggested details**
-As a buyer, I want to paste just a listing URL and have the title and
-description suggested for me, so I don't have to retype them by hand.
-- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description; the user still reviews and edits before submitting.
+As a buyer, I want to paste just a listing URL and have the title,
+price, currency, and description suggested for me, so I don't have to
+retype them by hand.
+- AC1: `POST /listings/preview` fetches the URL server-side and returns suggested title/description/price/currency; the user still reviews and edits before submitting.
 - AC2: Non-HTTP(S) URLs, and URLs resolving to a private/loopback/link-local address, are rejected (SSRF guardrail) with a 422.
-- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06).
-- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py`, `POST /api/listings/preview`, test `test_url_preview_returns_suggested_fields`.
+- AC3: This does not change the frozen `ListingIn`/`POST /analyses` contract (see docs/DESIGN_NOTES.md D-06, extended by D-14).
+- AC4: Price/currency/seller-signal extraction is best-effort — a missed match leaves the field for the user to fill in by hand, never a wrong guess passed through as fact.
+- Implemented: `ListingUrlIn`/`ListingPreviewOut` schemas, `services/listing_fetch.py` (`_extract_price`/`_extract_seller_details`, D-14), `POST /api/listings/preview`, `ListingForm.jsx` price/currency prefill, tests `test_url_preview_returns_suggested_fields`, `test_extract_price_formats`, `test_fetch_listing_preview_populates_price_currency_and_seller_details`.
 
 Tasks completed: Listing ORM model · input schema with currency normalization ·
 description length guard · submission form UI with inline errors · URL fetch
@@ -261,6 +263,21 @@ floor so untested code can't silently creep in.
 - AC2: `test_listing_schema.py` unit-tests `ListingIn` validation directly (currency shape/normalization, positive price, description length, optional URL).
 - AC3: CI fails if backend coverage drops below 85% (`--cov-fail-under=85`); `app` gained `__init__.py` files so untested modules (e.g. `services/ai.py`) are honestly counted instead of silently excluded.
 - Implemented: `tests/test_security.py`, `tests/test_listing_schema.py`, `backend/.coveragerc`, `.github/workflows/ci.yml`.
+
+**US-6.5 — Frontend test coverage**
+As the team, we want the frontend build step to catch a client/server API
+naming mismatch, not just a JSX/syntax error, so a fully-broken feature
+can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
+`api.deleteMe`, neither of which existed on the API client).
+- AC1: Every component that calls `api.*` has at least one test asserting
+  it invokes the correct method, by spying on the real `api` module
+  (not a hand-authored mock) so a renamed/removed method fails the test
+  the same way it fails at runtime.
+- AC2: CI runs the frontend test suite as its own step, separate from
+  (and before) `npm run build`.
+- Implemented: Vitest + React Testing Library, `App.test.jsx`,
+  `AuthForm.test.jsx`, `ListingForm.test.jsx`, `History.test.jsx`,
+  `.github/workflows/ci.yml`'s `frontend` job.
 
 ---
 

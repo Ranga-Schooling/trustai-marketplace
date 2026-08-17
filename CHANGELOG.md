@@ -1,3 +1,31 @@
+## [1.15.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.14.0...v1.15.0) (2026-08-17)
+
+
+### Features
+
+* extract price/currency/seller signals in URL listing preview ([#77](https://github.com/Ranga-Schooling/trustai-marketplace/issues/77)) ([b907654](https://github.com/Ranga-Schooling/trustai-marketplace/commit/b907654c48b5eaec7afa89dc82e675cacad2b6a5)), closes [#65](https://github.com/Ranga-Schooling/trustai-marketplace/issues/65) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#62](https://github.com/Ranga-Schooling/trustai-marketplace/issues/62) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21) [#45](https://github.com/Ranga-Schooling/trustai-marketplace/issues/45) [#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21)
+
+## [1.14.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.3...v1.14.0) (2026-08-17)
+
+
+### Features
+
+* scheduled Postgres backups to S3 ([#76](https://github.com/Ranga-Schooling/trustai-marketplace/issues/76)) ([7b913bd](https://github.com/Ranga-Schooling/trustai-marketplace/commit/7b913bd648cf0f7c16d812e8445009397b81e529))
+
+## [1.13.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.2...v1.13.3) (2026-08-17)
+
+
+### Bug Fixes
+
+* self-heal startup migration for pre-Alembic create_all() bootstraps ([#73](https://github.com/Ranga-Schooling/trustai-marketplace/issues/73)) ([4703d5c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4703d5cc09915902badfbb2e1ebf43a8dd12e0e8)), closes [#69](https://github.com/Ranga-Schooling/trustai-marketplace/issues/69)
+
+## [1.13.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.1...v1.13.2) (2026-08-17)
+
+
+### Bug Fixes
+
+* wire up History's dead onNewListing prop to an empty-state button ([#72](https://github.com/Ranga-Schooling/trustai-marketplace/issues/72)) ([9c005c5](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9c005c58e065f8a28ff751be2d38a04c8cd0c424)), closes [#71](https://github.com/Ranga-Schooling/trustai-marketplace/issues/71)
+
 ## [1.13.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.0...v1.13.1) (2026-08-17)
 
 

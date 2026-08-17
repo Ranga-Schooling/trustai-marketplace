@@ -115,6 +115,13 @@ class ListingPreviewOut(BaseModel):
     # max_length matches ListingIn.source above -- a suggestion that can't
     # fit the field it's suggesting a value for isn't useful (PR #21 review).
     source: str | None = Field(default=None, max_length=120)
+    # Additive (D-14): best-effort price/currency/seller-contact signals
+    # scraped from the fetched page, ported from PR #45's regex approach.
+    # All optional and lossy on purpose -- a missed match just means the
+    # user fills the field in by hand, same as before this existed.
+    price: float | None = None
+    currency: str | None = None
+    seller_details: str | None = None
 
 
 class RiskIndicatorOut(BaseModel):

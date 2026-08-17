@@ -248,6 +248,32 @@ Fixed two ways:
    scratch, no stamping needed; this was a one-time repair for a database
    that predated Alembic being used at all.
 
+**Startup migration is now self-healing for that same scenario (also D-11,
+2026-08-17).** The manual `alembic stamp` above was a one-time human fix,
+not an automated recovery path — a full e2e review reproduced the identical
+crash-loop with a fresh volume in the same starting state (tables present,
+no `alembic_version` row), confirming any other environment that hits this
+(a teammate's stale Docker volume, an EC2 snapshot, a restored backup)
+would crash-loop indefinitely under `restart: unless-stopped` with no
+automated recovery. `backend/Dockerfile`'s `CMD` now runs
+`python -m app.core.migrate` instead of a bare `alembic upgrade head`:
+if `alembic_version` is missing but existing tables' columns are an *exact*
+match for the current models (i.e. verifiably a `create_all()` bootstrap,
+nothing more), it stamps `head` automatically and proceeds. If the tables
+don't match exactly — a genuinely older, partial schema like the original
+incident — it deliberately does **not** guess which revision to stamp
+(a wrong guess would silently skip a real `ALTER TABLE` and leave the app
+querying columns that don't exist, which is worse than the crash), and
+instead fails fast with a message naming exactly which columns differ, so
+the manual `alembic stamp <revision>` from this same incident is still the
+right recovery, it's just diagnosable in seconds instead of from a bare
+`psycopg2.errors.DuplicateTable` traceback. Verified against real Postgres
+in both directions (Docker container built and run locally): a
+column-matching bootstrap now starts cleanly instead of crash-looping, and
+a genuinely mismatched schema exits with the diagnostic message instead of
+either crash-looping or silently mis-stamping. Unit tests:
+`backend/tests/test_startup_migrate.py`.
+
 **Unknown `.env` keys no longer crash the app (also D-11).** Found via the
 same incident: `Settings` (pydantic-settings) forbids unrecognized keys by
 default, so a `.env` file containing a variable not yet declared as a
@@ -345,6 +371,52 @@ close that: a small `AnalysisFailureLog` table written in
 logging without a new table if the team doesn't want another table for a
 capstone-scale MVP. Needs a call before either analytics or the
 provider-failure part of this issue can actually be built.
+**Scheduled Postgres backups to S3 (D-13).** Raised as a direct question
+during final-weeks review: does the production database survive a
+redeploy on the single-EC2 setup? Yes for normal redeploys — the `pgdata`
+Docker volume (`deploy/docker-compose.yml`) is decoupled from container
+lifecycle, and `deploy.yml`'s remote script only ever runs `docker compose
+pull`/`up -d` (plus config validation and health checks), never
+`down -v`. But the volume lives on that one instance's disk, so
+instance replacement or disk failure had no recovery path at all. Rather
+than add always-on infrastructure (a sidecar cron container, a managed DB
+migration — both larger changes this late), `.github/workflows/backup.yml`
+reuses the exact zero-trust SSM `send-command` pattern already established
+in `deploy.yml`: a scheduled (daily) and on-demand GitHub Actions workflow
+runs `pg_dump | gzip` inside the `db` container via SSM, then `aws s3 cp`
+to `BACKUP_S3_BUCKET`. Authenticates as the **EC2 instance's own IAM
+role**, not `github-actions-deployer` — the command executes on the
+instance, so no new GitHub-side IAM permission is needed, only an
+instance-role addition (`s3:PutObject`, scoped to the bucket). The
+workflow fails loudly (a red Action run, via the same
+`wait command-executed` → check `Status` pattern `deploy.yml` uses) rather
+than swallowing a failed dump. Retention is deliberately left to an S3
+lifecycle rule, not scripted deletion — a bug in a delete-old-backups
+script is a way to lose backups, not protect them. Restore is documented
+(not automated) in `deploy/README.md`, verified locally: `pg_dump | gzip`
+then `gunzip | psql` round-trips data correctly (confirmed by dumping a
+table, restoring into a fresh database, and diffing the result).
+
+**Price/currency/seller-signal extraction for URL preview (D-14, extends
+D-06).** Tracked as issue #65 after the PR #21 vs PR #45 route collision
+(#62) was resolved in favor of #21: #21 shipped with frontend integration
+and correct SSRF handling, but only extracted title/description via
+og:title/og:description meta tags. #45's closed branch had genuinely more
+capable extraction — price/currency via regex, off-platform
+contact/payment signals — reusing the same fraud-signal categories
+`MockProvider` already flags (`services/ai.py`). Ported into
+`services/listing_fetch.py` rather than kept as a separate module: #21's
+`BeautifulSoup`/SSRF-hardened fetch already produces clean page text
+(`soup.body.get_text()`), so the regex extraction only needed the same
+`PRICE_PATTERNS`/`PRICE_SYMBOL_MAP` and contact/payment regexes from #45,
+not its own fetch pipeline. `ListingPreviewOut` gains `price`/`currency`/
+`seller_details`, all optional and additive — a missed match just leaves
+the field for the user to fill in by hand, same as before this existed.
+`ListingForm.jsx`'s existing `touched`-field guard (added in #21, so a
+fetch never clobbers what the user already typed) extends naturally to
+price/currency; `seller_details` is returned by the API but not yet
+surfaced in the UI, left for a follow-up since the issue's own scope
+only asked for the price/currency prefill extension.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI

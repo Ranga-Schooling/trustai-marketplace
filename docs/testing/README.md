@@ -57,15 +57,26 @@ below.
 All layers run on `MockProvider` only — no network call or API key
 required, matching CLAUDE.md's CI constraint.
 
-## Running the frontend build
+## Running the frontend tests and build
 
 ```bash
 cd frontend
 npm install
+npm run test:ci
 npm run build
 ```
-This is the same check CI runs (`vite build`) — it catches JSX/syntax
-errors and unresolved imports before they reach a PR.
+Both are the same checks CI runs. `vitest` (React Testing Library, jsdom)
+covers the components that call `api.*` — one smoke test per API-calling
+component asserting it invokes the right method with the right shape, by
+spying on the real `api` module rather than a hand-authored mock, so a
+renamed/removed method fails the test the same way it fails at runtime.
+This is deliberately not exhaustive UI coverage; it's the specific gap
+that let a fully-broken feature (account edit/delete calling
+`api.updateMe`/`api.deleteMe`, which didn't exist) ship past both a green
+`vite build` and passing backend tests — see the "Fixed" note in
+`docs/DESIGN_NOTES.md`. `vite build` still matters on its own: it catches
+JSX/syntax errors and unresolved imports the test suite wouldn't
+necessarily exercise.
 
 ## Running the full stack locally
 
