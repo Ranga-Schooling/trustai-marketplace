@@ -1,0 +1,171 @@
+# -*- mode: yaml -*-
+# +----------------------------------------------------------------------------+
+# | /:\ gitStream: Workflow automation for the code review process.            |
+# +----------------------------------------------------------------------------+
+# | This file does NOT replace CI (.github/workflows/ci.yml) or the branch     |
+# | ruleset -- pytest/vitest still gate every merge. gitStream only automates  |
+# | what happens *around* that gate: labeling, routing, and (optionally)       |
+# | approving/requiring reviewers based on what a PR actually touches.         |
+# |                                                                            |
+# | Setup: install the gitStream GitHub App (free) --                         |
+# |   https://github.com/marketplace/gitstream-by-linearb                     |
+# | -- on this repo, then this file is picked up automatically. No secrets    |
+# | or workflow changes needed.                                                |
+# |                                                                            |
+# | Docs: https://docs.gitstream.cm/                                          |
+# +----------------------------------------------------------------------------+
+
+manifest:
+  version: 1.0
+
+# +----------------------------------------------------------------------------+
+# | Customize this section                                                     |
+# +----------------------------------------------------------------------------+
+
+# Matches .github/CODEOWNERS, which already requires this team on every PR.
+review_team: 'Ranga-Schooling/developers'
+
+# Files where CLAUDE.md's SCHEMA-0 freeze applies (routes.py's paths/status
+# codes/response models, the AIProvider protocol) or that gate production
+# deploys/migrations -- a bad change here has a bigger blast radius than a
+# typical file, so it's worth flagging even though CI can't catch "was this
+# additive on purpose" the way it catches a failing test.
+sensitive:
+  - backend/app/schemas/schemas.py
+  - backend/app/api/routes.py
+  - backend/app/services/ai.py
+  - backend/alembic/versions/**
+  - deploy/docker-compose.yml
+  - deploy/Caddyfile
+  - .github/workflows/deploy.yml
+  - .github/workflows/backup.yml
+
+# Minutes of estimated review time above which a PR is "long," used below.
+long_review_threshold: 15
+
+config:
+  ignore_files:
+    - frontend/package-lock.json
+    - backend/requirements*.txt
+
+# +----------------------------------------------------------------------------+
+# | Automations                                                                |
+# +----------------------------------------------------------------------------+
+
+automations:
+  # Label every PR with a rough time-to-review estimate. Pure visibility,
+  # no gating -- useful for a small team juggling several PRs at once.
+  estimated_time_to_review:
+    if:
+      - true
+    run:
+      - action: add-label@v1
+        args:
+          label: "{{ calc.etr }} min review"
+          color: {{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}
+
+  # Flag PRs touching a frozen-contract or deploy/migration file. This repo
+  # has hit two duplicate-decision-ID bugs already (D-13 claimed twice,
+  # US-3.x claimed twice) from independent PRs picking the same "next free"
+  # ID before either merged -- this doesn't prevent that, but it puts the
+  # reminder directly on the PR instead of relying on a reviewer remembering
+  # CLAUDE.md's contract-change process unprompted.
+  flag_frozen_contract_files:
+    if:
+      - {{ has.sensitive_files }}
+    run:
+      - action: add-label@v1
+        args:
+          label: 'contract/deploy'
+          color: {{ colors.red }}
+      - action: add-comment@v1
+        args:
+          comment: |
+            This PR touches a frozen-contract file (`schemas.py`, `routes.py`, the `AIProvider` protocol) or a deploy/migration file, per `CLAUDE.md`. If this is an intentional additive change, confirm it has its own `D-0x` decision-log entry in `docs/DESIGN_NOTES.md` -- and double-check that number isn't already used elsewhere in the file (`grep -n "D-<N>" docs/DESIGN_NOTES.md`). This repo has shipped duplicate decision IDs twice already.
+      - action: add-reviewers@v1
+        args:
+          reviewers: [{{ review_team }}]
+          unless_reviewers_set: true
+
+  # Same reminder, scoped to the backlog/decision docs directly -- catches
+  # a new D-0x or US-N.N entry even on a docs-only PR that flag_frozen_
+  # contract_files above wouldn't otherwise touch.
+  flag_decision_log_touch:
+    if:
+      - {{ files | match(list=['docs/DESIGN_NOTES.md', 'docs/BACKLOG.md']) | some }}
+      - {{ not has.sensitive_files }}
+    run:
+      - action: add-comment@v1
+        args:
+          comment: |
+            Touches `docs/DESIGN_NOTES.md` or `docs/BACKLOG.md` -- if this adds a new `D-NN` or `US-N.N` ID, grep the file first to confirm it's not already taken.
+
+  # Auto-approve + label PRs that are provably docs-only or test-only.
+  # NOTE: this repo's branch ruleset has require_code_owner_review: true
+  # (.github/CODEOWNERS lists @Ranga-Schooling/developers for everything).
+  # A gitStream-bot approval will likely NOT satisfy that requirement
+  # on its own -- confirm this behaves the way you want (either the repo
+  # still needs one human code-owner approval regardless, or you adjust
+  # the ruleset) rather than assuming this alone unblocks merge.
+  approve_docs_and_tests_only:
+    if:
+      - {{ is.docs_or_tests_only }}
+      - {{ not has.sensitive_files }}
+    run:
+      - action: add-label@v1
+        args:
+          label: 'safe change'
+          color: {{ colors.green }}
+      - action: approve@v1
+      - action: add-comment@v1
+        args:
+          comment: Docs-only or test-only change, auto-approved by gitStream. CI still has to pass before this can merge.
+
+  # Escalate to two reviewers for anything both large AND touching a
+  # sensitive file -- this repo's ruleset currently requires exactly 1
+  # approval regardless of size/risk; this raises the bar only for the
+  # PRs where that's most warranted, without slowing down everything else.
+  require_two_reviews_on_large_sensitive_changes:
+    if:
+      - {{ has.sensitive_files }}
+      - {{ is.long_review }}
+    run:
+      - action: add-label@v1
+        args:
+          label: '⚠️ needs 2 reviewers'
+          color: {{ colors.red }}
+      - action: set-required-approvals@v1
+        args:
+          approvals: 2
+
+  # Suggest reviewers by git-blame history for anything not already covered
+  # above -- routes to whoever's actually touched this code before, not
+  # just whoever's free.
+  explain_code_experts:
+    if:
+      - {{ not has.sensitive_files }}
+      - {{ not is.docs_or_tests_only }}
+    run:
+      - action: explain-code-experts@v1
+        args:
+          gt: 10
+
+# +----------------------------------------------------------------------------+
+# | Custom Expressions                                                         |
+# | https://docs.gitstream.cm/how-it-works/#custom-expressions                 |
+# +----------------------------------------------------------------------------+
+
+calc:
+  etr: {{ branch | estimatedReviewTime }}
+
+has:
+  sensitive_files: {{ files | match(list=sensitive) | some }}
+
+is:
+  docs_or_tests_only: {{ (files | allDocs) or (files | allTests) }}
+  long_review: {{ calc.etr > long_review_threshold }}
+
+colors:
+  red: 'b60205'
+  yellow: 'fbca04'
+  green: '0e8a16'
