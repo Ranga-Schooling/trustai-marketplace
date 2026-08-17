@@ -29,6 +29,16 @@ class Recommendation(str, Enum):
     avoid = "avoid"
 
 
+class PricePlausibility(str, Enum):
+    """Categorical price-plausibility tier (D-08, docs/DESIGN_NOTES.md).
+    Deliberately not a numeric or factual market-value claim — same
+    rationale as D-05's categorical RiskLevel."""
+
+    plausible = "plausible"
+    suspicious = "suspicious"
+    too_good_to_be_true = "too_good_to_be_true"
+
+
 # ---------- Auth ----------
 class UserRegister(BaseModel):
     email: EmailStr
@@ -81,6 +91,32 @@ class ListingIn(BaseModel):
         return v.upper()
 
 
+class ListingUrlIn(BaseModel):
+    """Input for the URL-fetch preview endpoint (docs/DESIGN_NOTES.md).
+
+    Kept separate from ListingIn on purpose: this never bypasses the frozen
+    POST /analyses contract, it only produces suggestions for it.
+    """
+
+    url: HttpUrl
+
+
+class ListingPreviewOut(BaseModel):
+    """Best-effort suggestions extracted from a fetched listing page.
+
+    Fields intentionally mirror a subset of ListingIn's optional-to-fill-in
+    fields, not the schema itself — the user still reviews/edits these
+    before they ever reach ListingIn/POST /analyses.
+    """
+
+    url: str
+    title: str
+    description: str
+    # max_length matches ListingIn.source above -- a suggestion that can't
+    # fit the field it's suggesting a value for isn't useful (PR #21 review).
+    source: str | None = Field(default=None, max_length=120)
+
+
 class RiskIndicatorOut(BaseModel):
     category: str
     severity: RiskLevel
@@ -96,6 +132,7 @@ class AIAnalysisResult(BaseModel):
     risk_level: RiskLevel
     risk_indicators: list[RiskIndicatorOut] = Field(max_length=10)
     price_assessment: str = Field(min_length=1)
+    price_plausibility: PricePlausibility
     seller_questions: list[str] = Field(min_length=1, max_length=8)
     recommendation: Recommendation
 
@@ -107,6 +144,7 @@ class AnalysisOut(BaseModel):
     risk_score: int = Field(ge=0, le=100)
     summary: str
     price_assessment: str
+    price_plausibility: PricePlausibility
     recommendation: Recommendation
     seller_questions: list[str]
     risk_indicators: list[RiskIndicatorOut]

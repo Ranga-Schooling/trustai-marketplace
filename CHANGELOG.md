@@ -1,3 +1,24 @@
+## [1.12.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.11.0...v1.12.0) (2026-08-17)
+
+
+### Features
+
+* multi-LLM provider abstraction -- GPT and Gemini (Card [#20](https://github.com/Ranga-Schooling/trustai-marketplace/issues/20)) ([#46](https://github.com/Ranga-Schooling/trustai-marketplace/issues/46)) ([9fcf69e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9fcf69ed1ee1d8e44420161a25fdcbec0b66dd1a))
+
+## [1.11.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.10.0...v1.11.0) (2026-08-17)
+
+
+### Features
+
+* categorical price plausibility (plausible/suspicious/too_good_t… ([#41](https://github.com/Ranga-Schooling/trustai-marketplace/issues/41)) ([4edc85c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4edc85c0594e4e62c2514d67aa2243e4e84aa950)), closes [#28](https://github.com/Ranga-Schooling/trustai-marketplace/issues/28)
+
+## [1.10.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.9.0...v1.10.0) (2026-08-17)
+
+
+### Features
+
+* fetch listing URL content to suggest submission fields (US-2.3) ([#21](https://github.com/Ranga-Schooling/trustai-marketplace/issues/21)) ([cc6803e](https://github.com/Ranga-Schooling/trustai-marketplace/commit/cc6803ea521cd45b95c731085f6d5a82d44f4197))
+
 ## [1.9.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.8.1...v1.9.0) (2026-08-16)
 
 
