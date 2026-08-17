@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import RiskGauge from './RiskGauge';
 
+// Reuses the existing low/medium/high badge palette for plausibility, since
+// it's the same "fine -> caution -> alarming" gradient as risk severity —
+// no new CSS needed. Purely visual grouping; price_plausibility and
+// risk_level are independent fields (see DESIGN_NOTES.md D-08).
+const PLAUSIBILITY_DISPLAY = {
+  plausible: { label: 'Plausible', tone: 'low' },
+  suspicious: { label: 'Suspicious', tone: 'medium' },
+  too_good_to_be_true: { label: 'Too good to be true', tone: 'high' },
+};
+
 export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
   const [copied, setCopied] = useState(false);
   const riskLevel = analysis.risk_level || 'low';
@@ -9,6 +19,7 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
     caution: 'Caution',
     avoid: 'Avoid',
   }[analysis.recommendation] || 'Review';
+  const plausibility = PLAUSIBILITY_DISPLAY[analysis.price_plausibility] || null;
 
   const riskScore = typeof analysis.risk_score === 'number' ? analysis.risk_score : null;
   const indicators = Array.isArray(analysis.risk_indicators) ? analysis.risk_indicators : [];
@@ -39,7 +50,10 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
         <RiskGauge riskScore={riskScore} recommendation={analysis.recommendation} level={riskLevel} />
 
         <div className="card summary-box">
-          <p className="eyebrow">Price fairness</p>
+          <p className="eyebrow">
+            Price fairness
+            {plausibility ? <span className={`badge ${plausibility.tone}`}> {plausibility.label}</span> : null}
+          </p>
           <p>{analysis.price_assessment || 'No price assessment was provided.'}</p>
         </div>
       </div>
