@@ -1,0 +1,7 @@
+trustai.mandalawi.ca {
+    reverse_proxy frontend:80
+}
+
+http://:8080 {
+    reverse_proxy frontend:80
+}

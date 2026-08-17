@@ -9,7 +9,7 @@ function formatDate(value) {
   });
 }
 
-export default function History({ onOpen }) {
+export default function History({ onOpen, onNewListing }) {
   const [analyses, setAnalyses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,6 +46,7 @@ export default function History({ onOpen }) {
         <div className="empty-state">
           <h2>No analyses yet</h2>
           <p className="subtle">Start by submitting your first listing and building a history of your reviews.</p>
+          <button type="button" onClick={onNewListing}>Submit a listing</button>
         </div>
       ) : null}
 
