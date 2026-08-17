@@ -178,6 +178,46 @@ Persisted on `Analysis` (Alembic revision `3cc9cb43e9e6`) rather than
 computed on read, so a future `GET /analyses` (US-4.1) doesn't need to
 re-run the formula or re-fetch `risk_indicators` for a list view.
 
+**Multi-LLM provider abstraction (D-10, Trello card #20).** Card #20 asks
+for Groq/Gemini/GPT to be selectable via configuration. Already largely
+solved by the existing `AIProvider` Protocol + `get_provider()` strategy
+(`architecture-review-2026-08-01.md` §4: "no rework needed, just more
+`elif` branches and providers") — this decision just fills in that gap.
+`GroqProvider` was refactored into a thin subclass of a new
+`OpenAICompatibleProvider` base (request/response shape, JSON mode,
+retry-once-then-`AnalysisFailure` — all now written once); `GPTProvider`
+is a second ~5-line subclass, since OpenAI's own API is the shape Groq
+already mirrors. `GeminiProvider` does **not** subclass that base — Google's
+`generateContent` API uses `contents`/`parts`, not `messages`/`choices` —
+but implements the identical external contract (validate into
+`AIAnalysisResult`, one retry, then `AnalysisFailure`), so `get_provider()`
+treats all three uniformly. `AI_PROVIDER` now accepts `gpt` and `gemini`
+alongside `mock`/`groq`; each real provider raises `AnalysisFailure`
+immediately if its own API key isn't configured, same pattern as `GroqProvider`
+already had.
+
+Deliberately **not** in scope here: switching providers still requires
+setting `AI_PROVIDER` and restarting the process — `Settings` stays a
+`@lru_cache`d singleton, unchanged. A live, no-restart switch is a
+separate, bigger piece of work (tracked as a GitHub issue: admin-gated
+runtime configuration + analytics), not bundled into this card.
+
+**Compose gap found while dogfooding D-10 (fixed same PR).** `docker-compose.yml`'s
+`api` service set `AI_PROVIDER`/`*_API_KEY` via `${VAR:-default}`
+interpolation. That syntax only ever resolves from the shell invoking
+`docker compose` (or a `.env` next to `docker-compose.yml`, which doesn't
+exist) — it does **not** read `backend/.env`. Practical effect: setting
+`AI_PROVIDER=gpt` and `OPENAI_API_KEY=...` in `backend/.env` (the file
+`.env.example` and every other doc point developers at) silently had zero
+effect on the containerized API, which kept running `MockProvider` with no
+error. Fixed by pointing the `api` service at
+`env_file: [{path: ./backend/.env, required: false}]` instead, and
+dropping the dead `${VAR}` interpolations — `required: false` keeps a
+fresh clone with no `backend/.env` yet working via `Settings`' own field
+defaults, same as running `uvicorn` directly. Also added a `logger.warning`
+in `get_provider()` for an unrecognized `AI_PROVIDER` value, since silently
+falling back to mock with zero signal is exactly what made this gap hard to
+notice in the first place.
 **Migrations now run automatically on container start (D-11).** The "not
 yet wired up" gap noted above stopped being theoretical: `backend/Dockerfile`
 only ever did `COPY app ./app` — `alembic/` and `alembic.ini` were never

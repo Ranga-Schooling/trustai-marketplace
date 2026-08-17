@@ -154,11 +154,32 @@ without the tool inventing an uncalibrated number.
   `test_risk_score_never_contradicts_risk_level`. Decision log:
   `docs/DESIGN_NOTES.md` D-09 (amends D-05's scope).
 
+**US-3.6 — Multi-LLM provider abstraction (Trello #20)**
+As the team, we want the backend to switch between Groq/GPT/Gemini via
+configuration, so we're not locked to one vendor.
+- AC1: `AI_PROVIDER=mock|groq|gpt|gemini` selects the active provider;
+  each real provider fails fast (`AnalysisFailure`) if its own API key
+  isn't configured.
+- AC2: All three real providers satisfy the same `AIProvider` Protocol and
+  external contract (validate into `AIAnalysisResult`, one retry, then
+  `AnalysisFailure`) — swapping providers changes no other code.
+- AC3: Groq and GPT share implementation (`OpenAICompatibleProvider`) since
+  their APIs are the same shape; Gemini doesn't, since its API isn't.
+- Implemented: `OpenAICompatibleProvider`/`GroqProvider`/`GPTProvider`/
+  `GeminiProvider` in `services/ai.py`, `config.py`
+  gemini/openai settings, tests `test_gpt_provider_*`,
+  `test_gemini_provider_*`, `test_get_provider_returns_*`. Decision log:
+  `docs/DESIGN_NOTES.md` D-10.
+- Out of scope (deliberately, see D-10): switching still requires an env
+  var change + restart, not a live/runtime toggle — that's tracked
+  separately as a GitHub issue (admin-gated runtime config + analytics).
+
 Tasks completed: provider Protocol · system prompt with schema + honesty rules ·
 Groq JSON-mode call with timeout and single retry · Pydantic validation gate ·
 deterministic heuristic signal table · categorical risk derivation logic ·
-categorical price plausibility derivation (US-3.5).
-deterministic rule-based risk scoring (US-3.4).
+categorical price plausibility derivation (US-3.5) ·
+deterministic rule-based risk scoring (US-3.4) · GPT/Gemini providers behind
+the same interface (US-3.6).
 
 ---
 
@@ -244,6 +265,6 @@ floor so untested code can't silently creep in.
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.4, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
 | Could (future) | PDF export, browser extension, reverse image search |
