@@ -1,3 +1,17 @@
+## [1.13.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.13.0...v1.13.1) (2026-08-17)
+
+
+### Bug Fixes
+
+* wire account edit/delete UI to a real api.js client, drop dead password field ([#67](https://github.com/Ranga-Schooling/trustai-marketplace/issues/67)) ([621bc8f](https://github.com/Ranga-Schooling/trustai-marketplace/commit/621bc8f684642223e9faddd3e64d6211152cfbec)), closes [#52](https://github.com/Ranga-Schooling/trustai-marketplace/issues/52) [#54](https://github.com/Ranga-Schooling/trustai-marketplace/issues/54) [#55](https://github.com/Ranga-Schooling/trustai-marketplace/issues/55) [#56](https://github.com/Ranga-Schooling/trustai-marketplace/issues/56) [#66](https://github.com/Ranga-Schooling/trustai-marketplace/issues/66)
+
+## [1.13.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.12.1...v1.13.0) (2026-08-17)
+
+
+### Features
+
+* enable HTTPS with Caddy ([#63](https://github.com/Ranga-Schooling/trustai-marketplace/issues/63)) ([7939dd4](https://github.com/Ranga-Schooling/trustai-marketplace/commit/7939dd47e58184f383f086ad4077a12f7c6f7c5e))
+
 ## [1.12.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.12.0...v1.12.1) (2026-08-17)
 
 

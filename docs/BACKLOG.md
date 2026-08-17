@@ -43,7 +43,10 @@ details stay current.
 - AC1: `GET /auth/me` returns the current name/email (already implemented under US-1.3).
 - AC2: `PATCH /auth/me` updates name and/or email; at least one field required (400 otherwise).
 - AC3: Changing to an already-registered email returns 409, same as registration.
-- Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, `Profile.jsx`, tests `test_update_profile_*`.
+- Implemented: `UserUpdate` schema, `PATCH /api/auth/me`, the account
+  section in `App.jsx` (`Profile.jsx` was retired in favor of this — see
+  the "Fixed" note in `docs/DESIGN_NOTES.md`), `api.updateMe`, tests
+  `test_update_profile_*`.
 
 **US-1.5 — Delete account**
 As a user, I want to permanently delete my account, so my data isn't kept
@@ -55,7 +58,7 @@ once I no longer want to use the product.
 - AC3: Deleting one user's account never affects another user's listings
   or analyses.
 - Implemented: `DELETE /api/auth/me`, cascade relationships in
-  `models/db.py`, tests `test_delete_account_*` (D-12).
+  `models/db.py`, `api.deleteMe`, tests `test_delete_account_*` (D-12).
 
 Tasks completed: bcrypt hashing utility · JWT create/verify · FastAPI auth
 dependency · register/login/me routes · auth UI (login + register modes) ·
