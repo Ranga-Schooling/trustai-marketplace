@@ -103,6 +103,13 @@ questionable; plausible otherwise. price_assessment must stay a qualitative
 explanation of that judgment and must never state a specific figure, range,
 or source as if it were verified market data.
 
+No image evidence is supplied to or analyzed by this model. The listing URL
+is provided only as text and is not opened by the model. Do not state or imply
+that the original marketplace listing has no photos or images. Unless they are
+explicitly described in the supplied text, image presence, quality, and
+authenticity are unknown; even then, treat the description as an unverified
+claim rather than inspected visual evidence.
+
 Clearly acknowledge uncertainty. Explain that the assessment is based only on
 the supplied listing, may miss scams or flag legitimate listings, and does not
 guarantee that the listing or seller is safe."""
@@ -242,7 +249,9 @@ def _listing_prompt(listing: ListingIn) -> str:
         f"Price: {listing.price} {listing.currency}\n"
         f"Source: {listing.source}\n"
         f"Description:\n{listing.description}\n"
-        f"URL: {listing.url or 'Not provided'}"
+        f"URL: {listing.url or 'Not provided'}\n"
+        "Visual evidence: No images were analyzed; this does not mean the "
+        "source listing lacks images."
     )
 
 
