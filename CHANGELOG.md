@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.1...v1.15.2) (2026-08-18)
+
+
+### Bug Fixes
+
+* clarify text-only analysis evidence ([#85](https://github.com/Ranga-Schooling/trustai-marketplace/issues/85)) ([6a65f40](https://github.com/Ranga-Schooling/trustai-marketplace/commit/6a65f405989ea832b9f496f29da39a935e9aff6c))
+
 ## [1.15.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.0...v1.15.1) (2026-08-17)
 
 
