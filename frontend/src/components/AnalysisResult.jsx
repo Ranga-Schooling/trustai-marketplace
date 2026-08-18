@@ -40,6 +40,7 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
   return (
     <div className="result-page">
       <h1>Analysis Result</h1>
+      <p className="evidence-note">Text-only analysis — photos from the listing URL were not inspected.</p>
 
       <div className="result-summary-row">
         <div className="card summary-box">

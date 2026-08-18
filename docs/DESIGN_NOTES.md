@@ -419,6 +419,15 @@ price/currency; `seller_details` is returned by the API but not yet
 surfaced in the UI, left for a follow-up since the issue's own scope
 only asked for the price/currency prefill extension.
 
+**Text-only image-evidence boundary (D-15).** URL preview and analysis do
+not inspect listing photos: providers receive the listing fields and URL as
+text only. Prompt version `v2` makes that boundary explicit, forbidding a
+provider from turning "no image evidence was analyzed" into a claim that the
+source marketplace listing has no images. The result screen states the same
+limitation deterministically so users do not have to infer it from generated
+prose. This is a correctness correction, not multimodal support: `ListingIn`,
+`AIAnalysisResult`, `AIProvider`, and `POST /analyses` remain unchanged.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.

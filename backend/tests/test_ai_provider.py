@@ -14,6 +14,7 @@ from app.services.ai import (
     GPTProvider,
     GroqProvider,
     MockProvider,
+    _listing_prompt,
     get_provider,
 )
 
@@ -79,6 +80,86 @@ class HttpErrorResponse:
             request=request,
             response=response,
         )
+
+
+def _listing() -> ListingIn:
+    return ListingIn(
+        title="IKEA Billy bookcase, white",
+        price=450.0,
+        currency="ZAR",
+        source="Facebook Marketplace",
+        description="Used bookcase in good condition, collection in Randburg.",
+        url="https://example.com/listing/1",
+    )
+
+
+def test_listing_prompt_marks_visual_evidence_as_not_analyzed():
+    prompt = _listing_prompt(_listing())
+
+    assert "Visual evidence: No images were analyzed" in prompt
+    assert "does not mean the source listing lacks images" in prompt
+
+
+@pytest.mark.parametrize(
+    ("provider_class", "api_key_setting"),
+    [
+        (GroqProvider, "groq_api_key"),
+        (GPTProvider, "openai_api_key"),
+    ],
+)
+def test_openai_compatible_payload_includes_image_evidence_boundary(
+    monkeypatch,
+    provider_class,
+    api_key_setting,
+):
+    captured = {}
+
+    def fake_post(*args, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return FakeResponse()
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr(
+        f"app.services.ai.settings.{api_key_setting}",
+        "test-key",
+    )
+
+    provider_class().analyze(_listing())
+
+    messages = captured["payload"]["messages"]
+    assert "No image evidence is supplied to or analyzed" in messages[0]["content"]
+    assert "is not opened by the model" in messages[0]["content"]
+    assert "Do not state or imply" in messages[0]["content"]
+    assert "has no photos or images" in messages[0]["content"]
+    assert "image presence, quality, and" in messages[0]["content"]
+    assert "Visual evidence: No images were analyzed" in messages[1]["content"]
+
+
+def test_gemini_payload_includes_image_evidence_boundary(monkeypatch):
+    captured = {}
+
+    def fake_post(*args, **kwargs):
+        captured["payload"] = kwargs["json"]
+        return FakeGeminiResponse()
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.gemini_api_key", "test-key")
+
+    GeminiProvider().analyze(_listing())
+
+    payload = captured["payload"]
+    system_prompt = payload["systemInstruction"]["parts"][0]["text"]
+    user_prompt = payload["contents"][0]["parts"][0]["text"]
+    assert "No image evidence is supplied to or analyzed" in system_prompt
+    assert "is not opened by the model" in system_prompt
+    assert "Do not state or imply" in system_prompt
+    assert "has no photos or images" in system_prompt
+    assert "image presence, quality, and" in system_prompt
+    assert "Visual evidence: No images were analyzed" in user_prompt
+
+
+def test_default_prompt_version_marks_image_evidence_boundary():
+    assert Settings.model_fields["prompt_version"].default == "v2"
 
 
 def test_groq_provider_success(monkeypatch):
