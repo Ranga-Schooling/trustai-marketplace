@@ -1,3 +1,10 @@
+## [1.15.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.2...v1.15.3) (2026-08-20)
+
+
+### Bug Fixes
+
+* **ai:** guard against stale model knowledge ([#87](https://github.com/Ranga-Schooling/trustai-marketplace/issues/87)) ([5cdb496](https://github.com/Ranga-Schooling/trustai-marketplace/commit/5cdb496ffac743aedea9583d2062fced4116c672))
+
 ## [1.15.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.1...v1.15.2) (2026-08-18)
 
 
