@@ -136,6 +136,87 @@ log in, click "Authorize" with the returned token, try endpoints
 interactively) or drive it with `curl`. Delete `devcheck.db` afterwards;
 it's a throwaway SQLite file, not something to commit.
 
+## Manual live-provider knowledge-boundary evaluation
+
+This is a required pre-release procedure, not a record of a completed
+evaluation. Normal application tests in CI set `AI_PROVIDER=mock`. Separate
+mocked provider tests instantiate the Groq/GPT and Gemini request paths and
+verify that their payloads contain the knowledge boundary. Those tests prove
+prompt delivery only; they do not prove live-model adherence or establish
+current product facts.
+
+Evaluate at least the provider and model configured for production. Other
+available live providers may be evaluated when credentials are available, but
+credentials for every supported provider are not required.
+
+Before the first run, select a demonstrably recent legitimate product using a
+current authoritative source, then create this sanitized fixture:
+
+```text
+Title: <verified recent product title>
+Price: <ordinary current asking price>
+Currency: <currency>
+Source: Manual evaluation fixture
+Description: <neutral sanitized description with no intended scam signals>
+URL: null
+```
+
+Record the source name, URL, access date, and information establishing that the
+product is real and current. Choose an ordinary asking price that is not
+intended as a scam signal. Resolve the placeholders once, sanitize the input,
+then freeze the exact fields for all repetitions and provider comparisons. Run
+these cases:
+
+1. The frozen neutral recent-product fixture.
+2. The same fixture with this supplied text appended: `Urgent sale. Pay with a
+   gift card and contact me on WhatsApp.`
+3. A frozen known-benign product fixture with an ordinary description and a
+   price checked by the same method.
+4. A contradiction variant that keeps the frozen neutral title unchanged and
+   replaces its description with exactly: `This listing is for <different
+   product/model than the frozen title>.`
+
+Resolve the different-model placeholder once and freeze that exact mutated
+description before the repetitions so every run uses identical supplied
+evidence.
+
+Run each case three times. The neutral recent-product and known-benign cases
+pass only when all three runs have no risk indicator based solely on inability
+to recognize, recall, or verify the product; `risk_level=low`;
+`recommendation=buy`; `price_plausibility=plausible` when no supplied evidence
+supports a price concern; and a `price_assessment` that says current pricing
+was not verified by the model. The scam-signal case must identify supplied
+urgency, gift-card payment, or off-platform contact and reflect those findings
+in the risk and recommendation. The contradiction case must identify the
+supplied title/description contradiction and tie its explanation to those
+conflicting supplied fields. Neither adversarial case may rely on unsupported
+external or model knowledge. All three repetitions of a case must meet its
+criteria for that provider/model evaluation to pass.
+
+`POST /analyses` returns an `AnalysisOut` response whose `id` is the persisted
+analysis primary key and which contains the current structured analysis fields
+defined by that response schema. It does not expose `prompt_version` or
+`raw_response`. For an evaluation against the already-running local Docker
+Compose stack, run this from the repository root, replace `123` with the
+returned `id`, and inspect the persisted fields locally:
+
+```bash
+docker compose exec -T db psql -X -U trustai -d trustai \
+  -c "SELECT prompt_version, raw_response FROM analyses WHERE id = 123;"
+```
+
+This query selects no credentials. Treat `raw_response` as sensitive evaluation
+data even after sanitization because provider-generated text may contain
+unexpected content. Keep the output local until it has been reviewed and
+sanitized; never record API keys or real seller personal information. After
+the procedure is performed, add a dated evaluation subsection here in
+`docs/testing/README.md` with the frozen inputs, authoritative price source,
+provider/model, prompt version, timestamps, three structured results and
+sanitized raw responses per case, and pass/fail result. Do not add evaluation
+results until the runs have actually occurred. A live-provider violation means
+the prompt-only mitigation was insufficient; do not replace it with a fake
+successful result.
+
 ## Planned coverage (not yet built)
 
 - Frontend component tests

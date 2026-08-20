@@ -40,7 +40,13 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
   return (
     <div className="result-page">
       <h1>Analysis Result</h1>
-      <p className="evidence-note">Text-only analysis — photos from the listing URL were not inspected.</p>
+      <p className="evidence-note">
+        <span>Text-only analysis — photos from the listing URL were not inspected.</span>{' '}
+        <span>
+          Knowledge limitation — model knowledge may not include recently released products or current market
+          conditions; verify time-sensitive claims with a current authoritative source.
+        </span>
+      </p>
 
       <div className="result-summary-row">
         <div className="card summary-box">
