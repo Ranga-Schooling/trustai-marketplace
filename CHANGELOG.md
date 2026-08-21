@@ -1,3 +1,10 @@
+## [1.15.4](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.3...v1.15.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* **backup:** repair Postgres backup workflow ([#89](https://github.com/Ranga-Schooling/trustai-marketplace/issues/89)) ([7e43e18](https://github.com/Ranga-Schooling/trustai-marketplace/commit/7e43e1816178af6dedcf64d28b18b7cc297e4020))
+
 ## [1.15.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.2...v1.15.3) (2026-08-20)
 
 
