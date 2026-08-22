@@ -35,14 +35,32 @@ jobs:
         run: |
           set -euo pipefail
 
+          if [ -z "${BACKUP_S3_BUCKET:-}" ]; then
+            echo "Backup configuration incomplete: BACKUP_S3_BUCKET is not configured."
+            exit 1
+          fi
+
+          printf -v APP_DIR_Q '%q' "$EC2_APP_DIR"
+          printf -v AWS_REGION_Q '%q' "$AWS_REGION_NAME"
+          printf -v BACKUP_BUCKET_Q '%q' "$BACKUP_S3_BUCKET"
+          printf -v IMAGE_TAG_Q '%q' "$GITHUB_SHA"
+
           REMOTE_SCRIPT="$(cat <<EOF
           set -euo pipefail
-          cd ${EC2_APP_DIR}
+          cd ${APP_DIR_Q}
+          test -f .env || { echo "Missing production .env in configured EC2 application directory"; exit 1; }
+          export IMAGE_TAG=${IMAGE_TAG_Q}
+          BACKUP_S3_BUCKET=${BACKUP_BUCKET_Q}
+          AWS_REGION_NAME=${AWS_REGION_Q}
+          umask 077
           STAMP="\$(date -u +%Y%m%dT%H%M%SZ)"
-          DUMP_FILE="/tmp/trustai-\${STAMP}.sql.gz"
-          docker compose exec -T db pg_dump -U trustai -d trustai | gzip > "\${DUMP_FILE}"
-          aws s3 cp "\${DUMP_FILE}" "s3://${BACKUP_S3_BUCKET}/postgres-backups/trustai-\${STAMP}.sql.gz" --region "${AWS_REGION_NAME}"
-          rm -f "\${DUMP_FILE}"
+          DUMP_FILE="\$(mktemp /tmp/trustai-backup.XXXXXX)"
+          trap 'rm -f "\$DUMP_FILE"' EXIT
+          docker compose exec -T db pg_dump --no-password -U trustai -d trustai | gzip > "\${DUMP_FILE}"
+          test -s "\${DUMP_FILE}" || { echo "Backup dump is missing or empty"; exit 1; }
+          gzip -t "\${DUMP_FILE}"
+          OBJECT_KEY="postgres-backups/trustai-\${STAMP}.sql.gz"
+          aws s3 cp "\${DUMP_FILE}" "s3://\${BACKUP_S3_BUCKET}/\${OBJECT_KEY}" --region "\${AWS_REGION_NAME}"
           echo "Backup uploaded: trustai-\${STAMP}.sql.gz"
           EOF
           )"

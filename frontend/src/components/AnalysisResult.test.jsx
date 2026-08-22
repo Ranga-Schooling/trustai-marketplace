@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import AnalysisResult from './AnalysisResult';
 
 describe('AnalysisResult', () => {
-  it('discloses that listing photos were not inspected', () => {
+  it('discloses text-only analysis and model-knowledge limitations', () => {
     render(
       <AnalysisResult
         analysis={{
@@ -24,6 +24,11 @@ describe('AnalysisResult', () => {
 
     expect(
       screen.getByText('Text-only analysis — photos from the listing URL were not inspected.'),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Knowledge limitation — model knowledge may not include recently released products or current market conditions; verify time-sensitive claims with a current authoritative source.',
+      ),
     ).toBeVisible();
   });
 });

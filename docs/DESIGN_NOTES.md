@@ -419,14 +419,28 @@ price/currency; `seller_details` is returned by the API but not yet
 surfaced in the UI, left for a follow-up since the issue's own scope
 only asked for the price/currency prefill extension.
 
-**Text-only image-evidence boundary (D-15).** URL preview and analysis do
+**Text-only image-evidence boundary (D-16).** URL preview and analysis do
 not inspect listing photos: providers receive the listing fields and URL as
-text only. Prompt version `v2` makes that boundary explicit, forbidding a
-provider from turning "no image evidence was analyzed" into a claim that the
-source marketplace listing has no images. The result screen states the same
-limitation deterministically so users do not have to infer it from generated
-prose. This is a correctness correction, not multimodal support: `ListingIn`,
-`AIAnalysisResult`, `AIProvider`, and `POST /analyses` remain unchanged.
+text only. Prompt version `v2` introduced that boundary; `v3` retains it,
+forbidding a provider from turning "no image evidence was analyzed" into a
+claim that the source marketplace listing has no images. The result screen
+states the same limitation deterministically so users do not have to infer
+it from generated prose. This is a correctness correction, not multimodal
+support: `ListingIn`, `AIAnalysisResult`, `AIProvider`, and `POST /analyses`
+remain unchanged.
+
+**Current-knowledge evidence boundary (D-17, issue #86).** A live model's
+pretrained knowledge may be stale, so inability to recognize or verify a
+product is not evidence that it is nonexistent, fraudulent, or risky. Prompt
+version `v3` treats listing fields as untrusted content rather than
+instructions or verified facts, permits concrete contradictions and scam
+signals in those fields to be flagged, and forbids unknown time-sensitive
+facts from worsening risk, recommendation, or price plausibility. The result
+screen states this knowledge limitation deterministically. Web search/RAG is
+deliberately separate scope; CI verifies that each live-provider payload
+contains the boundary; live-provider adherence must be evaluated manually. No
+frozen contract changes: `ListingIn`, `AIAnalysisResult`, `AIProvider`, and
+`POST /analyses` remain unchanged.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
