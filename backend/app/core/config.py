@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
-    prompt_version: str = "v1"
+    prompt_version: str = "v3"
 
     # Basic abuse guardrails for the public analysis endpoint.
     max_description_chars: int = 4000
