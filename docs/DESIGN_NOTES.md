@@ -450,12 +450,18 @@ that only removes *dangling* (untagged) images, and a SHA-tagged image
 from three deploys ago is never dangling, so it was never removed. Two
 separate fixes, since they're two separate growth sources:
 1. `deploy.yml` now runs `docker image prune -af` (the `-a` is the actual
-   fix) plus `container`/`volume`/`network prune -f`, right after the
+   fix) plus `container`/`network prune -f`, right after the
    health check confirms the new stack is up — on every deploy, not a
    separate schedule, so disk usage never accumulates across more than one
    deploy's worth of images. Safe regardless of timing: prune only ever
    removes resources with zero containers referencing them, so the live
-   stack is never touched.
+   stack is never touched. Deliberately excludes `docker volume prune`:
+   review feedback on PR #84 pointed out that an unreferenced volume isn't
+   necessarily disposable the way an unreferenced image is — it could be
+   intentionally retained while temporarily detached from a container — and
+   the incident that motivated this fix showed 0B reclaimable from volumes
+   anyway, so pruning them bought no disk-space benefit for a real risk of
+   silently deleting retained data on a future deploy.
 2. `deploy/docker-compose.yml` caps every service's logs at 10MB × 3
    rotated files via a shared `x-logging` anchor — Docker's default
    `json-file` driver has no size cap on its own, and unbounded logs are a
