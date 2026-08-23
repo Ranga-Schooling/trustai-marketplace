@@ -110,3 +110,33 @@ This replays the dump's `COPY`/`INSERT` statements into the existing database �
 full disaster-recovery restore into an *empty* database (e.g. after standing up a
 replacement instance), create the empty `trustai` database first, same as `docker-compose.yml`'s
 `db` service does automatically on first boot.
+
+## Disk cleanup
+
+Every deploy pulls a uniquely commit-SHA-tagged image (`IMAGE_TAG`, see above), so old
+images were never `<none>`/dangling — `docker image prune` without `-a` only removes
+dangling images, so it silently never touched them, and they piled up on the instance's
+disk indefinitely. Two fixes, since they address different growth sources:
+
+1. **Stale images/containers/networks.** `deploy.yml`'s remote script now runs
+   `docker image prune -af` (the `-a` is the fix — removes *any* image with zero
+   containers referencing it, not just untagged ones), plus `container`/`network
+   prune -f`, right after the health check confirms the new stack is up — so only the
+   previous deploy's now-genuinely-unused resources are removed, never anything the live
+   stack is using. This runs on **every deploy**, not on a separate schedule — disk usage
+   never has a chance to grow across more than one deploy's worth of images. Logs
+   `docker system df` before/after and `df -h /`, so reclaimed space is visible in the
+   Action run.
+
+   Deliberately **not** included: `docker volume prune`. Unlike images/containers,
+   an unreferenced volume isn't necessarily disposable — it might be intentionally
+   retained while temporarily detached from a container — and an automatic prune on
+   every deploy would delete it the moment that happens, with no way back. The disk
+   incident this fix addresses showed 0B reclaimable from volumes; the accumulated
+   SHA-tagged images were the entire problem (PR #84 review feedback).
+2. **Unbounded container logs.** Docker's default `json-file` log driver has no size cap
+   on its own — a chatty service (Caddy/nginx access logs, uvicorn access logs) grows
+   without bound over weeks and is a common real-world cause of a small instance quietly
+   filling up, independent of images entirely. `deploy/docker-compose.yml` now caps every
+   service at 10MB × 3 rotated files (30MB ceiling each) via a shared `x-logging` anchor —
+   this is a standing structural limit, not something deploy-time cleanup needs to act on.

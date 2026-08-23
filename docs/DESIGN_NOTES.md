@@ -442,6 +442,37 @@ contains the boundary; live-provider adherence must be evaluated manually. No
 frozen contract changes: `ListingIn`, `AIAnalysisResult`, `AIProvider`, and
 `POST /analyses` remain unchanged.
 
+**Automated EC2 disk cleanup + log rotation (D-18).** Raised as a direct
+question during final-weeks review: deploys were pulling new, uniquely
+commit-SHA-tagged images and never cleaning up the old ones. Root cause:
+`deploy.yml`'s cleanup step ran `docker image prune -f` — without `-a`,
+that only removes *dangling* (untagged) images, and a SHA-tagged image
+from three deploys ago is never dangling, so it was never removed. Two
+separate fixes, since they're two separate growth sources:
+1. `deploy.yml` now runs `docker image prune -af` (the `-a` is the actual
+   fix) plus `container`/`network prune -f`, right after the
+   health check confirms the new stack is up — on every deploy, not a
+   separate schedule, so disk usage never accumulates across more than one
+   deploy's worth of images. Safe regardless of timing: prune only ever
+   removes resources with zero containers referencing them, so the live
+   stack is never touched. Deliberately excludes `docker volume prune`:
+   review feedback on PR #84 pointed out that an unreferenced volume isn't
+   necessarily disposable the way an unreferenced image is — it could be
+   intentionally retained while temporarily detached from a container — and
+   the incident that motivated this fix showed 0B reclaimable from volumes
+   anyway, so pruning them bought no disk-space benefit for a real risk of
+   silently deleting retained data on a future deploy.
+2. `deploy/docker-compose.yml` caps every service's logs at 10MB × 3
+   rotated files via a shared `x-logging` anchor — Docker's default
+   `json-file` driver has no size cap on its own, and unbounded logs are a
+   common real-world cause of a small instance filling up independent of
+   images entirely; this is a standing structural limit, not something the
+   deploy-time cleanup needs to act on.
+`deploy.yml`'s remote script logs `docker system df` before/after and
+`df -h /`, so reclaimed space is visible in the Action run rather than
+only discoverable by SSH-ing in (which zero-trust deploy deliberately
+doesn't support anyway).
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
