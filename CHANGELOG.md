@@ -1,3 +1,10 @@
+## [1.15.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.4...v1.15.5) (2026-08-23)
+
+
+### Bug Fixes
+
+* automate EC2 disk cleanup on every deployment ([#84](https://github.com/Ranga-Schooling/trustai-marketplace/issues/84)) ([e1f4c05](https://github.com/Ranga-Schooling/trustai-marketplace/commit/e1f4c05acc08b05dc07f5a63bea5ad114f4be9ee))
+
 ## [1.15.4](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.3...v1.15.4) (2026-08-21)
 
 

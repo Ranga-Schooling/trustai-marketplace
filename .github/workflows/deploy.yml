@@ -115,7 +115,29 @@ jobs:
 
           echo "Deployment of image tag \${IMAGE_TAG} is healthy"
           docker compose ps
-          docker image prune -f
+
+          echo "Disk usage before cleanup:"
+          docker system df
+          # -f alone (the old cleanup here) only removes *dangling* (untagged)
+          # images. Every deploy pulls a uniquely SHA-tagged image, so old
+          # deploys' images were never dangling and never got removed -- -a
+          # removes any image not referenced by an existing container,
+          # regardless of tag. Safe to run right here: the health check above
+          # already confirmed the new containers are up, so the previous
+          # deploy's images/containers/networks are genuinely unused, not just
+          # temporarily idle.
+          #
+          # Deliberately no `docker volume prune`: an unreferenced volume isn't
+          # necessarily disposable (e.g. one intentionally kept around while
+          # temporarily detached from a container), and the disk incident this
+          # workflow fixes showed 0B reclaimable from volumes anyway -- the
+          # accumulated SHA-tagged images were the actual cause (PR #84 review).
+          docker image prune -af
+          docker container prune -f
+          docker network prune -f
+          echo "Disk usage after cleanup:"
+          docker system df
+          df -h /
           EOF
           )"
           REMOTE_SCRIPT_B64="$(printf '%s' "$REMOTE_SCRIPT" | base64 -w 0)"
