@@ -63,7 +63,9 @@ sensitive:
   - backend/requirements
   - package-lock.json
 
-# Minutes of estimated review time above which a PR is "long," used below.
+# Minutes of estimated review time above which a PR is "long" -- drives both
+# is.long_review below and the ETR label's red cutoff, so the two stay in
+# sync instead of describing the same idea with separate magic numbers.
 long_review_threshold: 15
 
 config:
@@ -85,7 +87,7 @@ automations:
       - action: add-label@v1
         args:
           label: "{{ calc.etr }} min review"
-          color: {{ colors.red if (calc.etr >= 20) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}
+          color: {{ colors.red if (calc.etr >= long_review_threshold) else ( colors.yellow if (calc.etr >= 5) else colors.green ) }}
 
   # Flag PRs touching a frozen-contract or deploy/migration file. This repo
   # has hit two duplicate-decision-ID bugs already (D-13 claimed twice,
@@ -187,7 +189,7 @@ has:
 
 is:
   docs_or_tests_only: {{ (files | allDocs) or (files | allTests) }}
-  long_review: {{ calc.etr > long_review_threshold }}
+  long_review: {{ calc.etr >= long_review_threshold }}
 
 colors:
   red: 'b60205'
