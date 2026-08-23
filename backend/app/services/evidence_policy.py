@@ -31,10 +31,25 @@ _PRODUCT_RISK_CONCLUSION = re.compile(
     r"\b(?:fake|counterfeit|nonexistent|does not exist|fraud(?:ulent)?|scam|"
     r"misrepresent(?:ation|ed)?|risky?|risk|concern)\b"
 )
-_NEGATED_PRODUCT_RISK_CONCLUSION = re.compile(
-    r"\bnot\s+(?:an?\s+)?(?:fake|counterfeit|nonexistent|fraud(?:ulent)?|"
-    r"scam|misrepresent(?:ation|ed)?|risky?|risk|concern)\b"
-    r"(?:\s+concern\b)?"
+# Shared across product/image/platform rules: strips a negated risk-conclusion
+# word from a clause before that clause's risk-conclusion regex runs, so a
+# hedge like "not treated as a risk" or "not known for scams" can't be
+# mistaken for the adverse conclusion it's actually denying. The gap between
+# "not" and the conclusion word is intentionally short (not a general NLP
+# negation scope) -- wide enough for "not treated as a risk" or "not known
+# for scams", not wide enough to reach past an unrelated true positive like
+# "not recognized in the official lineup ... may be counterfeit". Greedy,
+# not lazy: a lazy gap stops at the *first* conclusion word it reaches, which
+# for a two-word phrase like "not a fraud concern" would strip only "fraud"
+# and leave "concern" behind to match on its own -- greedy backtracks to the
+# rightmost conclusion word still inside the gap, consuming the whole phrase.
+# The gap also refuses to cross "and"/"but": without that, "does not appear
+# to exist and may be a scam" would let "not" reach across the conjunction
+# and strip the separately-asserted "scam" as if it were part of the
+# negation, silently erasing a genuine positive conclusion.
+_NEGATED_RISK_CONCLUSION = re.compile(
+    r"\bnot\b(?:(?!\b(?:and|but)\b).){0,30}\b(?:fake|counterfeit|nonexistent|"
+    r"fraud(?:ulent)?|scams?|misrepresent(?:ation|ed)?|risky?|risk|concern)\b"
 )
 
 _IMAGE_EVIDENCE_UNAVAILABLE = re.compile(
@@ -60,14 +75,25 @@ _EVIDENCE_CLAUSE_BOUNDARY = re.compile(
     r"(?:[.!?;]+|\bseparately\b)[,\s]*"
 )
 
+# Tempered greedy token: matches up to 60/40 chars same as before, but
+# refuses to cross a hedge word like "information"/"mention" -- without this,
+# "does not provide information about buyer protection" (an honest
+# uncertainty disclosure) is indistinguishable from "does not provide buyer
+# protection" (an invented, asserted-false property -- the actual violation).
+_PAYMENT_PROTECTION_GAP = r"(?:(?!\b(?:information|info|details?|mention|specifics?)\b).){{0,{n}}}"
+
+
 _INFERRED_PAYMENT_PROTECTION = (
     re.compile(
         r"\b(?:does not|doesn't|do not|don't) "
-        r"(?:offer|provide|include|have)\b.{0,60}"
+        r"(?:offer|provide|include|have)\b" + _PAYMENT_PROTECTION_GAP.format(n=60) +
         r"\b(?:escrow|buyer[- ]protection)\b"
     ),
     re.compile(r"\bno (?:escrow|buyer[- ]protection)\b"),
-    re.compile(r"\black(?:s|ing)?\b.{0,40}\b(?:escrow|buyer[- ]protection)\b"),
+    re.compile(
+        r"\black(?:s|ing)?\b" + _PAYMENT_PROTECTION_GAP.format(n=40) +
+        r"\b(?:escrow|buyer[- ]protection)\b"
+    ),
     re.compile(
         r"\b(?:escrow|buyer[- ]protection)\b.{0,40}"
         r"\b(?:not available|unavailable)\b"
@@ -103,7 +129,7 @@ def _uses_product_nonrecognition(text: str) -> bool:
             or _PRODUCT_EXISTENCE_DOUBT.search(clause)
         )
         and _PRODUCT_RISK_CONCLUSION.search(
-            _NEGATED_PRODUCT_RISK_CONCLUSION.sub("", clause)
+            _NEGATED_RISK_CONCLUSION.sub("", clause)
         )
         for clause in _evidence_clauses(text)
     )
@@ -112,7 +138,7 @@ def _uses_product_nonrecognition(text: str) -> bool:
 def _uses_unavailable_images_as_risk(text: str) -> bool:
     return any(
         _IMAGE_EVIDENCE_UNAVAILABLE.search(clause)
-        and _IMAGE_RISK_CONCLUSION.search(clause)
+        and _IMAGE_RISK_CONCLUSION.search(_NEGATED_RISK_CONCLUSION.sub("", clause))
         for clause in _evidence_clauses(text)
     )
 
@@ -120,8 +146,8 @@ def _uses_unavailable_images_as_risk(text: str) -> bool:
 def _uses_generic_platform_reputation(text: str) -> bool:
     return any(
         _PLATFORM_REFERENCE.search(clause)
-        and _PLATFORM_RISK.search(clause)
         and _PLATFORM_GENERALIZATION.search(clause)
+        and _PLATFORM_RISK.search(_NEGATED_RISK_CONCLUSION.sub("", clause))
         for clause in _evidence_clauses(text)
     )
 

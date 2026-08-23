@@ -208,6 +208,22 @@ def test_negated_product_risk_conclusion_is_allowed():
     validate_evidence_policy(result)
 
 
+def test_negated_image_risk_conclusion_is_allowed():
+    result = _result_with_prose(
+        summary=(
+            "No images were provided, and this alone is not treated as a risk."
+        )
+    )
+
+    validate_evidence_policy(result)
+
+
+def test_negated_platform_reputation_conclusion_is_allowed():
+    result = _result_with_prose(summary="This platform is not known for scams.")
+
+    validate_evidence_policy(result)
+
+
 @pytest.mark.parametrize(
     "summary",
     [
@@ -290,6 +306,8 @@ def test_inferred_payment_protection_properties_are_rejected(summary):
         "Confirm whether escrow is available.",
         "The listing does not specify buyer-protection terms.",
         "Buyer protection was not verified.",
+        "The listing does not provide information about buyer protection.",
+        "The description does not include any mention of buyer protection.",
     ],
 )
 def test_payment_protection_questions_and_uncertainty_are_allowed(summary):
