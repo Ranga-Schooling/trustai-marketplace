@@ -9,8 +9,12 @@
 # |                                                                            |
 # | Setup: install the gitStream GitHub App (free) --                         |
 # |   https://github.com/marketplace/gitstream-by-linearb                     |
-# | -- on this repo, then this file is picked up automatically. No secrets    |
-# | or workflow changes needed.                                                |
+# | -- on this repo. The App also generates a required, App-managed           |
+# | ".github/workflows/gitstream.yml" (marked "DO NOT EDIT") that actually    |
+# | triggers evaluation of this file; without it every check run reports      |
+# | "skipped -- gitstream.yml not found" and none of the automations below    |
+# | run. Confirm that file exists on `main` after installing, don't assume    |
+# | installing the App alone is enough.                                       |
 # |                                                                            |
 # | Docs: https://docs.gitstream.cm/                                          |
 # +----------------------------------------------------------------------------+
@@ -30,15 +34,34 @@ review_team: 'Ranga-Schooling/developers'
 # deploys/migrations -- a bad change here has a bigger blast radius than a
 # typical file, so it's worth flagging even though CI can't catch "was this
 # additive on purpose" the way it catches a failing test.
+#
+# Also covers this automation's own governance surface (review comment,
+# PR #83): match() below does substring matching, not glob, so
+# "backend/alembic/versions/**" would never match a real path -- the
+# trailing "**" is dropped, and the plain directory prefix already covers
+# every file under it as a substring. requirements*.txt/package-lock.json
+# are listed here too, on top of config.ignore_files below, so a dependency
+# bump can never qualify for approve_docs_and_tests_only regardless of how
+# ignore_files interacts with the docs/tests classification. .cm/gitstream.cm,
+# CODEOWNERS, and the workflows that define the merge gate itself are listed
+# so a change that weakens this automation (or the required checks/reviewers
+# it depends on) can't self-approve as a "safe" docs/tests-only change.
 sensitive:
   - backend/app/schemas/schemas.py
   - backend/app/api/routes.py
   - backend/app/services/ai.py
-  - backend/alembic/versions/**
+  - backend/alembic/versions/
   - deploy/docker-compose.yml
   - deploy/Caddyfile
   - .github/workflows/deploy.yml
   - .github/workflows/backup.yml
+  - .github/workflows/ci.yml
+  - .github/workflows/pr-title.yml
+  - .github/workflows/gitstream.yml
+  - .cm/gitstream.cm
+  - .github/CODEOWNERS
+  - backend/requirements
+  - package-lock.json
 
 # Minutes of estimated review time above which a PR is "long," used below.
 long_review_threshold: 15
@@ -104,9 +127,8 @@ automations:
   # NOTE: this repo's branch ruleset has require_code_owner_review: true
   # (.github/CODEOWNERS lists @Ranga-Schooling/developers for everything).
   # A gitStream-bot approval will likely NOT satisfy that requirement
-  # on its own -- confirm this behaves the way you want (either the repo
-  # still needs one human code-owner approval regardless, or you adjust
-  # the ruleset) rather than assuming this alone unblocks merge.
+  # on its own -- this rule still needs a human code-owner approval
+  # regardless of the label/comment below.
   approve_docs_and_tests_only:
     if:
       - {{ is.docs_or_tests_only }}
@@ -122,9 +144,11 @@ automations:
           comment: Docs-only or test-only change, auto-approved by gitStream. CI still has to pass before this can merge.
 
   # Escalate to two reviewers for anything both large AND touching a
-  # sensitive file -- this repo's ruleset currently requires exactly 1
-  # approval regardless of size/risk; this raises the bar only for the
-  # PRs where that's most warranted, without slowing down everything else.
+  # sensitive file -- this repo's ruleset otherwise requires exactly 1
+  # approval regardless of size/risk. set-required-approvals@v1 only
+  # actually blocks merge because `gitStream.cm` is listed as a required
+  # status check in the branch ruleset (added 2026-08-23); without that,
+  # this action fails its own check but nothing enforces it.
   require_two_reviews_on_large_sensitive_changes:
     if:
       - {{ has.sensitive_files }}
