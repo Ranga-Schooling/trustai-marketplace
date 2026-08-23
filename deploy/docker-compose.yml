@@ -12,6 +12,18 @@
 # Optional: GROQ_API_KEY, AI_PROVIDER
 # IMAGE_TAG is supplied by the deployment command and is not stored in .env.
 
+# Docker's default json-file log driver has no size cap -- left alone, a
+# chatty container (nginx/Caddy access logs, uvicorn access logs) grows
+# without bound over weeks and is the most common actual cause of a small
+# EC2 instance quietly running out of disk, independent of stale images.
+# 10m x 3 files = 30MB ceiling per service, rotated automatically, no cron
+# or deploy-time action needed to keep this bounded.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   caddy:
     image: caddy:2-alpine
@@ -35,6 +47,7 @@ services:
       retries: 20
       start_period: 5s
     restart: unless-stopped
+    logging: *default-logging
 
   backend:
     image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/backend:${IMAGE_TAG:?set IMAGE_TAG for deployment}
@@ -50,6 +63,7 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   frontend:
     image: 585142511013.dkr.ecr.eu-north-1.amazonaws.com/trustaimarketplace/frontend:${IMAGE_TAG:?set IMAGE_TAG for deployment}
@@ -58,6 +72,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
 
   db:
     image: postgres:16-alpine
@@ -73,6 +88,7 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   caddy_data:
