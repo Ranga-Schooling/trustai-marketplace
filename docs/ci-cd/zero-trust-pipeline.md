@@ -168,10 +168,15 @@ The **Deploy on EC2 via SSM** step:
    ```bash
    set -e
    cd $EC2_APP_DIR
+   docker compose -f docker-compose.yml.next config --quiet
+   docker image prune -af
    aws ecr get-login-password … | docker login …
-   docker compose pull
+   docker compose -f docker-compose.yml.next pull
    docker compose up -d
-   docker image prune -f
+   # After the application health check succeeds:
+   docker image prune -af
+   docker container prune -f
+   docker network prune -f
    ```
 3. Captures the returned **`CommandId`**.
 
@@ -229,4 +234,4 @@ After merging deploy changes or rotating secrets:
 | 2026-08-12 | Initial documentation of SSH → SSM zero-trust deploy model. |
 | 2026-08-17 | Caddy added as the public HTTPS listener (ports 80/443), replacing nginx as the public surface — nginx and FastAPI are now internal-only. Deploy script also switched to commit-SHA-pinned images with config validation and a full health-check gate before success. Text corrected below; diagram still needs regenerating. |
 | 2026-08-17 | Added `backup.yml`, a daily scheduled Postgres backup to S3 using the same SSM `send-command` pattern. `pgdata` survives normal redeploys already (no `down -v` in `deploy.yml`), but had no protection against instance replacement or disk failure. |
-| 2026-08-17 | Fixed `deploy.yml`'s cleanup step (`docker image prune -f` → `-af`, plus container/volume/network prune), run on every deploy — the old command only removed dangling images, never the uniquely SHA-tagged image each deploy leaves behind, so old images accumulated on the instance's disk indefinitely. Added per-service log rotation limits in `deploy/docker-compose.yml` (D-18). |
+| 2026-08-17 | Fixed `deploy.yml`'s cleanup step (`docker image prune -f` → `-af`, plus container/network prune; volumes remain excluded), run on every deploy — the old command only removed dangling images, never the uniquely SHA-tagged image each deploy leaves behind, so old images accumulated on the instance's disk indefinitely. A follow-up production repair added the same unused-image cleanup before pull so a full host can recover before downloading the next images. Added per-service log rotation limits in `deploy/docker-compose.yml` (D-18). |

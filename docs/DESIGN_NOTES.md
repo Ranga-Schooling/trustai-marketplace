@@ -450,12 +450,16 @@ that only removes *dangling* (untagged) images, and a SHA-tagged image
 from three deploys ago is never dangling, so it was never removed. Two
 separate fixes, since they're two separate growth sources:
 1. `deploy.yml` now runs `docker image prune -af` (the `-a` is the actual
-   fix) plus `container`/`network prune -f`, right after the
-   health check confirms the new stack is up — on every deploy, not a
-   separate schedule, so disk usage never accumulates across more than one
-   deploy's worth of images. Safe regardless of timing: prune only ever
-   removes resources with zero containers referencing them, so the live
-   stack is never touched. Deliberately excludes `docker volume prune`:
+   fix) before pulling new images and again after the health check confirms
+   the new stack is up. Production exposed two follow-on gaps: post-health-only
+   cleanup cannot recover a host that fills before `docker compose pull`, and
+   backticks around `docker volume prune` in a comment inside the intentionally
+   unquoted `REMOTE_SCRIPT` heredoc caused runner-side command substitution;
+   its output corrupted the remote script. The repair removes that hazardous
+   shell syntax and uses the pre-pull pass to recover headroom while Docker
+   preserves images referenced by existing containers. The post-health
+   image/container/network cleanup remains in place, and immutable application
+   images remain recoverable from ECR. Deliberately excludes `docker volume prune`:
    review feedback on PR #84 pointed out that an unreferenced volume isn't
    necessarily disposable the way an unreferenced image is — it could be
    intentionally retained while temporarily detached from a container — and
