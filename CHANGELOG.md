@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.0...v1.16.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **ai:** reject unsupported risk evidence ([#90](https://github.com/Ranga-Schooling/trustai-marketplace/issues/90)) ([4a1f37b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4a1f37b8f2691255e7e26e3d5b6aab3c0c3bc126))
+
 ## [1.16.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.5...v1.16.0) (2026-08-28)
 
 
