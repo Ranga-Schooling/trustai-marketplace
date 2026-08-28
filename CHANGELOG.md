@@ -1,3 +1,17 @@
+## [1.16.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.2...v1.16.3) (2026-08-28)
+
+
+### Bug Fixes
+
+* **ui:** improve auth tab contrast ([#96](https://github.com/Ranga-Schooling/trustai-marketplace/issues/96)) ([25ca4aa](https://github.com/Ranga-Schooling/trustai-marketplace/commit/25ca4aa3a5fea88161237e6f01c946fe8ad8256a))
+
+## [1.16.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.1...v1.16.2) (2026-08-28)
+
+
+### Bug Fixes
+
+* **deploy:** repair Docker cleanup ([#93](https://github.com/Ranga-Schooling/trustai-marketplace/issues/93)) ([cca7e74](https://github.com/Ranga-Schooling/trustai-marketplace/commit/cca7e746a2220d4ed0f10bbb8d8382b8ddc4df04))
+
 ## [1.16.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.0...v1.16.1) (2026-08-28)
 
 
