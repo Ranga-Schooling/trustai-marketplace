@@ -6,12 +6,40 @@ const RECOMMENDATION_LABEL = {
   avoid: 'Avoid',
 };
 
+const GAUGE_CENTER = { x: 110, y: 100 };
+const GAUGE_RADIUS = 80;
+const GAUGE_ZONES = [
+  { start: 0, end: 33.5, className: 'gauge-arc-buy' },
+  { start: 33.5, end: 66.5, className: 'gauge-arc-caution' },
+  { start: 66.5, end: 100, className: 'gauge-arc-avoid' },
+];
+const TICK_SCORES = [0, 20, 40, 60, 80, 100];
+
+function scoreToRotation(score) {
+  return -90 + score * 1.8;
+}
+
+function pointAtScore(score, radius) {
+  const radians = (scoreToRotation(score) * Math.PI) / 180;
+  return {
+    x: GAUGE_CENTER.x + Math.sin(radians) * radius,
+    y: GAUGE_CENTER.y - Math.cos(radians) * radius,
+  };
+}
+
+function arcPath(startScore, endScore) {
+  const start = pointAtScore(startScore, GAUGE_RADIUS);
+  const end = pointAtScore(endScore, GAUGE_RADIUS);
+  return `M ${start.x} ${start.y} A ${GAUGE_RADIUS} ${GAUGE_RADIUS} 0 0 1 ${end.x} ${end.y}`;
+}
+
 export default function RiskGauge({ riskScore, recommendation, level }) {
   const [mounted, setMounted] = useState(false);
   const score = typeof riskScore === 'number' ? Math.max(0, Math.min(100, riskScore)) : null;
   const recommendationLabel = RECOMMENDATION_LABEL[recommendation] || 'Review';
   const resolvedLevel = level || 'low';
-  const targetRotation = score === null ? 20 : 20 + (score / 100) * 140;
+  const startRotation = scoreToRotation(0);
+  const targetRotation = score === null ? startRotation : scoreToRotation(score);
 
   useEffect(() => {
     setMounted(true);
@@ -21,31 +49,24 @@ export default function RiskGauge({ riskScore, recommendation, level }) {
     <div className="risk-gauge card gauge-card">
       <div className="gauge-frame">
         <svg viewBox="0 0 220 120" className="gauge-svg" aria-hidden="true">
-          {/*
-            Zone boundaries follow the backend TIER_RANGES (low 0-33 / medium 34-66 / high 67-100),
-            split along the same circle implied by the original full-arc endpoints (30,100)-(190,100)
-            with r=90, so all three segments still trace one continuous semicircle.
-            NOTE: this assumes low/buy sits on the left and high/avoid on the right — flip the three
-            paths below if the wireframe intends the opposite direction.
-          */}
-          <path d="M 30 100 A 90 90 0 0 1 77 57" className="gauge-arc gauge-arc-buy" />
-          <path d="M 77 57 A 90 90 0 0 1 143 57" className="gauge-arc gauge-arc-caution" />
-          <path d="M 143 57 A 90 90 0 0 1 190 100" className="gauge-arc gauge-arc-avoid" />
+          {GAUGE_ZONES.map((zone) => (
+            <path
+              key={zone.className}
+              d={arcPath(zone.start, zone.end)}
+              className={`gauge-arc ${zone.className}`}
+            />
+          ))}
           <g className="gauge-ticks">
-            {Array.from({ length: 6 }).map((_, index) => {
-              const angle = 20 + index * 28;
-              const radians = (angle * Math.PI) / 180;
-              const innerX = 110 + Math.cos(radians) * 58;
-              const innerY = 100 - Math.sin(radians) * 58;
-              const outerX = 110 + Math.cos(radians) * 72;
-              const outerY = 100 - Math.sin(radians) * 72;
+            {TICK_SCORES.map((tickScore) => {
+              const inner = pointAtScore(tickScore, 58);
+              const outer = pointAtScore(tickScore, 72);
               return (
                 <line
-                  key={angle}
-                  x1={innerX}
-                  y1={innerY}
-                  x2={outerX}
-                  y2={outerY}
+                  key={tickScore}
+                  x1={inner.x}
+                  y1={inner.y}
+                  x2={outer.x}
+                  y2={outer.y}
                   className="gauge-tick"
                 />
               );
@@ -54,8 +75,8 @@ export default function RiskGauge({ riskScore, recommendation, level }) {
           <g
             className="gauge-needle-group"
             style={{
-              transform: mounted ? `rotate(${targetRotation}deg)` : 'rotate(20deg)',
-              transformOrigin: '110px 100px',
+              transform: `rotate(${mounted ? targetRotation : startRotation}deg)`,
+              transformOrigin: `${GAUGE_CENTER.x}px ${GAUGE_CENTER.y}px`,
             }}
           >
             <line x1="110" y1="100" x2="110" y2="30" className={`gauge-needle gauge-needle-${resolvedLevel}`} />
