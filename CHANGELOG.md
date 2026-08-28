@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.1...v1.16.2) (2026-08-28)
+
+
+### Bug Fixes
+
+* **deploy:** repair Docker cleanup ([#93](https://github.com/Ranga-Schooling/trustai-marketplace/issues/93)) ([cca7e74](https://github.com/Ranga-Schooling/trustai-marketplace/commit/cca7e746a2220d4ed0f10bbb8d8382b8ddc4df04))
+
 ## [1.16.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.0...v1.16.1) (2026-08-28)
 
 
