@@ -1,3 +1,17 @@
+## [1.16.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.0...v1.16.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **ai:** reject unsupported risk evidence ([#90](https://github.com/Ranga-Schooling/trustai-marketplace/issues/90)) ([4a1f37b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4a1f37b8f2691255e7e26e3d5b6aab3c0c3bc126))
+
+## [1.16.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.5...v1.16.0) (2026-08-28)
+
+
+### Features
+
+* **admin:** admin RBAC + analytics dashboard (D-15, issue [#42](https://github.com/Ranga-Schooling/trustai-marketplace/issues/42)) ([#91](https://github.com/Ranga-Schooling/trustai-marketplace/issues/91)) ([f8cb2b0](https://github.com/Ranga-Schooling/trustai-marketplace/commit/f8cb2b011775d6bf0e753fc8290e0c4631c64d14))
+
 ## [1.15.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.4...v1.15.5) (2026-08-23)
 
 

@@ -34,7 +34,7 @@ from sqlalchemy.orm import (
 )
 
 from app.core.config import get_settings
-from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
+from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel, UserRole
 
 settings = get_settings()
 
@@ -62,7 +62,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(20), default="buyer")
+    role: Mapped[UserRole] = mapped_column(String(20), default=UserRole.buyer.value)
 
     # delete-orphan: deleting a User must not leave orphaned Listing rows
     # (US-1.5 account deletion) -- same pattern as Analysis.risk_indicators
@@ -93,6 +93,13 @@ class Listing(Base):
 
     user: Mapped[User] = relationship(back_populates="listings")
     analyses: Mapped[list["Analysis"]] = relationship(
+        back_populates="listing", cascade="all, delete-orphan"
+    )
+    # Same delete-orphan pattern as analyses above: a failure log is scoped
+    # to this listing's analysis attempt, and D-12's account-deletion promise
+    # ("removes every listing, analysis and risk indicator the user owns...
+    # no orphaned rows") extends to it too.
+    failure_logs: Mapped[list["AnalysisFailureLog"]] = relationship(
         back_populates="listing", cascade="all, delete-orphan"
     )
 
@@ -137,6 +144,23 @@ class RiskIndicator(Base):
     explanation: Mapped[str] = mapped_column(Text)
 
     analysis: Mapped[Analysis] = relationship(back_populates="risk_indicators")
+
+
+class AnalysisFailureLog(Base):
+    """Records a failed AI analysis attempt so failure rates are queryable
+    (D-15/#42): AnalysisFailure used to become a 502 with no persisted
+    trace anywhere. Written from routes.create_analysis's except branch,
+    mirroring the fields already in that branch's logger.error call."""
+    __tablename__ = "analysis_failure_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id"), index=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime, default=utcnow)
+    provider: Mapped[str] = mapped_column(String(20))
+    failure_type: Mapped[str] = mapped_column(String(120))
+    cause_type: Mapped[str] = mapped_column(String(120))
+
+    listing: Mapped[Listing] = relationship(back_populates="failure_logs")
 
 
 def init_db() -> None:
