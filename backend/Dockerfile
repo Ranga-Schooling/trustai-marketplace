@@ -5,6 +5,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
+# Not run by the container itself -- copied so `docker compose exec api
+# python -m scripts.promote_admin <email>` works against the deployed
+# database without a separate local checkout (D-15, issue #42).
+COPY scripts ./scripts
 EXPOSE 8000
 # Migrations run before the app starts, every container start -- a no-op
 # when already at head. Without this, alembic/ existed in the repo but was
