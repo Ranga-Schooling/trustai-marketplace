@@ -48,6 +48,10 @@ from app.schemas.schemas import (
     RiskIndicatorOut,
     RiskLevel,
 )
+from app.services.evidence_policy import (
+    EvidencePolicyViolation,
+    validate_evidence_policy,
+)
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -302,11 +306,13 @@ def _post_and_validate(
 
             raw_json = extract_raw_json(response.json())
             result = AIAnalysisResult.model_validate_json(raw_json)
+            validate_evidence_policy(result)
             return result, raw_json
         except (
             httpx.HTTPError,
             json.JSONDecodeError,
             ValidationError,
+            EvidencePolicyViolation,
             KeyError,
             IndexError,
             TypeError,
