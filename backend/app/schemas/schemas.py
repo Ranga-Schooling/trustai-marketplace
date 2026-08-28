@@ -39,6 +39,14 @@ class PricePlausibility(str, Enum):
     too_good_to_be_true = "too_good_to_be_true"
 
 
+class UserRole(str, Enum):
+    """D-15, docs/DESIGN_NOTES.md. No self-serve promotion path — the
+    first admin is set directly in the DB via scripts/promote_admin.py."""
+
+    buyer = "buyer"
+    admin = "admin"
+
+
 # ---------- Auth ----------
 class UserRegister(BaseModel):
     email: EmailStr
@@ -165,3 +173,21 @@ class AnalysisWithListingOut(AnalysisOut):
     listing_title: str
     listing_price: float
     listing_currency: str
+
+
+# ---------- Admin (D-15, issue #42) ----------
+class AdminAnalyticsOut(BaseModel):
+    """GET /admin/analytics response — aggregates only, never raw listing/
+    analysis content, so an admin dashboard isn't also a way to read every
+    user's submitted text (D-15). Global across all users by design, unlike
+    every other analysis-related route in this API, which is scoped to the
+    authenticated user — that's the entire point of an admin view."""
+
+    total_listings: int
+    total_analyses: int
+    listings_per_day: dict[str, int]
+    risk_level_distribution: dict[RiskLevel, int]
+    recommendation_distribution: dict[Recommendation, int]
+    price_plausibility_distribution: dict[PricePlausibility, int]
+    model_used_distribution: dict[str, int]
+    provider_failure_counts: dict[str, int]

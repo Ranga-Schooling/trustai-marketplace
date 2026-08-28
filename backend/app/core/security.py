@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.db import User, get_db
+from app.schemas.schemas import UserRole
 
 settings = get_settings()
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -73,4 +74,16 @@ def get_current_user(
     user = db.get(User, user_id)
     if user is None:
         raise CREDENTIALS_EXCEPTION
+    return user
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """[D-15, issue #42] 403 if the authenticated user isn't an admin.
+    Layered on get_current_user the same way every other protected route
+    composes dependencies. No self-serve promotion path — the first admin
+    is set directly in the DB via scripts/promote_admin.py."""
+    if user.role != UserRole.admin.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return user
