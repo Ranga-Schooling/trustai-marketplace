@@ -190,11 +190,21 @@ h3 { font-size: 1rem; }
 .pill{
     flex:1;
     background:transparent;
+    color:var(--ink-soft);
     border:none;
     border-radius:8px;
     padding:12px;
     font-weight:600;
     white-space:nowrap;
+}
+
+.pill:not(.active):hover{
+    color:#fff;
+}
+
+.pill:focus-visible{
+    outline:2px solid var(--trust-dark);
+    outline-offset:2px;
 }
 
 .pill.active{
