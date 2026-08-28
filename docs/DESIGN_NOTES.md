@@ -307,15 +307,17 @@ closes that specific gap as its own backend PR; the PR #52 diff's
 unrelated `updateProfile` → `updateMe` rename (which still breaks
 `Profile.jsx`'s existing caller) is out of scope here.
 
-**Admin RBAC + runtime provider config + analytics (D-15, design sketch
-for issue #42, additive to SCHEMA-0).** Issue #42 bundles two unrelated
-gaps: (1) `User.role` (`models/db.py`) exists, defaults to `"buyer"`, and
-is never read anywhere — no `require_admin`, no admin routes; (2)
-`AI_PROVIDER` only ever changes at deploy time (D-10). This is a design
-sketch, not an implementation — posted here so the actual PR(s) have
-something concrete to build against, per CLAUDE.md's contract-change
-process. Nothing below changes any frozen contract (`ListingIn`,
-`AIProvider`, `RiskLevel`); it's new, additive surface area only.
+**Admin RBAC + analytics implemented; runtime provider config still a
+sketch (D-15, issue #42, additive to SCHEMA-0).** Issue #42 bundles two
+unrelated gaps: (1) `User.role` (`models/db.py`) existed, defaulted to
+`"buyer"`, and was never read anywhere — no `require_admin`, no admin
+routes; (2) `AI_PROVIDER` only ever changes at deploy time (D-10). This
+entry originally posted as a design sketch so the actual PR had something
+concrete to build against, per CLAUDE.md's contract-change process;
+authorization and analytics below are now implemented, runtime provider
+switching is not (see that section). Nothing here changes any frozen
+contract (`ListingIn`, `AIProvider`, `RiskLevel`); it's new, additive
+surface area only.
 
 *Authorization.* A `UserRole` enum (`buyer` / `admin`) alongside the
 existing `RiskLevel`/`Recommendation`/`PricePlausibility` categorical
@@ -329,48 +331,59 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 ```
 No self-serve "become an admin" path — that's a privilege-escalation
-surface a capstone MVP doesn't need. The *first* admin is promoted with a
-direct `UPDATE users SET role='admin' WHERE email=...`, documented as an
-ops step, consistent with the project's already-minimal auth stance (D-07:
-no password reset, no email verification either). **Open question:**
-whether existing admins should then be able to promote others via
-`PATCH /admin/users/{id}/role`, or whether direct-DB-only is fine for the
-whole capstone lifetime — small either way, but it's a real access-control
-decision, not mine to make unilaterally.
+surface a capstone MVP doesn't need. **Resolved** (was an open question):
+direct-DB-only for the whole capstone lifetime, no
+`PATCH /admin/users/{id}/role` — consistent with the project's
+already-minimal auth stance (D-07: no password reset, no email
+verification either), and a promote-route is easy to add later if the
+team actually needs it. `scripts/promote_admin.py <email>` is the
+supported way to create the first (and, per this decision, only) admin —
+a thin wrapper around exactly the `UPDATE users SET role='admin'`
+originally sketched here, run via `docker compose exec api python -m
+scripts.promote_admin <email>` against the deployed database.
 
-*Runtime provider switching.* `get_settings()`'s `@lru_cache`d `Settings`
-stays exactly as-is — this does not touch it, to avoid re-litigating
-D-10/D-11's already-settled config machinery. Instead, a new one-row
-`AppConfig` table (`active_provider: str`) is the mutable source of truth
-`get_provider()` reads from (falling back to `settings.ai_provider` to
-seed the row on first read, so a fresh deploy with no admin action yet
-behaves exactly as it does today). Deliberately **not** an in-memory
-module-level variable: this app can run multiple worker processes
-(Render/gunicorn/uvicorn `--workers`), and an in-memory flip in one
-worker wouldn't be visible to the others — DB-backed is the only option
-that's actually consistent across workers *and* survives a restart, which
-is the whole point of the issue. API keys stay env-only, never
-DB/admin-settable — they're secrets, and this doesn't extend "no secrets
-in the repo" into "secrets settable via a web form." `PATCH /admin/config`
-validates the new value against the existing `KNOWN_PROVIDERS` set (same
-guard `get_provider()` already applies) before writing it.
+*Runtime provider switching — still a sketch, not implemented in this
+PR.* `get_settings()`'s `@lru_cache`d `Settings` stays exactly as-is —
+this does not touch it, to avoid re-litigating D-10/D-11's already-settled
+config machinery. Instead, a new one-row `AppConfig` table
+(`active_provider: str`) is the mutable source of truth `get_provider()`
+reads from (falling back to `settings.ai_provider` to seed the row on
+first read, so a fresh deploy with no admin action yet behaves exactly as
+it does today). Deliberately **not** an in-memory module-level variable:
+this app can run multiple worker processes (Render/gunicorn/uvicorn
+`--workers`), and an in-memory flip in one worker wouldn't be visible to
+the others — DB-backed is the only option that's actually consistent
+across workers *and* survives a restart, which is the whole point of the
+issue. API keys stay env-only, never DB/admin-settable — they're secrets,
+and this doesn't extend "no secrets in the repo" into "secrets settable
+via a web form." `PATCH /admin/config` validates the new value against
+the existing `KNOWN_PROVIDERS` set (same guard `get_provider()` already
+applies) before writing it. Deferred to its own PR, per this entry's
+original sequencing rationale: it touches provider selection, which
+`test_contract.py` pins structural guarantees around, so it deserves its
+own review and its own contract-test extension rather than landing
+incidentally alongside authorization/analytics.
 
-*Analytics.* Most of what issue #42 asks for is already queryable with
-zero schema changes — `GET /admin/analytics` behind `require_admin` can
-aggregate submissions/day (`Listing.created_at`), risk/recommendation/
-price-plausibility distribution, and even which model actually served
-each analysis (`Analysis.model_used`), all group-by-count queries over
-existing columns. Returns aggregates only, not raw listing content, so an
-admin dashboard isn't also a way to read every user's submitted text.
-**Open question, the one real gap:** "provider failure rates" (named
-explicitly in the issue) isn't queryable today — `AnalysisFailure` only
-ever becomes a 502 response; the listing is saved ("Persist-before-
-analyze" above) but the failed *attempt* leaves no row anywhere. Two ways to
-close that: a small `AnalysisFailureLog` table written in
-`create_analysis`'s `except AnalysisFailure` branch, or just structured
-logging without a new table if the team doesn't want another table for a
-capstone-scale MVP. Needs a call before either analytics or the
-provider-failure part of this issue can actually be built.
+*Analytics.* `GET /admin/analytics` behind `require_admin` aggregates
+submissions/day (`Listing.created_at`), risk/recommendation/
+price-plausibility distribution, and which model served each analysis
+(`Analysis.model_used`), all group-by-count queries over existing
+columns. Returns aggregates only, not raw listing content, so an admin
+dashboard isn't also a way to read every user's submitted text.
+Deliberately global across every user, not scoped to the caller like
+every other analysis-related route — that's the entire point of an admin
+view (`AdminAnalyticsOut` docstring). **Resolved** (was the one open
+gap): "provider failure rates" is now queryable via a new
+`AnalysisFailureLog` table (`listing_id`, `provider`, `failure_type`,
+`cause_type`, `created_at`), written from `create_analysis`'s `except
+AnalysisFailure` branch — the same fields that branch's `logger.error`
+call already captured, now also persisted instead of log-only. Chose the
+table over structured-logging-only because a SQL group-by is a better fit
+for an in-app dashboard than parsing logs, and the table costs one small
+additive migration. `Listing.failure_logs` uses the same
+`cascade="all, delete-orphan"` pattern as `Listing.analyses`, so `DELETE
+/auth/me` (D-12) still removes everything a deleted user's listings ever
+produced, including failed attempts — no orphaned rows.
 
 **Scheduled Postgres backups to S3 (D-13).** Raised as a direct question
 during final-weeks review: does the production database survive a
@@ -476,6 +489,43 @@ separate fixes, since they're two separate growth sources:
 `df -h /`, so reclaimed space is visible in the Action run rather than
 only discoverable by SSH-ing in (which zero-trust deploy deliberately
 doesn't support anyway).
+
+**Deterministic evidence-policy gate (D-19, extends D-17, issue #86).** The
+production v3 evaluation for #86 (D-17) showed the prompt-only mitigation
+was necessary but not sufficient: a live response can be schema-valid —
+`AIAnalysisResult` structurally correct — while still using forbidden
+reasoning as evidence, e.g. treating an unrecognized model as grounds for a
+counterfeit risk indicator, or missing images as grounds for an authenticity
+concern. Schema validation alone has no way to catch this, since it only
+checks shape, not the content of `summary`/`risk_indicators[].explanation`/
+`price_assessment`.
+
+`services/evidence_policy.py` adds a second, deterministic check — pattern
+matching, not a model — run immediately after schema validation inside
+`_post_and_validate` (`services/ai.py`). A match raises
+`EvidencePolicyViolation`, handled identically to a schema `ValidationError`:
+retry once, then `AnalysisFailure` on the second failure, reusing the
+existing 502 "listing was saved" path rather than adding a new one. It
+checks the same five patterns observed in the #86 production evaluation:
+product/model nonrecognition used as risk evidence, unavailable images used
+as adverse evidence, generic marketplace-reputation claims, invented
+payment/buyer-protection properties, and unsupported current-market price
+comparisons.
+
+Because this pattern-matches free-form prose, it has to actively avoid
+rejecting the honest, uncertainty-acknowledging language D-17's prompt
+already asks the model to produce — "not treated as a risk," "not known for
+scams" — so each rule strips a *negated* conclusion before testing for the
+adverse one, rather than matching on the presence of a risk-adjacent word
+alone. Getting this wrong in either direction has a real cost: too loose and
+known-bad reasoning still slips through; too tight and a compliant analysis
+gets wrongly retried and then rejected. This is deliberately a bounded,
+known-pattern safeguard, not a claim of complete semantic grounding — a
+differently-worded violation can still evade it. Manual live-provider
+evaluation (`docs/testing/README.md`) remains the real verification signal,
+same as D-17. No frozen contract changes: `ListingIn`, `AIAnalysisResult`,
+`AIProvider`, and `POST /analyses` remain unchanged; `MockProvider` is
+unaffected since it never calls `_post_and_validate`.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
