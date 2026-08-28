@@ -32,10 +32,33 @@ VALID_RESULT_JSON = """
 }
 """
 
+POLICY_INVALID_RESULT_JSON = """
+{
+    "summary": "The listing requires caution.",
+    "risk_level": "medium",
+    "risk_indicators": [
+        {
+            "category": "Product description accuracy",
+            "severity": "medium",
+            "explanation": "The model is not recognized in the official product lineup and may be counterfeit."
+        }
+    ],
+    "price_assessment": "Current pricing was not verified.",
+    "price_plausibility": "plausible",
+    "seller_questions": [
+        "Can I inspect the item before paying?"
+    ],
+    "recommendation": "caution"
+}
+"""
+
 
 class FakeResponse:
     """OpenAI-compatible shape -- shared by Groq and GPT (both subclass
     OpenAICompatibleProvider, same request/response format)."""
+
+    def __init__(self, content=VALID_RESULT_JSON):
+        self.content = content
 
     def raise_for_status(self):
         pass
@@ -45,7 +68,7 @@ class FakeResponse:
             "choices": [
                 {
                     "message": {
-                        "content": VALID_RESULT_JSON,
+                        "content": self.content,
                     }
                 }
             ]
@@ -56,6 +79,9 @@ class FakeGeminiResponse:
     """Gemini's generateContent shape -- candidates/content/parts, not
     OpenAI's choices/message."""
 
+    def __init__(self, content=VALID_RESULT_JSON):
+        self.content = content
+
     def raise_for_status(self):
         pass
 
@@ -64,7 +90,7 @@ class FakeGeminiResponse:
             "candidates": [
                 {
                     "content": {
-                        "parts": [{"text": VALID_RESULT_JSON}],
+                        "parts": [{"text": self.content}],
                     }
                 }
             ]
@@ -263,6 +289,71 @@ def test_groq_provider_raises_analysis_failure_after_two_failures(monkeypatch):
         provider.analyze(listing)
 
     assert calls == 2
+
+
+def test_groq_provider_retries_after_evidence_policy_violation(monkeypatch):
+    responses = iter(
+        [
+            POLICY_INVALID_RESULT_JSON,
+            VALID_RESULT_JSON,
+        ]
+    )
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeResponse(next(responses))
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.groq_api_key", "test-key")
+
+    result, raw_json = GroqProvider().analyze(_listing())
+
+    assert calls == 2
+    assert result.summary == "No obvious risk indicators were found."
+    assert result.risk_level is RiskLevel.low
+    assert result.recommendation is Recommendation.buy
+    assert raw_json == VALID_RESULT_JSON
+
+
+def test_groq_provider_fails_closed_after_two_evidence_policy_violations(
+    monkeypatch,
+):
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeResponse(POLICY_INVALID_RESULT_JSON)
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.groq_api_key", "test-key")
+
+    with pytest.raises(AnalysisFailure):
+        GroqProvider().analyze(_listing())
+
+    assert calls == 2
+
+
+def test_groq_provider_accepts_policy_compliant_response_without_retry(monkeypatch):
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeResponse()
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.groq_api_key", "test-key")
+
+    result, raw_json = GroqProvider().analyze(_listing())
+
+    assert calls == 1
+    assert result.summary == "No obvious risk indicators were found."
+    assert result.risk_level is RiskLevel.low
+    assert result.recommendation is Recommendation.buy
+    assert raw_json == VALID_RESULT_JSON
 
 
 def test_default_groq_model_uses_supported_replacement():
@@ -507,6 +598,73 @@ def test_gemini_provider_raises_analysis_failure_after_two_failures(monkeypatch)
 
     with pytest.raises(AnalysisFailure):
         provider.analyze(listing)
+
+
+def test_gemini_provider_retries_after_evidence_policy_violation(monkeypatch):
+    responses = iter(
+        [
+            POLICY_INVALID_RESULT_JSON,
+            VALID_RESULT_JSON,
+        ]
+    )
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeGeminiResponse(next(responses))
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.gemini_api_key", "test-key")
+
+    result, raw_json = GeminiProvider().analyze(_listing())
+
+    assert calls == 2
+    assert result.summary == "No obvious risk indicators were found."
+    assert result.risk_level is RiskLevel.low
+    assert result.recommendation is Recommendation.buy
+    assert raw_json == VALID_RESULT_JSON
+
+
+def test_gemini_provider_fails_closed_after_two_evidence_policy_violations(
+    monkeypatch,
+):
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeGeminiResponse(POLICY_INVALID_RESULT_JSON)
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.gemini_api_key", "test-key")
+
+    with pytest.raises(AnalysisFailure):
+        GeminiProvider().analyze(_listing())
+
+    assert calls == 2
+
+
+def test_gemini_provider_accepts_policy_compliant_response_without_retry(
+    monkeypatch,
+):
+    calls = 0
+
+    def fake_post(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return FakeGeminiResponse()
+
+    monkeypatch.setattr("app.services.ai.httpx.post", fake_post)
+    monkeypatch.setattr("app.services.ai.settings.gemini_api_key", "test-key")
+
+    result, raw_json = GeminiProvider().analyze(_listing())
+
+    assert calls == 1
+    assert result.summary == "No obvious risk indicators were found."
+    assert result.risk_level is RiskLevel.low
+    assert result.recommendation is Recommendation.buy
+    assert raw_json == VALID_RESULT_JSON
 
 
 def test_gemini_provider_requires_api_key(monkeypatch):

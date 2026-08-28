@@ -9,6 +9,7 @@ Ownership:
 - POST /analyses     E2 + E3 pair   US-2.1, US-2.2, US-3.1
 - GET /analyses*     E2 (Abdallah)  US-4.1
 - POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
+- GET /admin/analytics    (Ranga)   D-15, issue #42
 
 Agreed behaviors (docs/DESIGN_NOTES.md):
 - The listing row is committed BEFORE the AI call, so a provider outage
@@ -31,10 +32,19 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   services/scoring.py from the already-validated risk_level/
   risk_indicators; no AIProvider returns it, AIAnalysisResult is
   unchanged. [Trello #27]
+- GET /admin/analytics is additive to SCHEMA-0 (D-15): gated by
+  require_admin, no self-serve promotion (scripts/promote_admin.py is
+  the only way to become admin). Deliberately global across all users,
+  not scoped to the caller like every other analysis route — aggregates
+  only, never raw listing/analysis content. A failed AnalysisFailure now
+  also writes an AnalysisFailureLog row (create_analysis's except branch)
+  so provider failure rate is queryable instead of log-only.
 """
 import logging
+from collections import Counter
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.config import get_settings
@@ -42,12 +52,21 @@ from app.core.security import (
     create_access_token,
     get_current_user,
     hash_password,
+    require_admin,
     verify_password,
 )
-from app.models.db import Analysis, Listing, RiskIndicator, User, get_db
+from app.models.db import (
+    Analysis,
+    AnalysisFailureLog,
+    Listing,
+    RiskIndicator,
+    User,
+    get_db,
+)
 from app.services.ai import AnalysisFailure, get_provider
 from app.services.scoring import compute_risk_score
 from app.schemas.schemas import (
+    AdminAnalyticsOut,
     AnalysisOut,
     AnalysisWithListingOut,
     ListingIn,
@@ -204,6 +223,17 @@ def create_analysis(
             type(exc).__name__,
             cause_type,
         )
+        # D-15/#42: mirrors the log line above so failure rate is queryable
+        # (GET /admin/analytics) instead of only discoverable by grepping logs.
+        db.add(
+            AnalysisFailureLog(
+                listing_id=listing.id,
+                provider=settings.ai_provider,
+                failure_type=type(exc).__name__,
+                cause_type=cause_type,
+            )
+        )
+        db.commit()
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="AI analysis failed; the listing was saved.",
@@ -292,3 +322,45 @@ def get_analysis(
     if analysis is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
     return _to_analysis_with_listing(analysis)
+
+
+@router.get("/admin/analytics", response_model=AdminAnalyticsOut)
+def admin_analytics(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """[D-15, issue #42] Aggregate usage/risk/failure metrics across every
+    user -- the one route in this API deliberately not scoped to the
+    authenticated caller (see AdminAnalyticsOut). Aggregates only, never
+    raw listing/analysis content."""
+    listings_per_day: Counter[str] = Counter(
+        created_at.date().isoformat()
+        for (created_at,) in db.query(Listing.created_at).all()
+    )
+
+    return AdminAnalyticsOut(
+        total_listings=db.query(Listing).count(),
+        total_analyses=db.query(Analysis).count(),
+        listings_per_day=dict(listings_per_day),
+        risk_level_distribution=dict(
+            db.query(Analysis.risk_level, func.count()).group_by(Analysis.risk_level).all()
+        ),
+        recommendation_distribution=dict(
+            db.query(Analysis.recommendation, func.count())
+            .group_by(Analysis.recommendation)
+            .all()
+        ),
+        price_plausibility_distribution=dict(
+            db.query(Analysis.price_plausibility, func.count())
+            .group_by(Analysis.price_plausibility)
+            .all()
+        ),
+        model_used_distribution=dict(
+            db.query(Analysis.model_used, func.count()).group_by(Analysis.model_used).all()
+        ),
+        provider_failure_counts=dict(
+            db.query(AnalysisFailureLog.provider, func.count())
+            .group_by(AnalysisFailureLog.provider)
+            .all()
+        ),
+    )
