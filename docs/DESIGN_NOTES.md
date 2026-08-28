@@ -486,6 +486,43 @@ separate fixes, since they're two separate growth sources:
 only discoverable by SSH-ing in (which zero-trust deploy deliberately
 doesn't support anyway).
 
+**Deterministic evidence-policy gate (D-19, extends D-17, issue #86).** The
+production v3 evaluation for #86 (D-17) showed the prompt-only mitigation
+was necessary but not sufficient: a live response can be schema-valid —
+`AIAnalysisResult` structurally correct — while still using forbidden
+reasoning as evidence, e.g. treating an unrecognized model as grounds for a
+counterfeit risk indicator, or missing images as grounds for an authenticity
+concern. Schema validation alone has no way to catch this, since it only
+checks shape, not the content of `summary`/`risk_indicators[].explanation`/
+`price_assessment`.
+
+`services/evidence_policy.py` adds a second, deterministic check — pattern
+matching, not a model — run immediately after schema validation inside
+`_post_and_validate` (`services/ai.py`). A match raises
+`EvidencePolicyViolation`, handled identically to a schema `ValidationError`:
+retry once, then `AnalysisFailure` on the second failure, reusing the
+existing 502 "listing was saved" path rather than adding a new one. It
+checks the same five patterns observed in the #86 production evaluation:
+product/model nonrecognition used as risk evidence, unavailable images used
+as adverse evidence, generic marketplace-reputation claims, invented
+payment/buyer-protection properties, and unsupported current-market price
+comparisons.
+
+Because this pattern-matches free-form prose, it has to actively avoid
+rejecting the honest, uncertainty-acknowledging language D-17's prompt
+already asks the model to produce — "not treated as a risk," "not known for
+scams" — so each rule strips a *negated* conclusion before testing for the
+adverse one, rather than matching on the presence of a risk-adjacent word
+alone. Getting this wrong in either direction has a real cost: too loose and
+known-bad reasoning still slips through; too tight and a compliant analysis
+gets wrongly retried and then rejected. This is deliberately a bounded,
+known-pattern safeguard, not a claim of complete semantic grounding — a
+differently-worded violation can still evade it. Manual live-provider
+evaluation (`docs/testing/README.md`) remains the real verification signal,
+same as D-17. No frozen contract changes: `ListingIn`, `AIAnalysisResult`,
+`AIProvider`, and `POST /analyses` remain unchanged; `MockProvider` is
+unaffected since it never calls `_post_and_validate`.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
