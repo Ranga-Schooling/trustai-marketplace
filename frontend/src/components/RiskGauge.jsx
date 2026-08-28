@@ -8,6 +8,9 @@ const RECOMMENDATION_LABEL = {
 
 const GAUGE_CENTER = { x: 110, y: 100 };
 const GAUGE_RADIUS = 80;
+// Keep these visual half-step boundaries synchronized with TIER_RANGES in
+// backend/app/services/scoring.py: 33.5/66.5 separate the integer 0–33,
+// 34–66, and 67–100 tiers; backend threshold changes require updates here.
 const GAUGE_ZONES = [
   { start: 0, end: 33.5, className: 'gauge-arc-buy' },
   { start: 33.5, end: 66.5, className: 'gauge-arc-caution' },
