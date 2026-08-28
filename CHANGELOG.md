@@ -1,3 +1,10 @@
+## [1.16.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.5...v1.16.0) (2026-08-28)
+
+
+### Features
+
+* **admin:** admin RBAC + analytics dashboard (D-15, issue [#42](https://github.com/Ranga-Schooling/trustai-marketplace/issues/42)) ([#91](https://github.com/Ranga-Schooling/trustai-marketplace/issues/91)) ([f8cb2b0](https://github.com/Ranga-Schooling/trustai-marketplace/commit/f8cb2b011775d6bf0e753fc8290e0c4631c64d14))
+
 ## [1.15.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.15.4...v1.15.5) (2026-08-23)
 
 
