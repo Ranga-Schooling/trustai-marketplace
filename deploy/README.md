@@ -118,15 +118,19 @@ images were never `<none>`/dangling — `docker image prune` without `-a` only r
 dangling images, so it silently never touched them, and they piled up on the instance's
 disk indefinitely. Two fixes, since they address different growth sources:
 
-1. **Stale images/containers/networks.** `deploy.yml`'s remote script now runs
-   `docker image prune -af` (the `-a` is the fix — removes *any* image with zero
-   containers referencing it, not just untagged ones), plus `container`/`network
-   prune -f`, right after the health check confirms the new stack is up — so only the
-   previous deploy's now-genuinely-unused resources are removed, never anything the live
-   stack is using. This runs on **every deploy**, not on a separate schedule — disk usage
-   never has a chance to grow across more than one deploy's worth of images. Logs
-   `docker system df` before/after and `df -h /`, so reclaimed space is visible in the
-   Action run.
+1. **Stale images/containers/networks.** `deploy.yml`'s remote script runs
+   `docker image prune -af` (the `-a` removes *any* image with zero containers
+   referencing it, not just untagged ones) after validating the transferred Compose
+   configuration and before pulling new images. This recovers pull headroom when a
+   previous deploy could not reach its post-health cleanup; images referenced by the
+   currently running containers are retained. After activation and a successful health
+   check, the workflow runs the image prune again, followed by `container`/`network
+   prune -f`, so resources made unused by the new deployment are removed. Disk usage is
+   reported around cleanup so reclaimed space is visible in the Action run.
+
+   An unused local rollback image can be removed by these passes. Application images are
+   tagged with immutable commit SHAs in ECR and can be pulled again when a rollback is
+   required; the running deployment's image remains protected by its container reference.
 
    Deliberately **not** included: `docker volume prune`. Unlike images/containers,
    an unreferenced volume isn't necessarily disposable — it might be intentionally
