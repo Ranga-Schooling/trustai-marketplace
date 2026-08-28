@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models.db import Analysis, Base, Listing, SessionLocal, engine
+from app.models.db import Analysis, Base, Listing, RiskIndicator, SessionLocal, engine
 from app.schemas.schemas import PricePlausibility, Recommendation, RiskLevel
 
 pytestmark = []
@@ -331,3 +331,55 @@ def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch, caplog):
     assert "failure_type=AnalysisFailure" in caplog.text
     assert "cause_type=none" in caplog.text
     assert "simulated outage" not in caplog.text
+
+
+def test_evidence_policy_exhaustion_persists_only_listing(client, monkeypatch):
+    headers = register_and_login(client)
+    user_id = client.get("/api/auth/me", headers=headers).json()["id"]
+
+    from app.api import routes
+    from app.services.ai import AnalysisFailure
+    from app.services.evidence_policy import EvidencePolicyViolation
+
+    class PolicyExhaustedProvider:
+        model_name = "policy-test"
+
+        def analyze(self, listing):
+            violation = EvidencePolicyViolation(("product_nonrecognition",))
+            raise AnalysisFailure("evidence policy rejected both attempts") from violation
+
+    monkeypatch.setattr(routes, "get_provider", lambda: PolicyExhaustedProvider())
+
+    response = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+
+    assert response.status_code == 502
+    assert response.json() == {
+        "detail": "AI analysis failed; the listing was saved.",
+    }
+
+    db = SessionLocal()
+    try:
+        listing = (
+            db.query(Listing)
+            .filter(
+                Listing.user_id == user_id,
+                Listing.title == SAFE_LISTING["title"],
+            )
+            .one()
+        )
+        assert listing.price == SAFE_LISTING["price"]
+        assert listing.currency == SAFE_LISTING["currency"].upper()
+        assert listing.source == SAFE_LISTING["source"]
+        assert listing.description == SAFE_LISTING["description"]
+        assert listing.url is None
+
+        assert db.query(Analysis).filter(Analysis.listing_id == listing.id).count() == 0
+        assert (
+            db.query(RiskIndicator)
+            .join(Analysis)
+            .filter(Analysis.listing_id == listing.id)
+            .count()
+            == 0
+        )
+    finally:
+        db.close()
