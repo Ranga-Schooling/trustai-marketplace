@@ -33,7 +33,6 @@ async function request(path, options = {}) {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
   };
-  const hadToken = Boolean(token);
   const hadToken = hasToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
