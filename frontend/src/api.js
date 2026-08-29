@@ -65,4 +65,8 @@ export const api = {
   previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),
+  // D-20, issue #80: listings whose AI call failed and were never
+  // retrieved anywhere -- and retrying one without re-entering it.
+  listFailedListings: () => request('/listings/failed'),
+  retryAnalysis: (listingId) => request(`/listings/${listingId}/retry`, { method: 'POST' }),
 };
