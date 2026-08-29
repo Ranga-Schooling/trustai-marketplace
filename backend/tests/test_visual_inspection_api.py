@@ -2,8 +2,12 @@
 
 import asyncio
 import json
+import subprocess
+import sys
 import threading
+import textwrap
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
@@ -233,6 +237,67 @@ def test_visual_inspection_returns_404_for_unknown_analysis(client, monkeypatch)
     assert response.status_code == 404
     assert response.json() == {"detail": "Analysis not found"}
     assert provider.calls == []
+
+
+def test_visual_inspection_422_mapping_does_not_require_new_starlette_symbol():
+    probe = textwrap.dedent(
+        """
+        import asyncio
+        from types import SimpleNamespace
+
+        from fastapi import HTTPException
+        from starlette import status
+
+        status.__dict__.pop("HTTP_422_UNPROCESSABLE_CONTENT", None)
+
+        from app.api import routes
+
+        assert routes._VISUAL_IMAGE_ERROR_STATUS["invalid_image"] == 422
+        assert routes._VISUAL_IMAGE_ERROR_STATUS["animated_image"] == 422
+
+        class FakeQuery:
+            def join(self, *_args):
+                return self
+
+            def filter(self, *_args):
+                return self
+
+            def options(self, *_args):
+                return self
+
+            def first(self):
+                return SimpleNamespace(listing=SimpleNamespace())
+
+        class FakeDatabase:
+            def query(self, *_args):
+                return FakeQuery()
+
+        try:
+            asyncio.run(
+                routes.create_visual_inspection(
+                    analysis_id=1,
+                    photos=[],
+                    db=FakeDatabase(),
+                    user=SimpleNamespace(id=1),
+                )
+            )
+        except HTTPException as exc:
+            assert exc.status_code == 422
+            assert exc.detail == "photo_count_out_of_range"
+        else:
+            raise AssertionError("zero-photo request did not return HTTP 422")
+        """
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=Path(__file__).resolve().parents[1],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize("photo_count", [0, 4])

@@ -101,14 +101,15 @@ logger = logging.getLogger(__name__)
 
 MAX_VISUAL_PHOTOS = 3
 MAX_COMBINED_VISUAL_SOURCE_BYTES = 10 * 1024 * 1024
+_HTTP_422_UNPROCESSABLE = 422
 _VISUAL_IMAGE_ERROR_STATUS = {
     "unsupported_type": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     "format_mismatch": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     "image_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
     "dimensions_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
     "too_many_pixels": status.HTTP_413_CONTENT_TOO_LARGE,
-    "invalid_image": status.HTTP_422_UNPROCESSABLE_CONTENT,
-    "animated_image": status.HTTP_422_UNPROCESSABLE_CONTENT,
+    "invalid_image": _HTTP_422_UNPROCESSABLE,
+    "animated_image": _HTTP_422_UNPROCESSABLE,
 }
 
 
@@ -380,7 +381,7 @@ async def create_visual_inspection(
 
         if not 1 <= len(uploads) <= MAX_VISUAL_PHOTOS:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                status_code=_HTTP_422_UNPROCESSABLE,
                 detail="photo_count_out_of_range",
             )
 
