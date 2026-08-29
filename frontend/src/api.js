@@ -14,13 +14,27 @@ export function hasToken() {
   return Boolean(token);
 }
 
+// Lets the app react when a request discovers the session is no longer
+// valid (401 on a request that did carry a token) -- registered once by
+// App.jsx so React state (`user`) gets reset at the same time the token
+// does, instead of only on the boot-time check. Without this, a 401 hit
+// on an already-mounted authenticated screen clears the token but leaves
+// the UI looking signed in, so a retry goes out with no token at all and
+// shows the raw backend error instead of the friendly message below.
+let onSessionExpired = null;
+
+export function setOnSessionExpired(fn) {
+  onSessionExpired = fn;
+}
+
 async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-  const hadToken = Boolean(token);
+  const hadToken = hasToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
   if (res.status === 401 && hadToken) {
     setToken(null);
+    onSessionExpired?.();
     throw new ApiError('Your session has expired. Please sign in again.', 401);
   }
   const body = await res.json().catch(() => ({}));

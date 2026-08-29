@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
-import { api, setToken } from './api';
+import { api, hasToken, setToken } from './api';
 
 // Regression coverage for #68: App.jsx called api.updateMe()/api.deleteMe(),
 // which didn't exist on the api client -- backend tests never caught it
@@ -65,5 +65,50 @@ describe('App account management', () => {
     await events.click(screen.getByRole('button', { name: 'Delete account' }));
 
     expect(api.deleteMe).not.toHaveBeenCalled();
+  });
+});
+
+// Regression coverage for #82: a 401 hit on an already-mounted authenticated
+// screen (not the boot-time check) used to clear the token but leave
+// `user` state untouched, so the UI kept rendering the authenticated shell.
+// A retry from there went out with no token at all, and the friendly
+// "session expired" message PR #81 introduced never got a chance to show.
+// This goes through the real api.js request() (via a stubbed fetch, not a
+// mocked api.listAnalyses), so it fails the same way #82 did if the
+// api.js <-> App.jsx wiring regresses.
+describe('App session expiry mid-session', () => {
+  const user = { id: 1, email: 'buyer@example.com', name: 'Buyer' };
+
+  beforeEach(() => {
+    setToken('fake-token');
+    vi.spyOn(api, 'me').mockResolvedValue(user);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    setToken(null);
+  });
+
+  it('falls back to the login screen and shows a notice, without a token-less retry', async () => {
+    const events = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 401,
+        ok: false,
+        json: async () => ({ detail: 'Could not validate credentials' }),
+      }),
+    );
+
+    render(<App />);
+    await events.click(await screen.findByRole('button', { name: 'History' }));
+
+    expect(
+      await screen.findByText('Your session has expired. Please sign in again.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'History' })).not.toBeInTheDocument();
+    expect(hasToken()).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
