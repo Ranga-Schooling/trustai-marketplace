@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import RiskGauge from './RiskGauge';
+import VisualInspection from './VisualInspection';
 
 // Reuses the existing low/medium/high badge palette for plausibility, since
 // it's the same "fine -> caution -> alarming" gradient as risk severity —
@@ -103,6 +104,8 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
           </button>
         </section>
       </div>
+
+      <VisualInspection analysisId={analysis.id} />
 
       <p className="disclaimer dashed">Disclaimer — TrustAI provides decision-support guidance, not a guarantee.</p>
 

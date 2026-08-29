@@ -15,7 +15,11 @@ export function hasToken() {
 }
 
 async function request(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(options.headers || {}),
+  };
   const hadToken = Boolean(token);
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
@@ -51,4 +55,9 @@ export const api = {
   previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),
+  visualInspect: (analysisId, files) => {
+    const body = new FormData();
+    files.forEach((file) => body.append('photos', file));
+    return request(`/analyses/${analysisId}/visual-inspection`, { method: 'POST', body });
+  },
 };
