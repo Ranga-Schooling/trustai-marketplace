@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ApiError, api, setToken } from '../api';
 
-export default function AuthForm({ onSignedIn }) {
+export default function AuthForm({ onSignedIn, notice }) {
   const [mode, setMode] = useState('signin');
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
@@ -61,6 +61,7 @@ export default function AuthForm({ onSignedIn }) {
         </p>
 
         <form onSubmit={handleSubmit}>
+          {notice ? <div className="error">{notice}</div> : null}
           {error ? <div className="error">{error}</div> : null}
 
           {mode === 'signup' ? (

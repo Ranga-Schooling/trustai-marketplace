@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { api, setToken } from './api';
+import { api, setOnSessionExpired, setToken } from './api';
 
 function unauthorizedResponse(detail) {
   return {
@@ -13,6 +13,7 @@ function unauthorizedResponse(detail) {
 describe('API authentication errors', () => {
   afterEach(() => {
     setToken(null);
+    setOnSessionExpired(null);
     vi.unstubAllGlobals();
   });
 
@@ -43,6 +44,36 @@ describe('API authentication errors', () => {
       status: 401,
     });
     expect(sessionStorage.getItem('trustai_token')).toBeNull();
+  });
+
+  it('notifies the registered session-expired handler on an authenticated 401', async () => {
+    setToken('existing-token');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(unauthorizedResponse('Could not validate credentials')),
+    );
+    const onSessionExpired = vi.fn();
+    setOnSessionExpired(onSessionExpired);
+
+    await expect(api.me()).rejects.toBeTruthy();
+
+    expect(onSessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not notify the session-expired handler for an anonymous login failure', async () => {
+    setToken(null);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(unauthorizedResponse('Invalid email or password')),
+    );
+    const onSessionExpired = vi.fn();
+    setOnSessionExpired(onSessionExpired);
+
+    await expect(
+      api.login({ email: 'buyer@example.com', password: 'wrong-password' }),
+    ).rejects.toBeTruthy();
+
+    expect(onSessionExpired).not.toHaveBeenCalled();
   });
 });
 
