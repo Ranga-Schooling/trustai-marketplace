@@ -1,3 +1,10 @@
+## [1.16.4](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.3...v1.16.4) (2026-08-29)
+
+
+### Bug Fixes
+
+* **frontend:** sync user state on mid-session token expiry ([#82](https://github.com/Ranga-Schooling/trustai-marketplace/issues/82)) ([#98](https://github.com/Ranga-Schooling/trustai-marketplace/issues/98)) ([8291f12](https://github.com/Ranga-Schooling/trustai-marketplace/commit/8291f12571dbf86f96a820f52b34e3fbd0887fa7)), closes [#81](https://github.com/Ranga-Schooling/trustai-marketplace/issues/81) [#68](https://github.com/Ranga-Schooling/trustai-marketplace/issues/68)
+
 ## [1.16.3](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.2...v1.16.3) (2026-08-28)
 
 
