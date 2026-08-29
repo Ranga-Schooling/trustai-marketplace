@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, hasToken, setToken } from './api';
+import { api, hasToken, setOnSessionExpired, setToken } from './api';
 import AnalysisResult from './components/AnalysisResult';
 import AuthForm from './components/AuthForm';
 import History from './components/History';
@@ -14,6 +14,7 @@ export default function App() {
   const [accountError, setAccountError] = useState('');
   const [accountSuccess, setAccountSuccess] = useState('');
   const [accountLoading, setAccountLoading] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState('');
 
   useEffect(() => {
     if (!hasToken()) {
@@ -29,6 +30,21 @@ export default function App() {
         setUser(null);
       })
       .finally(() => setBooting(false));
+  }, []);
+
+  // Fires for a 401 hit on any already-mounted authenticated screen, not
+  // just the boot-time check above -- keeps `user` in sync with the token
+  // api.js just cleared, so the UI falls back to the login screen
+  // immediately instead of still looking signed in until a token-less
+  // retry surfaces a confusing raw backend error (issue #82).
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      setUser(null);
+      setResult(null);
+      setView('submit');
+      setSessionNotice('Your session has expired. Please sign in again.');
+    });
+    return () => setOnSessionExpired(null);
   }, []);
 
   function signOut() {
@@ -164,7 +180,13 @@ export default function App() {
               </ul>
             </div>
           </section>
-          <AuthForm onSignedIn={setUser} />
+          <AuthForm
+            notice={sessionNotice}
+            onSignedIn={(signedInUser) => {
+              setSessionNotice('');
+              setUser(signedInUser);
+            }}
+          />
         </div>
       ) : null}
 
