@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     groq_model: str = "openai/gpt-oss-120b"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    visual_inspection_provider: str = "disabled"
+    visual_inspection_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
     prompt_version: str = "v3"
