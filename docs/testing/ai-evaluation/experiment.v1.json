@@ -1,0 +1,893 @@
+{
+  "schema_version": "1.0.0",
+  "experiment_version": "v1",
+  "status": "pre_execution",
+  "methodology_commit": "992913a9f2da4e36f6f1defc98439ce9cb21a4a2",
+  "fixture_manifest_version": "trustai-provider-evaluation-v1",
+  "fixture_manifest_schema_version": "1.0.0",
+  "rubric_version": "trustai-provider-evaluation-v1",
+  "rubric_schema_version": "1.0.0",
+  "scoring_rule_version": "v1",
+  "winner_selected": false,
+  "provider_calls_completed": 0,
+  "scored_provider_calls_completed": 0,
+  "purpose": "Freeze the candidate architectures, eligibility boundaries, run plan, and pre-execution controls for the TrustAI V1 provider evaluation without selecting a preferred candidate.",
+  "execution_gate": {
+    "authoritative_for_all_provider_execution": true,
+    "overall_status": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "credential_authorization_status": "pending",
+    "pilot_authorization_status": "pending",
+    "scored_authorization_status": "pending",
+    "credential_governance": {
+      "credential_material_present": false,
+      "source_and_handling_policy_status": "pending",
+      "required_storage_boundary": "outside_git_and_evaluation_artifacts",
+      "git_exclusion_required": true,
+      "least_privilege_project_or_account_scope_decision_status": "pending",
+      "account_organization_or_project_identifiers_present": false
+    },
+    "readiness_statuses": {
+      "pilot_prompt_set": "pending",
+      "pilot_output_schema_set": "pending",
+      "normalization_parser_implementation_and_version": "pending",
+      "pilot_request_configurations": "pending",
+      "pilot_timeout_and_retry_policy": "pending",
+      "logging_and_result_record_mechanism": "pending",
+      "pilot_privacy_and_data_handling_review": "pending",
+      "universal_execution_blockers": "unresolved",
+      "pilot_completion": "not_started",
+      "pilot_findings_review": "pending",
+      "pilot_blocking_defects": "unknown",
+      "visual_truth_records": "pending",
+      "grader_calibration": "pending",
+      "exact_scored_request_configurations": "pending",
+      "common_preflight": "pending"
+    },
+    "universal_provider_call_prerequisites": [
+      {
+        "id": "candidate_lifecycle_preflight_complete",
+        "required_state": "complete_and_current",
+        "status_source": "lifecycle_preflight.status"
+      },
+      {
+        "id": "exact_candidate_endpoints_and_models_frozen",
+        "required_state": "frozen",
+        "status_source": "parameter_protocol.status"
+      },
+      {
+        "id": "credential_use_explicitly_authorized",
+        "required_state": "approved",
+        "status_source": "execution_gate.credential_authorization_status"
+      },
+      {
+        "id": "credential_handling_configured_outside_git_and_artifacts",
+        "required_state": "approved",
+        "status_source": "execution_gate.credential_governance.source_and_handling_policy_status"
+      },
+      {
+        "id": "credential_scope_and_least_privilege_decision_complete",
+        "required_state": "approved",
+        "status_source": "execution_gate.credential_governance.least_privilege_project_or_account_scope_decision_status"
+      },
+      {
+        "id": "official_pricing_freeze_complete",
+        "required_state": "frozen",
+        "status_source": "pricing_source_protocol.status"
+      },
+      {
+        "id": "pilot_cost_ceiling_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "cost_controls.pilot_cost_ceiling_usd"
+      },
+      {
+        "id": "provider_neutral_pilot_prompts_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.pilot_prompt_set"
+      },
+      {
+        "id": "pilot_output_schemas_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.pilot_output_schema_set"
+      },
+      {
+        "id": "pilot_harness_implementation_and_version_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.harness_version.value"
+      },
+      {
+        "id": "normalization_parser_implementation_and_version_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.normalization_parser_implementation_and_version"
+      },
+      {
+        "id": "pilot_fixtures_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.pilot_fixture_set_version.value"
+      },
+      {
+        "id": "pilot_request_configurations_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.pilot_request_configurations"
+      },
+      {
+        "id": "pilot_timeout_and_retry_behavior_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.pilot_timeout_and_retry_policy"
+      },
+      {
+        "id": "logging_and_result_record_mechanism_ready",
+        "required_state": "ready",
+        "status_source": "execution_gate.readiness_statuses.logging_and_result_record_mechanism"
+      },
+      {
+        "id": "pilot_privacy_and_data_handling_eligibility_reviewed",
+        "required_state": "approved",
+        "status_source": "execution_gate.readiness_statuses.pilot_privacy_and_data_handling_review"
+      },
+      {
+        "id": "no_unresolved_execution_blocking_prerequisite",
+        "required_state": "none",
+        "status_source": "execution_gate.readiness_statuses.universal_execution_blockers"
+      }
+    ],
+    "pilot_specific_prerequisites": [
+      {
+        "id": "all_universal_provider_call_prerequisites_pass",
+        "required_state": "all_pass"
+      },
+      {
+        "id": "dedicated_pilot_fixture_set_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.pilot_fixture_set_version.value"
+      },
+      {
+        "id": "explicit_pilot_authorization_recorded",
+        "required_state": "approved",
+        "status_source": "execution_gate.pilot_authorization_status"
+      }
+    ],
+    "scored_call_prerequisites": [
+      {
+        "id": "all_universal_provider_call_prerequisites_pass",
+        "required_state": "all_pass"
+      },
+      {
+        "id": "successful_pilot_completed",
+        "required_state": "successful",
+        "status_source": "execution_gate.readiness_statuses.pilot_completion"
+      },
+      {
+        "id": "pilot_findings_reviewed",
+        "required_state": "complete",
+        "status_source": "execution_gate.readiness_statuses.pilot_findings_review"
+      },
+      {
+        "id": "no_unresolved_pilot_blocking_defect",
+        "required_state": "none",
+        "status_source": "execution_gate.readiness_statuses.pilot_blocking_defects"
+      },
+      {
+        "id": "scored_provider_neutral_prompts_frozen",
+        "required_state": "frozen",
+        "status_source": "pending_versioned_artifacts.prompt_template_versions.status"
+      },
+      {
+        "id": "scored_output_schemas_frozen",
+        "required_state": "frozen",
+        "status_source": "pending_versioned_artifacts.output_schema_versions.status"
+      },
+      {
+        "id": "P1_through_P8_truth_sheets_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.truth_sheet_version.value"
+      },
+      {
+        "id": "visual_assets_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.visual_asset_set_version.value"
+      },
+      {
+        "id": "visual_truth_records_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.visual_truth_records"
+      },
+      {
+        "id": "grading_anchor_set_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.grading_anchor_set_version.value"
+      },
+      {
+        "id": "grader_calibration_completed",
+        "required_state": "complete",
+        "status_source": "execution_gate.readiness_statuses.grader_calibration"
+      },
+      {
+        "id": "OA7_operational_anchors_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.operational_maturity_anchor_set_version.value"
+      },
+      {
+        "id": "OA8_latency_bands_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.latency_normalization_bands_version.value"
+      },
+      {
+        "id": "OA9_cost_bands_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "pending_versioned_artifacts.cost_normalization_bands_version.value"
+      },
+      {
+        "id": "scored_cost_ceiling_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "cost_controls.scored_experiment_cost_ceiling_usd"
+      },
+      {
+        "id": "execution_seed_frozen",
+        "required_state": "frozen_non_null",
+        "status_source": "execution_order_policy.execution_seed"
+      },
+      {
+        "id": "randomized_interleaved_run_order_generated_and_frozen",
+        "required_state": true,
+        "status_source": "execution_order_policy.actual_order_generated"
+      },
+      {
+        "id": "exact_scored_request_configurations_frozen",
+        "required_state": "frozen",
+        "status_source": "execution_gate.readiness_statuses.exact_scored_request_configurations"
+      },
+      {
+        "id": "all_candidate_lifecycle_checks_still_current",
+        "required_state": "complete_and_current",
+        "status_source": "lifecycle_preflight.status"
+      },
+      {
+        "id": "common_preflight_successful",
+        "required_state": "successful",
+        "status_source": "execution_gate.readiness_statuses.common_preflight"
+      },
+      {
+        "id": "explicit_scored_experiment_authorization_recorded",
+        "required_state": "approved",
+        "status_source": "execution_gate.scored_authorization_status"
+      }
+    ],
+    "phase_states": {
+      "pre_execution": {
+        "provider_calls_allowed": false,
+        "pilot_calls_allowed": false,
+        "scored_calls_allowed": false
+      },
+      "pilot_authorized": {
+        "provider_calls_allowed": true,
+        "pilot_calls_allowed": true,
+        "scored_calls_allowed": false
+      },
+      "scored_authorized": {
+        "provider_calls_allowed": true,
+        "pilot_calls_allowed": false,
+        "scored_calls_allowed": true,
+        "pilot_calls_note": "Pilot calls remain false unless separately reauthorized under change control."
+      }
+    },
+    "phase_transition_rules": [
+      "pre_execution_to_pilot_requires_every_universal_and_pilot_specific_prerequisite_to_pass",
+      "pilot_authorization_must_be_explicit_even_after_technical_prerequisites_pass",
+      "pilot_to_scored_requires_every_universal_and_scored_prerequisite_to_pass",
+      "scored_authorization_must_be_explicit_even_after_technical_prerequisites_pass",
+      "any_pending_or_failed_required_prerequisite_keeps_the_requested_phase_blocked",
+      "phase_transition_is_recorded_under_experiment_change_control"
+    ],
+    "pending_state_integration": {
+      "truth_sheets": "pending_versioned_artifacts.truth_sheet_version",
+      "visual_assets": "pending_versioned_artifacts.visual_asset_set_version",
+      "prompt_templates": "pending_versioned_artifacts.prompt_template_versions",
+      "output_schemas": "pending_versioned_artifacts.output_schema_versions",
+      "harness": "pending_versioned_artifacts.harness_version",
+      "grading_anchors": "pending_versioned_artifacts.grading_anchor_set_version",
+      "operational_anchors": "pending_versioned_artifacts.operational_maturity_anchor_set_version",
+      "latency_bands": "pending_versioned_artifacts.latency_normalization_bands_version",
+      "cost_bands": "pending_versioned_artifacts.cost_normalization_bands_version",
+      "pilot_fixtures": "pending_versioned_artifacts.pilot_fixture_set_version",
+      "pricing_snapshot": "pending_versioned_artifacts.pricing_snapshot_version",
+      "parameters": "parameter_protocol.status",
+      "pricing": "pricing_source_protocol.status",
+      "budgets": "cost_controls.status",
+      "lifecycle": "lifecycle_preflight.status",
+      "execution_seed": "execution_order_policy.execution_seed"
+    },
+    "invariants": [
+      "provider_calls_allowed_implies_credential_authorization_status_is_approved",
+      "pilot_calls_allowed_implies_provider_calls_allowed",
+      "scored_calls_allowed_implies_provider_calls_allowed",
+      "scored_calls_allowed_implies_successful_pilot_completion",
+      "scored_calls_allowed_implies_execution_seed_is_frozen",
+      "scored_calls_allowed_implies_required_truth_sheets_and_visual_assets_are_frozen",
+      "freezing_cost_or_pricing_alone_never_allows_a_provider_call",
+      "pilot_or_scored_execution_requires_explicit_human_project_authorization",
+      "any_pending_or_failed_phase_required_prerequisite_forces_that_phase_allowed_flag_to_false"
+    ]
+  },
+  "pending_versioned_artifacts": {
+    "truth_sheet_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "visual_asset_set_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "prompt_template_versions": {
+      "text_risk_analysis": null,
+      "grounded_product_price_research": null,
+      "visual_inspection": null,
+      "status": "pending"
+    },
+    "output_schema_versions": {
+      "text_risk_analysis": null,
+      "grounded_product_price_research": null,
+      "visual_inspection": null,
+      "status": "pending"
+    },
+    "harness_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "grading_anchor_set_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "operational_maturity_anchor_set_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "latency_normalization_bands_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "cost_normalization_bands_version": {
+      "value": null,
+      "status": "pending"
+    },
+    "pilot_fixture_set_version": {
+      "value": null,
+      "status": "pending_dedicated_pilot_fixtures"
+    },
+    "pricing_snapshot_version": {
+      "value": null,
+      "status": "pending"
+    }
+  },
+  "candidate_architectures": [
+    {
+      "architecture_id": "openai_unified_premium_v1",
+      "candidate_id": "openai_unified_premium_v1",
+      "provider": "OpenAI",
+      "architecture_kind": "unified_provider_model_family_separate_workload_calls_allowed",
+      "research_participation": true,
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "model": "gpt-5.6-sol",
+          "api_or_tool": "OpenAI API appropriate to the frozen harness",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "search_price": {
+          "eligible": true,
+          "model": "gpt-5.6-sol",
+          "api_or_tool": "Responses API web_search",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "visual": {
+          "eligible": true,
+          "model": "gpt-5.6-sol",
+          "api_or_tool": "OpenAI image input",
+          "configuration_status": "pending_parameter_freeze"
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": true
+      },
+      "overall_architecture_selection": {
+        "eligible": true,
+        "status": "pending_required_preflight_and_eligibility_checks"
+      },
+      "production_selection": {
+        "eligible": true,
+        "status": "pending_privacy_operational_regional_and_lifecycle_checks"
+      },
+      "lifecycle_annotation": {
+        "declared_status": "current_production_candidate_pending_same_day_preflight",
+        "same_day_preflight_required": true
+      },
+      "required_capability_preflight": [
+        "exact_model_and_snapshot_availability_where_exposed",
+        "structured_outputs",
+        "responses_api_web_search",
+        "search_citation_extraction",
+        "image_input",
+        "tool_and_schema_combination_used_by_harness"
+      ],
+      "pricing_record_status": "pending"
+    },
+    {
+      "architecture_id": "openai_unified_balanced_v1",
+      "candidate_id": "openai_unified_balanced_v1",
+      "provider": "OpenAI",
+      "architecture_kind": "unified_provider_model_family_separate_workload_calls_allowed",
+      "research_participation": true,
+      "comparison_purpose": "Determine whether TrustAI quality remains close enough to the premium candidate for measured cost and latency differences to matter; no quality ranking is presumed.",
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "model": "gpt-5.6-terra",
+          "api_or_tool": "OpenAI API appropriate to the frozen harness",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "search_price": {
+          "eligible": true,
+          "model": "gpt-5.6-terra",
+          "api_or_tool": "Responses API web_search",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "visual": {
+          "eligible": true,
+          "model": "gpt-5.6-terra",
+          "api_or_tool": "OpenAI image input",
+          "configuration_status": "pending_parameter_freeze"
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": true
+      },
+      "overall_architecture_selection": {
+        "eligible": true,
+        "status": "pending_required_preflight_and_eligibility_checks"
+      },
+      "production_selection": {
+        "eligible": true,
+        "status": "pending_privacy_operational_regional_and_lifecycle_checks"
+      },
+      "lifecycle_annotation": {
+        "declared_status": "current_production_candidate_pending_same_day_preflight",
+        "same_day_preflight_required": true
+      },
+      "required_capability_preflight": [
+        "exact_model_and_snapshot_availability_where_exposed",
+        "structured_outputs",
+        "responses_api_web_search",
+        "search_citation_extraction",
+        "image_input",
+        "tool_and_schema_combination_used_by_harness"
+      ],
+      "pricing_record_status": "pending"
+    },
+    {
+      "architecture_id": "gemini_unified_v1",
+      "candidate_id": "gemini_unified_v1",
+      "provider": "Google Gemini",
+      "architecture_kind": "unified_provider_model_family_separate_workload_calls_allowed",
+      "research_participation": true,
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "model": "gemini-3.7-flash",
+          "api_or_tool": "Gemini API structured text generation",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "search_price": {
+          "eligible": true,
+          "model": "gemini-3.7-flash",
+          "api_or_tool": "Google Search grounding",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "visual": {
+          "eligible": true,
+          "model": "gemini-3.7-flash",
+          "api_or_tool": "Gemini image input",
+          "configuration_status": "pending_parameter_freeze"
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": true
+      },
+      "overall_architecture_selection": {
+        "eligible": true,
+        "status": "pending_required_preflight_and_eligibility_checks"
+      },
+      "production_selection": {
+        "eligible": true,
+        "status": "pending_privacy_operational_regional_and_lifecycle_checks"
+      },
+      "lifecycle_annotation": {
+        "declared_status": "stable_according_to_current_research_pending_same_day_preflight",
+        "same_day_preflight_required": true
+      },
+      "required_capability_preflight": [
+        "exact_stable_model_availability",
+        "structured_output_behavior",
+        "google_search_grounding",
+        "citation_metadata",
+        "image_input",
+        "tool_and_schema_combination_used_by_harness"
+      ],
+      "pricing_record_status": "pending"
+    },
+    {
+      "architecture_id": "groq_split_v1",
+      "candidate_id": "groq_split_v1",
+      "provider": "Groq",
+      "architecture_kind": "split_model_and_tool_topology",
+      "research_participation": true,
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "model": "openai/gpt-oss-120b",
+          "api_or_tool": "Groq text generation",
+          "configuration_status": "pending_parameter_freeze",
+          "declared_lifecycle": "production"
+        },
+        "search_price": {
+          "eligible": true,
+          "model": "groq/compound",
+          "api_or_tool": "Groq Compound or exact Groq search topology frozen before execution",
+          "configuration_status": "pending_topology_and_parameter_freeze",
+          "declared_lifecycle": "production"
+        },
+        "visual": {
+          "eligible": true,
+          "model": "qwen/qwen3.8-27b",
+          "api_or_tool": "Groq vision-capable endpoint",
+          "configuration_status": "pending_parameter_freeze",
+          "declared_lifecycle": "preview_according_to_current_official_research"
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": true,
+        "reason": "The complete split topology may participate in the research bake-off and receive an architecture score."
+      },
+      "overall_architecture_selection": {
+        "eligible": false,
+        "reason": "A required visual component is Preview pending same-day lifecycle preflight."
+      },
+      "production_selection": {
+        "eligible": false,
+        "status": "blocked_while_required_visual_component_is_preview",
+        "reevaluation_rule": "May become eligible only if the required component is stable before the frozen preflight or a stable replacement is evaluated under the common protocol."
+      },
+      "lifecycle_annotation": {
+        "same_day_preflight_required": true,
+        "preview_component_blocks_production_selection": true
+      },
+      "required_capability_preflight": [
+        "exact_text_model_availability",
+        "exact_search_topology_and_component_models",
+        "structured_output_behavior",
+        "search_and_citation_provenance",
+        "exact_visual_model_availability",
+        "image_input",
+        "tool_and_schema_combination_used_by_harness"
+      ],
+      "pricing_record_status": "pending"
+    }
+  ],
+  "baseline_architectures": [
+    {
+      "architecture_id": "baseline_current_text_v1",
+      "candidate_id": "baseline_current_text_v1",
+      "provider": "Groq",
+      "architecture_kind": "current_main_text_only_baseline",
+      "research_participation": true,
+      "purpose": "Measure whether proposed architectures materially improve TrustAI's current text-analysis experience.",
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "model": "openai/gpt-oss-120b",
+          "api_or_tool": "TrustAI current text-only tool-free architecture",
+          "configuration_status": "pending_parameter_freeze"
+        },
+        "search_price": {
+          "eligible": false,
+          "reason": "Current main has no grounded search/price workload."
+        },
+        "visual": {
+          "eligible": false,
+          "reason": "Current main has no Visual Inspection workload."
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": false,
+        "reason": "The baseline covers only text and cannot receive a complete three-workload architecture score."
+      },
+      "overall_architecture_selection": {
+        "eligible": false,
+        "reason": "The baseline is not a complete candidate architecture."
+      },
+      "production_selection": {
+        "eligible": false,
+        "status": "comparison_baseline_only"
+      },
+      "pricing_record_status": "pending"
+    }
+  ],
+  "optional_reference_configurations": [
+    {
+      "architecture_id": "openai_gpt_4o_mini_reference_v1",
+      "candidate_id": "openai_gpt_4o_mini_reference_v1",
+      "provider": "OpenAI",
+      "model": "gpt-4o-mini",
+      "enabled": false,
+      "purpose": [
+        "compatibility_comparison",
+        "PR_99_visual_inspection_historical_design_reference"
+      ],
+      "workload_eligibility": {
+        "text": {
+          "eligible": true,
+          "activation_status": "disabled_pending_explicit_pre_scored_activation"
+        },
+        "search_price": {
+          "eligible": false,
+          "reason": "Not selected as a grounded search architecture reference."
+        },
+        "visual": {
+          "eligible": true,
+          "activation_status": "disabled_pending_explicit_pre_scored_activation"
+        }
+      },
+      "overall_architecture_scoring": {
+        "eligible": false,
+        "reason": "Optional reference only; not a complete primary architecture candidate."
+      },
+      "overall_architecture_selection": {
+        "eligible": false,
+        "reason": "Optional disabled compatibility reference."
+      },
+      "production_selection": {
+        "eligible": false,
+        "status": "reference_only"
+      },
+      "planned_scored_runs_while_disabled": 0,
+      "activation_rule": "Any activation, workload scope, run budget, and parameters must be frozen before scored execution and applied without changing another candidate's fixture set."
+    }
+  ],
+  "run_plan": {
+    "source": "Frozen rubric scoring_aggregation.run_to_fixture and experimental_protocol.repeatability",
+    "ordinary_fixture_planned_runs": 3,
+    "stability_sensitive_fixture_planned_runs": 5,
+    "stability_sensitive_runs_are_total_not_additional": true,
+    "workloads": {
+      "text": {
+        "fixture_ids": [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T9",
+          "T10",
+          "T11",
+          "T12",
+          "T13",
+          "T14",
+          "T15"
+        ],
+        "stability_sensitive_fixture_ids": [
+          "T2",
+          "T3",
+          "T8",
+          "T10",
+          "T11",
+          "T12"
+        ],
+        "ordinary_fixture_count": 9,
+        "stability_sensitive_fixture_count": 6,
+        "planned_scored_runs_per_eligible_candidate": 57
+      },
+      "search_price": {
+        "fixture_ids": [
+          "P1",
+          "P2",
+          "P3",
+          "P4",
+          "P5",
+          "P6",
+          "P7",
+          "P8"
+        ],
+        "stability_sensitive_fixture_ids": [
+          "P4",
+          "P8"
+        ],
+        "ordinary_fixture_count": 6,
+        "stability_sensitive_fixture_count": 2,
+        "planned_scored_runs_per_eligible_candidate": 28
+      },
+      "visual": {
+        "fixture_ids": [
+          "V1",
+          "V2",
+          "V3",
+          "V4",
+          "V5",
+          "V6",
+          "V7",
+          "V8",
+          "V9",
+          "V10"
+        ],
+        "stability_sensitive_fixture_ids": [
+          "V7",
+          "V8",
+          "V9",
+          "V10"
+        ],
+        "ordinary_fixture_count": 6,
+        "stability_sensitive_fixture_count": 4,
+        "planned_scored_runs_per_eligible_candidate": 38
+      }
+    },
+    "candidate_totals": [
+      {
+        "candidate_id": "openai_unified_premium_v1",
+        "text": 57,
+        "search_price": 28,
+        "visual": 38,
+        "total": 123
+      },
+      {
+        "candidate_id": "openai_unified_balanced_v1",
+        "text": 57,
+        "search_price": 28,
+        "visual": 38,
+        "total": 123
+      },
+      {
+        "candidate_id": "gemini_unified_v1",
+        "text": 57,
+        "search_price": 28,
+        "visual": 38,
+        "total": 123
+      },
+      {
+        "candidate_id": "groq_split_v1",
+        "text": 57,
+        "search_price": 28,
+        "visual": 38,
+        "total": 123
+      },
+      {
+        "candidate_id": "baseline_current_text_v1",
+        "text": 57,
+        "search_price": 0,
+        "visual": 0,
+        "total": 57
+      },
+      {
+        "candidate_id": "openai_gpt_4o_mini_reference_v1",
+        "text": 0,
+        "search_price": 0,
+        "visual": 0,
+        "total": 0,
+        "reason": "Optional reference is disabled."
+      }
+    ],
+    "currently_enabled_totals": {
+      "text": 285,
+      "search_price": 112,
+      "visual": 152,
+      "total_scored_run_outcomes": 549
+    },
+    "provider_call_count_note": "A scored run outcome may require more than one physical provider call because of frozen retries or multi-call topology. Every physical call, retry, search, tool use, component, and cost must be counted separately."
+  },
+  "pilot_plan": {
+    "status": "pending_dedicated_pilot_fixtures",
+    "included_in_comparative_scores": false,
+    "full_scored_fixture_set_forbidden": true,
+    "inputs": "pending_dedicated_pilot_fixtures_or_explicit_non_scored_copies",
+    "fixture_ids": null,
+    "purposes": [
+      "authentication_and_connectivity",
+      "transport_correctness",
+      "structured_output_compatibility",
+      "search_and_citation_extraction",
+      "image_transport",
+      "usage_and_cost_capture",
+      "failure_logging"
+    ],
+    "promotion_to_scored_result_forbidden": true
+  },
+  "execution_order_policy": {
+    "status": "pending_freeze",
+    "execution_seed": null,
+    "freeze_before_first_scored_call": true,
+    "candidate_order": "randomized_and_interleaved",
+    "fixture_order": "randomized_under_recorded_seed",
+    "repetition_order": "interleaved_not_all_repetitions_for_one_candidate_consecutively",
+    "search_price_timing": "same_fixture_candidates_run_within_narrowest_practical_time_window",
+    "timestamps": "record_exact_start_completion_and_retrieval_times",
+    "actual_order_generated": false
+  },
+  "parameter_protocol": {
+    "status": "pending_parameter_freeze",
+    "scored_calls_allowed_while_pending": false,
+    "required_per_candidate_workload_fields": [
+      "exact_model_and_snapshot_where_exposed",
+      "api_endpoint_and_version",
+      "reasoning_or_thinking_level",
+      "temperature_if_supported",
+      "maximum_output_tokens",
+      "structured_output_mode",
+      "search_and_tool_configuration",
+      "image_detail_or_resolution_controls",
+      "timeout",
+      "retry_policy",
+      "streaming_enabled",
+      "controllable_caching_behavior"
+    ],
+    "unsupported_parameter_rule": "Record unsupported parameters as unsupported rather than inventing an equivalent.",
+    "provider_specific_post_result_tuning_forbidden": true
+  },
+  "cost_controls": {
+    "status": "pending_budget_freeze",
+    "pilot_cost_ceiling_usd": null,
+    "scored_experiment_cost_ceiling_usd": null,
+    "provider_calls_allowed_while_pending": false,
+    "priority_rule": "Quality and safety remain more important than selecting the lowest-cost candidate."
+  },
+  "pricing_source_protocol": {
+    "status": "pending_pricing_freeze",
+    "provider_calls_allowed_while_pending": false,
+    "required_per_candidate_configuration": [
+      "official_pricing_url_or_source_identifier",
+      "pricing_retrieval_date",
+      "input_and_output_token_pricing",
+      "search_and_tool_pricing",
+      "image_pricing_where_applicable",
+      "free_or_paid_tier_status"
+    ],
+    "embedded_pricing_urls": false,
+    "pricing_values": null,
+    "freeze_before_provider_calls": true
+  },
+  "lifecycle_preflight": {
+    "status": "pending",
+    "timing": "same_day_before_any_provider_result",
+    "applies_to_every_candidate_and_required_component": true,
+    "checks": [
+      "model_still_exists",
+      "model_lifecycle_status",
+      "required_api_and_tool_available",
+      "no_announced_shutdown_invalidates_experiment",
+      "preview_stable_or_production_classification"
+    ],
+    "material_change_rule": "Pause the experiment before any scored call and update versioned artifacts under the frozen change-control policy.",
+    "fixture_preflight_source": "fixtures.v1.json preflight_policy",
+    "candidate_specific_fixture_reduction_forbidden": true
+  },
+  "fairness_controls": [
+    "equivalent_substantive_instructions",
+    "same_fixture_evidence",
+    "same_frozen_truth_sheets",
+    "same_visual_bytes_and_hashes",
+    "strongest_supported_schema_mode_for_each_candidate",
+    "provider_specific_transport_envelopes_allowed",
+    "different_internal_call_topologies_allowed",
+    "every_call_retry_tool_use_component_and_cost_counted",
+    "no_provider_specific_post_result_tuning",
+    "no_candidate_specific_fixture_advantage",
+    "material_configuration_change_requires_new_experiment_version_and_common_rerun_when_comparability_is_affected"
+  ],
+  "change_control": {
+    "first_scored_call_freezes_experiment_version": true,
+    "material_changes_require_new_version": true,
+    "historical_attempts_failures_and_results_preserved": true,
+    "candidate_specific_post_result_changes_forbidden": true
+  }
+}
