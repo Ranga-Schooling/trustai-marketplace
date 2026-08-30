@@ -108,6 +108,10 @@
       "status": "pending_creation",
       "provider_calls_blocked_while_pending": true
     },
+    "retrieval_evidence_bundle_v1": {
+      "status": "pending_creation",
+      "provider_calls_blocked_while_pending": true
+    },
     "search_output_schema_v1": {
       "status": "pending_creation",
       "provider_calls_blocked_while_pending": true
@@ -370,7 +374,7 @@
         "evaluator notes"
       ],
       "output_contract": {
-        "schema_id": "search_output_schema_v1",
+        "schema_id": "retrieval_evidence_bundle_v1",
         "status": "pending_creation",
         "contract_role": "retrieval evidence bundle component"
       },
@@ -379,7 +383,7 @@
         "enabled": true,
         "catalog_reference": "provider_specific_terminology_forbidden_in_canonical_content"
       },
-      "canonical_sha256": "bf739e8e56e2594fcb769048c35ffb2448eaa7f8dd1985dc124a8ecc7d45b15c"
+      "canonical_sha256": "4ef7a63b481f60874cbca6add5815d2820c658ef11ae45b569f27d8907dceb7f"
     },
     {
       "template_id": "search_synthesis_v1",
@@ -423,6 +427,7 @@
           },
           {
             "object_id": "retrieved_evidence_bundle",
+            "schema_id": "retrieval_evidence_bundle_v1",
             "future_schema_status": "pending_creation",
             "serialization_requirement": "canonical JSON data object containing only fields approved by the future reviewed evidence schema",
             "unexpected_key_policy": "reject",
@@ -479,7 +484,7 @@
         "enabled": true,
         "catalog_reference": "provider_specific_terminology_forbidden_in_canonical_content"
       },
-      "canonical_sha256": "fd47477d8fad1b0a65d3193f6a13d64e5ea15c50abab6cb534a686f7ad2a3351"
+      "canonical_sha256": "2aea92643b730d28c72fe501930277cebc7107b99cc1784d1a326b4fed4d7c9c"
     },
     {
       "template_id": "visual_system_v1",
@@ -595,5 +600,5 @@
       "canonical_sha256": "19bb6c6bc2c2047584124f710453bbdb10ffb2fda2fd62ac4f2b7724252a241b"
     }
   ],
-  "prompt_template_set_hash": "54d6fdc39ff216ca4033d13fd776fa414bca7f7fe9b2f8aa4dcb52a8672417be"
+  "prompt_template_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253"
 }
