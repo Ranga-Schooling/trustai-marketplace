@@ -1,0 +1,1449 @@
+{
+  "schema_version": "1.0.0",
+  "output_schema_set_version": "v1",
+  "status": "pre_execution_draft",
+  "json_schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+  "provider_neutral": true,
+  "pilot_and_scored_shared": true,
+  "provider_calls_completed": 0,
+  "semantic_sources": {
+    "methodology_commit": "992913a9f2da4e36f6f1defc98439ce9cb21a4a2",
+    "experiment_commit": "201736a7284cd3052919e78545e539760b062444",
+    "pilot_fixture_commit": "f1842fced28992bd540d799a7f36aa4507cc44f0",
+    "original_prompt_template_freeze": "249d3e4d9875b5d409b2fcfc5ae39d4696d42397",
+    "current_prompt_template_commit": "a94c0797738fee0a963153228b069603ec22e73c",
+    "current_prompt_template_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253"
+  },
+  "schema_canonicalization": {
+    "schema_canonicalization_id": "canonical_schema_json_v1",
+    "encoding": "UTF-8",
+    "object_key_order": "lexicographically sorted",
+    "array_order": "preserve declared order",
+    "separators": "compact comma and colon separators without insignificant whitespace",
+    "string_encoding": "standard JSON escaping with Unicode emitted directly except where JSON escaping is required",
+    "hash_algorithm": "SHA-256",
+    "per_schema_hash_scope": "Canonical serialization of the complete schema record excluding schema_sha256.",
+    "schema_set_hash_scope": {
+      "description": "Canonical serialization of an object with the exact keys below. schemas is the ordered array of objects containing only schema_id and schema_sha256. schema_set_sha256, status, and provider_calls_completed are excluded.",
+      "exact_keys": [
+        "schema_version",
+        "output_schema_set_version",
+        "json_schema_dialect",
+        "provider_neutral",
+        "pilot_and_scored_shared",
+        "semantic_sources",
+        "schema_canonicalization_id",
+        "schema_order",
+        "global_policies",
+        "validator_declarations",
+        "schemas"
+      ]
+    },
+    "semantic_identity_excludes": [
+      "timestamps",
+      "absolute filesystem paths",
+      "provider transport envelopes",
+      "credentials",
+      "execution status",
+      "execution counters"
+    ]
+  },
+  "schema_order": [
+    "text_output_schema_v1",
+    "retrieval_evidence_bundle_v1",
+    "search_output_schema_v1",
+    "visual_output_schema_v1"
+  ],
+  "global_policies": {
+    "strictness": {
+      "all_semantic_objects_additional_properties_false": true,
+      "reason": "Frozen H3 requires undeclared semantic fields to be detected before normalization can discard them.",
+      "forbidden_extra_field_examples": [
+        "risk_score",
+        "confidence_score",
+        "authenticity_score",
+        "fraud_probability",
+        "unexpected recommendation fields",
+        "provider metadata"
+      ],
+      "transport_metadata_boundary": "Provider request, model, token, latency, cost, and envelope metadata belongs in evaluation result records, not semantic output."
+    },
+    "enum_and_repair": {
+      "canonical_enum_casing": "exact lowercase machine values",
+      "case_folding_allowed": false,
+      "enum_repair_allowed": false,
+      "field_insertion_allowed": false,
+      "field_deletion_allowed": false,
+      "semantic_rewriting_allowed": false,
+      "inferred_missing_values_allowed": false,
+      "transport_envelope_extraction_allowed": true
+    },
+    "null_and_optional": {
+      "required_semantics": "required and non-null",
+      "genuinely_optional_semantics": "omit when absent",
+      "meaningful_zero_results": "use explicit empty arrays where the schema allows them",
+      "missing_required_field": "schema failure",
+      "provider_failure_representation": "do not manufacture a semantic result"
+    },
+    "evaluation_only_v1_decisions": {
+      "id_pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "id_max_length": 64,
+      "search_label_max_length": 500,
+      "search_prose_max_length": 2000,
+      "url_max_length": 2048,
+      "retrieval_content_max_length": 12000,
+      "scope": "New evaluation-owned search and retrieval fields only; these limits do not alter the production text contract."
+    },
+    "format_assertion": {
+      "format_assertion_required": true,
+      "asserted_formats": [
+        "uri",
+        "date-time"
+      ],
+      "canonical_validator_requirement": "The canonical validator must actively assert every declared format and must not rely on a library's default format behavior.",
+      "failure_result": "A value that fails an asserted format is a canonical schema validation failure."
+    },
+    "provider_adapter_boundary": {
+      "canonical_schema_role": "The provider-neutral semantic contract used for evaluation.",
+      "provider_native_schema_role": "A syntax-only translation when a provider requires a different schema representation.",
+      "adapters_may": [
+        "translate canonical schema syntax to provider-native syntax",
+        "unwrap provider transport envelopes",
+        "map provider citation IDs to trace-owned canonical source IDs"
+      ],
+      "adapters_must_not": [
+        "weaken required fields",
+        "permit undeclared extras",
+        "repair invalid enums",
+        "insert missing semantic fields",
+        "delete forbidden semantic fields",
+        "rewrite claims",
+        "rewrite prices",
+        "rewrite visual findings",
+        "fabricate citations",
+        "turn invalid semantic output into valid output"
+      ],
+      "canonical_validation_boundary": "The extracted raw semantic object must pass the canonical schema before semantic normalization or grading."
+    },
+    "safe_failure": {
+      "on_canonical_schema_failure": [
+        "preserve the raw semantic payload locally under the frozen privacy policy and record its hash",
+        "record application-owned validation error codes",
+        "preserve every failed attempt",
+        "retry only according to the separately frozen retry policy",
+        "perform no semantic repair",
+        "never promote malformed partial output to partial success"
+      ],
+      "exhausted_ordinary_run": "Fail the applicable hard gate and assign zero to every applicable quality criterion for that run.",
+      "provider_prose_exposure_allowed": false
+    },
+    "leakage_boundary": {
+      "schemas_may_contain_only": "provider-visible output-contract semantics",
+      "forbidden": [
+        "fixture IDs",
+        "expected outcomes",
+        "expected evidence",
+        "exact expected tiers",
+        "truth-sheet answers",
+        "grading anchors",
+        "hard-gate IDs",
+        "candidate or provider identity",
+        "winner information"
+      ]
+    }
+  },
+  "validator_declarations": {
+    "text_cross_field_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "text_output_schema_v1",
+      "rules": [
+        "No indicators or only low-severity indicators require risk_level low.",
+        "At least one medium-severity indicator and no high-severity indicator require risk_level medium.",
+        "Any high-severity indicator requires risk_level high.",
+        "Risk level low requires recommendation buy.",
+        "Risk level medium requires recommendation caution.",
+        "Risk level high requires recommendation avoid.",
+        "price_plausibility does not independently determine risk_level or recommendation."
+      ],
+      "separate_checks": [
+        "evidence-policy validation",
+        "summary and indicator semantic consistency",
+        "price explanation semantic consistency",
+        "human evidence-quality review"
+      ]
+    },
+    "retrieval_evidence_bundle_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "rules": [
+        "source_id values are unique within the bundle",
+        "evidence_id values are unique within the bundle",
+        "completed or partial retrieval contains at least one source",
+        "no_reliable_evidence may contain zero sources",
+        "retrieved_at comes from the harness or tool trace rather than model invention",
+        "every source URL is trace-backed",
+        "source_type corresponds to trace classification",
+        "the evidence bundle hash matches canonical serialized data",
+        "every source belongs to the actual captured retrieval trace"
+      ]
+    },
+    "retrieval_status_coherence_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "validator_inputs": [
+        "validated retrieval_evidence_bundle_v1 object",
+        "captured retrieval trace",
+        "frozen research objectives",
+        "harness-owned objective applicability and support classifications"
+      ],
+      "harness_classification_contract": {
+        "classification_authority": "future deterministic harness operating on the frozen objective set and captured trace; never model prose",
+        "objective_applicability_values": [
+          "material_required",
+          "optional_absence_permitted",
+          "not_applicable"
+        ],
+        "objective_support_values": [
+          "sufficient",
+          "insufficient",
+          "unresolved",
+          "conflicting",
+          "unavailable"
+        ],
+        "classification_inputs": [
+          "normalized evidence types",
+          "trace-backed source classifications",
+          "exact target identity and variant",
+          "target region",
+          "target condition and bundle when applicable",
+          "captured retrieval trace"
+        ]
+      },
+      "status_rules": {
+        "completed": {
+          "minimum_sources": 1,
+          "required_material_objective_support": "every objective classified material_required has support_status sufficient",
+          "optional_absence_policy": "An objective classified optional_absence_permitted or not_applicable does not prevent completed."
+        },
+        "partial": {
+          "minimum_sources": 1,
+          "required_supported_material_objectives": 1,
+          "required_incomplete_material_objectives": 1,
+          "incomplete_support_values": [
+            "insufficient",
+            "unresolved",
+            "conflicting",
+            "unavailable"
+          ]
+        },
+        "no_reliable_evidence": {
+          "minimum_sources": 0,
+          "maximum_supported_material_objectives": 0,
+          "populated_sources_allowed": true,
+          "retained_evidence_policy": "Retained evidence may be weak, insufficient, ambiguous, conflicting, irrelevant to the exact target, stale for the current claim, or mismatched by region, condition, or bundle.",
+          "contradiction_failure": "Fail when any material_required objective has support_status sufficient while retrieval_status is no_reliable_evidence."
+        }
+      },
+      "semantic_boundary": "Retrieval-status coherence determines whether retrieval produced usable evidence for synthesis. It does not determine final identity, final comparison_status, market value, or a final price conclusion; the bundle remains untrusted synthesis input."
+    },
+    "search_cross_reference_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "search_output_schema_v1",
+      "rules": [
+        "all evaluation-owned IDs are unique within their namespaces",
+        "every referenced source ID exists in the same result",
+        "every price evidence source exists",
+        "every conflict has at least two unique valid source IDs",
+        "resolved identity requires resolved_product_identity and at least one valid source ID",
+        "unresolved identity forbids resolved_product_identity and resolved_variant_or_sku",
+        "conflicting identity requires at least two unique valid source IDs and an identity or variant conflict referencing the conflicting evidence",
+        "current or discontinued current_status requires at least one valid supporting source ID",
+        "conflicting current_status requires at least two unique valid source IDs and a status conflict referencing the conflicting evidence",
+        "comparison_status established satisfies the established coherence specification",
+        "comparison_status partially_established satisfies the partial coherence specification",
+        "comparison_status not_established satisfies the not-established coherence specification",
+        "range minimum is less than or equal to range maximum",
+        "retrieval timestamps and URLs exactly match captured trace evidence",
+        "source classification agrees with captured trace and provenance",
+        "no source is fabricated",
+        "material current claims have supporting source references"
+      ],
+      "identity_status_rules": {
+        "resolved": {
+          "required_fields": [
+            "resolved_product_identity"
+          ],
+          "minimum_source_ids": 1,
+          "source_reference_policy": "Every source_id resolves to a source in the same result.",
+          "resolved_variant_or_sku_policy": "Optional only when the exact variant or SKU cannot legitimately be established or is not applicable."
+        },
+        "unresolved": {
+          "forbidden_fields": [
+            "resolved_product_identity",
+            "resolved_variant_or_sku"
+          ],
+          "minimum_source_ids": 0,
+          "populated_source_ids_meaning": "Evidence was considered but was insufficient to resolve identity."
+        },
+        "conflicting": {
+          "forbidden_fields": [
+            "resolved_product_identity",
+            "resolved_variant_or_sku"
+          ],
+          "minimum_source_ids": 2,
+          "required_conflict_types_any_of": [
+            "identity",
+            "variant"
+          ],
+          "conflict_reference_policy": "The required conflict record references the conflicting valid source IDs."
+        }
+      },
+      "current_status_rules": {
+        "current": {
+          "minimum_source_ids": 1,
+          "support_requirement": "Referenced trace-backed evidence supports current status."
+        },
+        "discontinued": {
+          "minimum_source_ids": 1,
+          "support_requirement": "Referenced trace-backed evidence supports discontinued status."
+        },
+        "conflicting": {
+          "minimum_source_ids": 2,
+          "required_conflict_type": "status",
+          "conflict_reference_policy": "The required status conflict record references the conflicting valid source IDs."
+        },
+        "not_established": {
+          "minimum_source_ids": 0,
+          "populated_source_ids_meaning": "Evidence was considered but was insufficient to establish current or discontinued status.",
+          "adverse_inference_allowed": false
+        }
+      },
+      "identity_current_status_combination_policy": {
+        "states_are_distinct_questions": true,
+        "explicitly_allowed_combinations": [
+          "unresolved identity with not_established current status",
+          "resolved identity with not_established current status",
+          "conflicting identity with not_established current status"
+        ]
+      },
+      "comparison_status_rules": {
+        "established": {
+          "required_identity_status": "resolved",
+          "minimum_sources": 1,
+          "minimum_material_result": {
+            "any_of_non_empty": [
+              "claims",
+              "price_evidence"
+            ]
+          },
+          "source_policy": "Every material current conclusion has valid supporting source references.",
+          "conflict_policy": "No unresolved conflict makes the frozen requested comparison materially ambiguous.",
+          "sufficiency_policy": "Evidence is sufficient for the actual frozen comparison objective without unsupported precision."
+        },
+        "partially_established": {
+          "minimum_material_result": {
+            "any_of_non_empty": [
+              "claims",
+              "price_evidence"
+            ]
+          },
+          "minimum_incomplete_explanation": {
+            "any_of_non_empty": [
+              "uncertainties",
+              "conflicts"
+            ]
+          },
+          "support_policy": "At least one material requested conclusion is traceably established and at least one remains unresolved, insufficient, conflicting, or unavailable.",
+          "identity_policy": "Identity may be resolved, unresolved, or conflicting only when returned conclusions do not pretend that an unresolved exact target is established."
+        },
+        "not_established": {
+          "required_uncertainty_types_any_of": [
+            "insufficient_evidence",
+            "unresolved_identity"
+          ],
+          "price_evidence_may_be_empty": true,
+          "contextual_claims_allowed": true,
+          "unqualified_material_established_conclusion_allowed": false,
+          "sources_or_context_alone_imply_established": false
+        }
+      },
+      "semantic_boundary": "Citation entailment and claim quality remain human or semantic adjudication where deterministic checks are insufficient."
+    },
+    "visual_photo_reference_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "visual_output_schema_v1",
+      "rules": [
+        "every photo_number is less than or equal to the actual supplied image count"
+      ],
+      "separate_semantic_hard_gates": [
+        "unsupported authenticity claims",
+        "unsupported ownership or stolen-status claims",
+        "unsupported internal-condition claims",
+        "functionality guarantees",
+        "current market price or value claims",
+        "unsupported seller-intent claims"
+      ]
+    }
+  },
+  "schemas": [
+    {
+      "schema_id": "text_output_schema_v1",
+      "workload_or_stage": "text_risk_analysis",
+      "semantic_source": {
+        "basis": "Current TrustAI AIAnalysisResult plus frozen H1-H18 evaluation strictness.",
+        "references": [
+          "origin/main@9cdf5cc1870ed0f4cb891b63be60ae1c3d57fbe5:AIAnalysisResult",
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:H1-H18"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "text_cross_field_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:text_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "summary",
+          "risk_level",
+          "risk_indicators",
+          "price_assessment",
+          "price_plausibility",
+          "seller_questions",
+          "recommendation"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "risk_indicators": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "category",
+                "severity",
+                "explanation"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "explanation": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "price_assessment": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price_plausibility": {
+            "type": "string",
+            "enum": [
+              "plausible",
+              "suspicious",
+              "too_good_to_be_true"
+            ]
+          },
+          "seller_questions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "caution",
+              "avoid"
+            ]
+          }
+        }
+      },
+      "schema_sha256": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d"
+    },
+    {
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "workload_or_stage": "grounded_product_price_research_retrieval",
+      "semantic_source": {
+        "basis": "Frozen grounded-search rubric and corrected retrieval-to-synthesis prompt contract.",
+        "references": [
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:grounded_search",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_retrieval_v1"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "retrieval_evidence_bundle_validator_v1",
+        "retrieval_status_coherence_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:retrieval_evidence_bundle_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "retrieval_status",
+          "sources"
+        ],
+        "properties": {
+          "retrieval_status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "partial",
+              "no_reliable_evidence"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_id",
+                "name",
+                "url",
+                "source_type",
+                "retrieved_at",
+                "evidence_items"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "source_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_active",
+                    "marketplace_completed",
+                    "reputable_secondary",
+                    "forum_or_social",
+                    "affiliate_or_seo",
+                    "scraped_aggregator",
+                    "other"
+                  ]
+                },
+                "retrieved_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "evidence_items": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "evidence_id",
+                      "evidence_type",
+                      "content"
+                    ],
+                    "properties": {
+                      "evidence_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                      },
+                      "evidence_type": {
+                        "type": "string",
+                        "enum": [
+                          "identity",
+                          "status",
+                          "specification",
+                          "price",
+                          "availability",
+                          "condition",
+                          "warranty",
+                          "bundle",
+                          "regional_context",
+                          "other_material"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 12000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "retrieval_status": {
+                  "enum": [
+                    "completed",
+                    "partial"
+                  ]
+                }
+              },
+              "required": [
+                "retrieval_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "sources": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema_sha256": "f5428e179090d07cbda4f69dde471a60a2b5aa8908fe9b12e3ee8d6fb4177a4c"
+    },
+    {
+      "schema_id": "search_output_schema_v1",
+      "workload_or_stage": "grounded_product_price_research_synthesis",
+      "semantic_source": {
+        "basis": "Frozen grounded-search fixtures, rubric, and corrected synthesis prompt contract.",
+        "references": [
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:grounded_search",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_synthesis_v1"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "search_cross_reference_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:search_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identity_resolution",
+          "comparison_status",
+          "claims",
+          "price_evidence",
+          "sources",
+          "uncertainties",
+          "conflicts"
+        ],
+        "properties": {
+          "identity_resolution": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "current_status",
+              "source_ids"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "resolved",
+                  "unresolved",
+                  "conflicting"
+                ]
+              },
+              "current_status": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "discontinued",
+                  "not_established",
+                  "conflicting"
+                ]
+              },
+              "resolved_product_identity": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "resolved_variant_or_sku": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "source_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "resolved"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "resolved_product_identity"
+                  ],
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "unresolved"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "resolved_product_identity"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "resolved_variant_or_sku"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "conflicting"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 2
+                    }
+                  },
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "resolved_product_identity"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "resolved_variant_or_sku"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "current_status": {
+                      "enum": [
+                        "current",
+                        "discontinued"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "current_status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "current_status": {
+                      "const": "conflicting"
+                    }
+                  },
+                  "required": [
+                    "current_status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "comparison_status": {
+            "type": "string",
+            "enum": [
+              "established",
+              "partially_established",
+              "not_established"
+            ]
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "claim_id",
+                "claim_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "claim_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "claim_type": {
+                  "type": "string",
+                  "enum": [
+                    "specification",
+                    "availability_detail",
+                    "offer_terms",
+                    "condition",
+                    "warranty",
+                    "bundle_contents",
+                    "regional_context",
+                    "currency_conversion",
+                    "other_material"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          },
+          "price_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "price_evidence_id",
+                "source_id",
+                "price_value",
+                "currency",
+                "price_type",
+                "region",
+                "condition",
+                "availability",
+                "seller_type",
+                "tax_inclusion",
+                "import_status"
+              ],
+              "properties": {
+                "price_evidence_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "price_value": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "amount"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "exact"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "minimum",
+                        "maximum"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "range"
+                        },
+                        "minimum": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "maximum": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  ]
+                },
+                "currency": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$"
+                },
+                "price_type": {
+                  "type": "string",
+                  "enum": [
+                    "msrp_or_list",
+                    "manufacturer_direct_offer",
+                    "retailer_regular_offer",
+                    "retailer_sale_offer",
+                    "active_marketplace_asking",
+                    "completed_or_sold_comparable",
+                    "refurbished_offer",
+                    "used_offer",
+                    "bundle_offer",
+                    "import_or_grey_market_offer"
+                  ]
+                },
+                "region": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "condition": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "manufacturer_refurbished",
+                    "retailer_refurbished",
+                    "used",
+                    "unknown"
+                  ]
+                },
+                "availability": {
+                  "type": "string",
+                  "enum": [
+                    "in_stock",
+                    "out_of_stock",
+                    "preorder",
+                    "limited",
+                    "listing_active",
+                    "sold_or_completed",
+                    "unknown"
+                  ]
+                },
+                "seller_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_seller",
+                    "refurbisher",
+                    "other",
+                    "unknown"
+                  ]
+                },
+                "tax_inclusion": {
+                  "type": "string",
+                  "enum": [
+                    "included",
+                    "excluded",
+                    "unknown",
+                    "not_applicable"
+                  ]
+                },
+                "import_status": {
+                  "type": "string",
+                  "enum": [
+                    "domestic",
+                    "import",
+                    "grey_market",
+                    "unknown"
+                  ]
+                },
+                "warranty_region": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "bundle_contents": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "offer_qualifications": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "context": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              }
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_id",
+                "name",
+                "url",
+                "source_type",
+                "retrieved_at"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "source_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_active",
+                    "marketplace_completed",
+                    "reputable_secondary",
+                    "forum_or_social",
+                    "affiliate_or_seo",
+                    "scraped_aggregator",
+                    "other"
+                  ]
+                },
+                "retrieved_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "uncertainties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "uncertainty_id",
+                "uncertainty_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "uncertainty_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "uncertainty_type": {
+                  "type": "string",
+                  "enum": [
+                    "unresolved_identity",
+                    "insufficient_evidence",
+                    "regional_ambiguity",
+                    "availability_unknown",
+                    "condition_mismatch",
+                    "bundle_mismatch",
+                    "price_disagreement",
+                    "other_material"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "conflict_id",
+                "conflict_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "conflict_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "conflict_type": {
+                  "type": "string",
+                  "enum": [
+                    "identity",
+                    "variant",
+                    "status",
+                    "region",
+                    "condition",
+                    "bundle",
+                    "availability",
+                    "price"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "identity_resolution": {
+                  "properties": {
+                    "status": {
+                      "const": "resolved"
+                    }
+                  }
+                },
+                "sources": {
+                  "minItems": 1
+                }
+              },
+              "anyOf": [
+                {
+                  "properties": {
+                    "claims": {
+                      "minItems": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "price_evidence": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "partially_established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "allOf": [
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "claims": {
+                          "minItems": 1
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "price_evidence": {
+                          "minItems": 1
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "uncertainties": {
+                          "minItems": 1
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "conflicts": {
+                          "minItems": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "not_established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "uncertainties": {
+                  "contains": {
+                    "properties": {
+                      "uncertainty_type": {
+                        "enum": [
+                          "insufficient_evidence",
+                          "unresolved_identity"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "uncertainty_type"
+                    ]
+                  },
+                  "minContains": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema_sha256": "851167f9ea34a66d79deb37c85c4d89a36aa69e5872ac6c303cf480c877719a3"
+    },
+    {
+      "schema_id": "visual_output_schema_v1",
+      "workload_or_stage": "visual_inspection",
+      "semantic_source": {
+        "basis": "Reviewed unmerged PR #99 VisualInspectionResult plus frozen visual evaluation requirements.",
+        "references": [
+          "unmerged_pr_99@08936a75366bedccbbdf36cf8802587330d8352b:VisualInspectionResult",
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:visual_inspection",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:visual_system_v1"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "visual_photo_reference_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:visual_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "findings"
+        ],
+        "properties": {
+          "findings": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "category",
+                "observation",
+                "photo_numbers"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "visible_detail",
+                    "visible_damage",
+                    "visible_condition",
+                    "visible_text",
+                    "image_quality",
+                    "visibility_limitation"
+                  ]
+                },
+                "observation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "pattern": "\\S"
+                },
+                "photo_numbers": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "schema_sha256": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3"
+    }
+  ],
+  "schema_set_sha256": "dfa8049a6533bfb68b0e0833fc472170257ab0195e92752fce470ff6190f40e0"
+}
