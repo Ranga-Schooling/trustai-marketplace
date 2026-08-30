@@ -11,8 +11,9 @@
     "experiment_commit": "201736a7284cd3052919e78545e539760b062444",
     "pilot_fixture_commit": "f1842fced28992bd540d799a7f36aa4507cc44f0",
     "original_prompt_template_freeze": "249d3e4d9875b5d409b2fcfc5ae39d4696d42397",
-    "current_prompt_template_commit": "a94c0797738fee0a963153228b069603ec22e73c",
-    "current_prompt_template_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253"
+    "prompt_template_base_commit": "a94c0797738fee0a963153228b069603ec22e73c",
+    "prompt_template_base_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253",
+    "current_prompt_template_set_hash": "2fccbfa5cbcdcedcce167086d560de7a1e54b7d805ebf4abfefc5f687784163c"
   },
   "schema_canonicalization": {
     "schema_canonicalization_id": "canonical_schema_json_v1",
@@ -78,6 +79,97 @@
       "inferred_missing_values_allowed": false,
       "transport_envelope_extraction_allowed": true
     },
+    "retrieval_ownership_boundary": {
+      "canonical_bundle_origin": "harness_assembled_from_captured_retrieval_trace_and_trace_backed_provider_or_retrieval_evidence",
+      "ownership_domains": {
+        "provider_or_retrieval_produced_untrusted_semantics": {
+          "material": [
+            "retrieval_status selected by the provider or retrieval stage",
+            "evidence_type selected by the provider or retrieval stage",
+            "trace-backed evidence content produced by the provider or retrieval stage"
+          ],
+          "authority": "untrusted semantic material; provider or retrieval origin does not make it authoritative provenance"
+        },
+        "provider_or_trace_derived_untrusted_source_display_data": {
+          "material": [
+            "source display name or title as returned",
+            "provider-returned URL or reference when exposed",
+            "provider citation or reference identifier when exposed"
+          ],
+          "authority": "untrusted source display or reference data; it never overrides harness-owned canonical provenance"
+        },
+        "harness_authoritative_provenance": {
+          "canonical_fields": [
+            "sources[].source_id",
+            "sources[].evidence_items[].evidence_id",
+            "sources[].url",
+            "sources[].source_type",
+            "sources[].retrieved_at"
+          ],
+          "additional_trace_authority": [
+            "provider citation to retrieval trace to canonical source mapping",
+            "observed retrieval or tool transport success or failure captured by trace; not retrieval_status selection",
+            "query and tool-call identity",
+            "redirect relationship",
+            "canonical trace ordering"
+          ],
+          "derivation": "captured retrieval or tool trace under frozen deterministic harness policies; never model prose"
+        }
+      },
+      "harness_enrichment": {
+        "allowed_only_for_explicit_harness_owned_provenance": true,
+        "not_semantic_repair_when_all": [
+          "the canonical value derives directly or deterministically from captured trace",
+          "field ownership is declared harness-side by this contract",
+          "the enrichment action is logged",
+          "before and after hashes are preserved",
+          "the provider did not own the canonical field"
+        ],
+        "provider_or_model_owned_semantic_values_never_covered": [
+          "retrieval_status",
+          "evidence_type",
+          "evidence content",
+          "claims",
+          "prices",
+          "risk fields",
+          "visual findings",
+          "uncertainties",
+          "conflicts",
+          "conclusions"
+        ]
+      },
+      "h3_boundary": {
+        "model_owned_final_outputs": "H3 examines the unfiltered strict parsed semantic payload before any normalization can discard extras.",
+        "retrieval_stage": "Canonical bundle construction is not insertion into a model-owned final semantic payload because canonical provenance fields are harness-owned.",
+        "provider_undeclared_semantic_fields_may_be_discarded": false,
+        "provider_retrieval_material_preserved_in_trace": true,
+        "harness_enrichment_restricted_to_declared_allowlist": true,
+        "enrichment_actions_must_be_logged": true
+      },
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_source_classification_policy_pending": true
+    },
+    "retrieval_evidence_content_policy": {
+      "allowed_canonical_content": [
+        "trace-captured raw excerpt",
+        "provider-returned search snippet tied to captured trace",
+        "deterministic structured extraction from trace-backed content"
+      ],
+      "free_form_model_summary_without_trace_support_allowed_as_canonical_evidence": false,
+      "model_summary_retention_location_if_needed": "trace or debug metadata only",
+      "content_remains_untrusted": true,
+      "enforcement": "harness construction invariant"
+    },
+    "final_search_id_ownership": {
+      "model_generated_semantic_fields": [
+        "claims[].claim_id",
+        "price_evidence[].price_evidence_id",
+        "uncertainties[].uncertainty_id",
+        "conflicts[].conflict_id"
+      ],
+      "harness_generation_or_repair_allowed": false,
+      "source_reference_policy": "The model selects only existing canonical source IDs from the validated retrieval evidence bundle; the harness validates membership and never repairs a broken reference."
+    },
     "null_and_optional": {
       "required_semantics": "required and non-null",
       "genuinely_optional_semantics": "omit when absent",
@@ -104,18 +196,19 @@
       "failure_result": "A value that fails an asserted format is a canonical schema validation failure."
     },
     "provider_adapter_boundary": {
-      "canonical_schema_role": "The provider-neutral semantic contract used for evaluation.",
+      "canonical_schema_role": "The provider-neutral semantic contracts used for evaluation; retrieval_evidence_bundle_v1 is a harness-assembled canonical bundle and untrusted synthesis input rather than a model-owned final semantic payload.",
       "provider_native_schema_role": "A syntax-only translation when a provider requires a different schema representation.",
       "adapters_may": [
         "translate canonical schema syntax to provider-native syntax",
         "unwrap provider transport envelopes",
-        "map provider citation IDs to trace-owned canonical source IDs"
+        "map provider citation IDs to trace-owned canonical source IDs",
+        "preserve provider retrieval evidence and references in captured trace for harness bundle construction"
       ],
       "adapters_must_not": [
         "weaken required fields",
         "permit undeclared extras",
         "repair invalid enums",
-        "insert missing semantic fields",
+        "insert missing fields into model-owned semantic payloads",
         "delete forbidden semantic fields",
         "rewrite claims",
         "rewrite prices",
@@ -123,7 +216,9 @@
         "fabricate citations",
         "turn invalid semantic output into valid output"
       ],
-      "canonical_validation_boundary": "The extracted raw semantic object must pass the canonical schema before semantic normalization or grading."
+      "model_output_canonical_validation_boundary": "The extracted raw model-owned semantic object must pass the canonical schema before semantic normalization or grading.",
+      "retrieval_bundle_canonical_validation_boundary": "Trace-backed retrieval material is preserved, explicit harness-owned provenance is attached under the logged ownership allowlist, and the resulting harness-assembled canonical bundle must then pass canonical schema and retrieval coherence validation.",
+      "harness_bundle_construction_is_semantic_repair": false
     },
     "safe_failure": {
       "on_canonical_schema_failure": [
@@ -138,7 +233,7 @@
       "provider_prose_exposure_allowed": false
     },
     "leakage_boundary": {
-      "schemas_may_contain_only": "provider-visible output-contract semantics",
+      "schemas_may_contain_only": "provider-visible output-contract semantics or explicitly declared harness-owned provenance in the canonical retrieval bundle supplied as untrusted synthesis input",
       "forbidden": [
         "fixture IDs",
         "expected outcomes",
@@ -175,29 +270,151 @@
     "retrieval_evidence_bundle_validator_v1": {
       "status": "declaration_only_not_implemented",
       "schema_id": "retrieval_evidence_bundle_v1",
+      "bundle_origin": "harness_assembled_canonical_bundle",
+      "ownership_requirements": {
+        "retrieval_status": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "source_id": "harness",
+        "url": "harness_retrieval_trace",
+        "source_type": "harness_under_future_frozen_source_classification_policy",
+        "retrieved_at": "harness_retrieval_or_response_capture",
+        "evidence_id": "harness",
+        "evidence_type": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "name": "provider_or_trace_derived_untrusted_data",
+        "evidence_content": "provider_or_retrieval_produced_trace_backed_untrusted_semantic_content"
+      },
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_source_classification_policy_pending": true,
       "rules": [
-        "source_id values are unique within the bundle",
-        "evidence_id values are unique within the bundle",
+        "retrieval_status is selected by the provider or retrieval stage and must be completed, partial, or no_reliable_evidence",
+        "missing or invalid retrieval_status is a canonical schema failure; the harness never generates, infers, inserts, replaces, upgrades, downgrades, or repairs it",
+        "source_id values are generated deterministically by the harness from canonical trace ordering and are unique within the bundle",
+        "evidence_id values are generated deterministically by the harness from canonical source and evidence ordering and are unique within the bundle",
+        "evidence_type is selected by the provider or retrieval stage and must match the canonical enum",
+        "missing or invalid evidence_type is a canonical schema failure; the harness never generates, infers, maps, inserts, replaces, or repairs it",
+        "a schema-valid evidence_type must pass evidence_trace_coherence_validator_v1 against its trace-backed content before the item or bundle can be accepted for synthesis",
         "completed or partial retrieval contains at least one source",
         "no_reliable_evidence may contain zero sources",
-        "retrieved_at comes from the harness or tool trace rather than model invention",
-        "every source URL is trace-backed",
-        "source_type corresponds to trace classification",
+        "retrieved_at comes exclusively from harness retrieval or response capture and is canonical UTC RFC3339 date-time rather than model invention",
+        "every canonical source URL is the exact final trace-owned retrieved URL, or the trace-owned requested URL only when no final URL exists and trace establishes that source identity",
+        "source_type is assigned by the harness under the future frozen source-classification policy",
+        "provider-proposed canonical provenance is preserved only as untrusted trace metadata and never overrides harness authority",
+        "canonical evidence content is limited to a trace-captured raw excerpt, a provider-returned search snippet tied to trace, or a deterministic structured extraction from trace-backed content",
+        "a free-form model-written summary without trace-backed content cannot become canonical evidence content",
         "the evidence bundle hash matches canonical serialized data",
         "every source belongs to the actual captured retrieval trace"
+      ],
+      "construction_flow": [
+        "provider or search or tool retrieval",
+        "capture retrieval trace",
+        "preserve provider-produced retrieval_status, evidence_type, evidence content, and returned reference material",
+        "generate canonical source IDs",
+        "generate canonical evidence IDs",
+        "attach trace-owned canonical URL",
+        "attach trace-owned retrieved_at",
+        "attach canonical source_type under the frozen classification policy",
+        "construct retrieval_evidence_bundle_v1",
+        "canonical schema validation",
+        "evidence_trace_coherence_validator_v1",
+        "retrieval_status_coherence_validator_v1",
+        "other applicable retrieval trace and reference validation",
+        "freeze and hash bundle",
+        "provide validated bundle as untrusted synthesis input"
+      ]
+    },
+    "evidence_trace_coherence_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "failure_category": "failed_evidence_trace_coherence",
+      "failure_category_scope": "A schema-valid evidence_type is materially inconsistent with its trace-backed evidence content or cannot be deterministically supported; this is distinct from canonical schema failure and the separate public-prose evidence policy.",
+      "validation_scope": "every canonical retrieval evidence item after canonical JSON Schema validation and before retrieval_status coherence validation, bundle freeze, or synthesis",
+      "ownership_boundary": {
+        "evidence_type_owner": "provider_or_retrieval_stage",
+        "semantic_trust": "untrusted",
+        "harness_allowed_outcomes": [
+          "accept",
+          "reject"
+        ],
+        "harness_generation_allowed": false,
+        "harness_insertion_allowed": false,
+        "harness_inference_allowed": false,
+        "harness_replacement_allowed": false,
+        "harness_case_repair_allowed": false,
+        "harness_invalid_value_mapping_allowed": false,
+        "harness_reclassification_allowed": false,
+        "harness_better_type_selection_allowed": false
+      },
+      "validator_inputs": [
+        "schema-valid evidence_type from the original provider or retrieval result",
+        "trace-backed canonical evidence content",
+        "captured retrieval trace",
+        "frozen retrieval objectives",
+        "frozen evidence-content policy",
+        "frozen evidence-type support rules"
+      ],
+      "evidence_type_support_rules": {
+        "identity": "Trace-backed content must materially identify the product, model, variant, or SKU.",
+        "status": "Trace-backed content must materially state lifecycle, release, current, discontinued, or equivalent product status.",
+        "specification": "Trace-backed content must materially state a product specification, feature, dimension, compatibility fact, or model-specific technical detail.",
+        "price": "Trace-backed content must contain a concrete price or amount, or deterministically extracted price evidence; merely mentioning the word price is insufficient.",
+        "availability": "Trace-backed content must materially state availability such as in stock, unavailable, preorder, sold, or an equivalent trace-backed availability state.",
+        "condition": "Trace-backed content must materially state item condition, wear, refurbishment, damage, or an equivalent condition fact.",
+        "warranty": "Trace-backed content must materially state warranty coverage, duration, exclusion, expiration, or an equivalent warranty fact.",
+        "bundle": "Trace-backed content must materially state package, bundle, included-item, or excluded-item information.",
+        "regional_context": "Trace-backed content must materially state region, currency, market, distribution, import, or equivalent regional context.",
+        "other_material": "Trace-backed content must be materially relevant to a frozen retrieval objective, fit no more specific evidence_type, and must not be irrelevant filler or untraceable model prose."
+      },
+      "deterministic_boundary": {
+        "allowed_methods": [
+          "deterministic structured extraction",
+          "captured trace metadata",
+          "frozen evidence-type rules",
+          "bounded content checks",
+          "future frozen parser or classification policies"
+        ],
+        "another_model_may_decide": false,
+        "provider_reputation_may_establish_support": false,
+        "looks_close_enough_acceptance_allowed": false,
+        "indeterminate_support_result": "fail_closed_for_canonical_evidence_inclusion",
+        "borderline_human_adjudication_policy": "The item remains excluded from validated canonical evidence and scored synthesis unless a future versioned policy resolves the case."
+      },
+      "rules": [
+        "evidence_type must already be schema-valid before evidence and trace coherence validation begins",
+        "evidence content must be trace-backed under the frozen evidence-content policy",
+        "trace-backed content must materially support the semantic class declared by evidence_type under the matching frozen support rule",
+        "content that does not materially support the declared evidence_type fails with failed_evidence_trace_coherence",
+        "the harness may reject but never replace, repair, reclassify, or choose a better evidence_type",
+        "source_type cannot establish or imply evidence_type; actual trace-backed content must support the declared evidence_type",
+        "failure remains attached to the original provider or retrieval attempt",
+        "a failed item or result is not promoted into the validated canonical retrieval bundle used for synthesis",
+        "the harness does not silently remove a failed item and recalculate, infer, or replace retrieval_status",
+        "retrieval_status remains the original provider or retrieval-selected value and the attempt fails the applicable validation path",
+        "any later retry is governed only by the future frozen retry policy"
       ]
     },
     "retrieval_status_coherence_validator_v1": {
       "status": "declaration_only_not_implemented",
       "schema_id": "retrieval_evidence_bundle_v1",
+      "retrieval_status_ownership": {
+        "owner": "provider_or_retrieval_stage",
+        "semantic_trust": "untrusted",
+        "allowed_values": [
+          "completed",
+          "partial",
+          "no_reliable_evidence"
+        ],
+        "harness_role": "validate the selected status against canonical schema, captured trace, retained evidence, and frozen coherence rules",
+        "harness_generation_inference_replacement_or_repair_allowed": false,
+        "missing_or_invalid_result": "canonical_schema_failure"
+      },
       "validator_inputs": [
-        "validated retrieval_evidence_bundle_v1 object",
+        "validated harness-assembled retrieval_evidence_bundle_v1 object",
         "captured retrieval trace",
         "frozen research objectives",
         "harness-owned objective applicability and support classifications"
       ],
       "harness_classification_contract": {
-        "classification_authority": "future deterministic harness operating on the frozen objective set and captured trace; never model prose",
+        "objective_classification_authority": "future deterministic harness operating on the frozen objective set and captured trace; never model prose; these support classifications validate but do not select retrieval_status",
+        "source_classification_policy_status": "pending_creation",
         "objective_applicability_values": [
           "material_required",
           "optional_absence_permitted",
@@ -244,15 +461,34 @@
           "contradiction_failure": "Fail when any material_required objective has support_status sufficient while retrieval_status is no_reliable_evidence."
         }
       },
+      "tool_and_transport_failure_boundary": {
+        "no_reliable_evidence_is_valid_only_when": "The provider or retrieval stage produced a canonical schema-valid semantic result and retained evidence and trace coherently support no_reliable_evidence.",
+        "pure_transport_failure_result": "attempt_failure",
+        "pure_tool_failure_result": "attempt_failure",
+        "page_fetch_failure_without_valid_semantic_result": "attempt_failure",
+        "timeout_without_valid_semantic_result": "attempt_failure",
+        "provider_search_unavailable_without_valid_semantic_result": "attempt_failure",
+        "failure_to_no_reliable_evidence_conversion_allowed": false
+      },
       "semantic_boundary": "Retrieval-status coherence determines whether retrieval produced usable evidence for synthesis. It does not determine final identity, final comparison_status, market value, or a final price conclusion; the bundle remains untrusted synthesis input."
     },
     "search_cross_reference_validator_v1": {
       "status": "declaration_only_not_implemented",
       "schema_id": "search_output_schema_v1",
+      "ownership_requirements": {
+        "claim_id": "model",
+        "price_evidence_id": "model",
+        "uncertainty_id": "model",
+        "conflict_id": "model",
+        "source_references": "model_selects_from_existing_canonical_source_ids_in_validated_retrieval_bundle",
+        "harness_repairs_or_generates_model_owned_ids": false
+      },
       "rules": [
         "all evaluation-owned IDs are unique within their namespaces",
-        "every referenced source ID exists in the same result",
-        "every price evidence source exists",
+        "every referenced source ID exists in the validated retrieval evidence bundle and the same final result",
+        "every final source record is an unchanged selected projection of a canonical source record in the validated retrieval evidence bundle",
+        "every price evidence source exists in the validated retrieval evidence bundle",
+        "claim_id, price_evidence_id, uncertainty_id, and conflict_id are required model-generated semantic fields and are never inserted or repaired by the harness",
         "every conflict has at least two unique valid source IDs",
         "resolved identity requires resolved_product_identity and at least one valid source ID",
         "unresolved identity forbids resolved_product_identity and resolved_variant_or_sku",
@@ -263,8 +499,7 @@
         "comparison_status partially_established satisfies the partial coherence specification",
         "comparison_status not_established satisfies the not-established coherence specification",
         "range minimum is less than or equal to range maximum",
-        "retrieval timestamps and URLs exactly match captured trace evidence",
-        "source classification agrees with captured trace and provenance",
+        "retrieval timestamps, URLs, and source types exactly match the canonical harness-owned values in the validated retrieval bundle and captured trace",
         "no source is fabricated",
         "material current claims have supporting source references"
       ],
@@ -499,10 +734,76 @@
           "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_retrieval_v1"
         ]
       },
+      "canonical_bundle_origin": "harness_assembled",
+      "ownership_model": {
+        "retrieval_status": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "canonical_source": {
+          "source_id": "harness",
+          "url": "harness_retrieval_trace",
+          "source_type": "harness_under_future_frozen_source_classification_policy",
+          "retrieved_at": "harness_retrieval_or_response_capture",
+          "name": "provider_or_trace_derived_untrusted_data"
+        },
+        "canonical_evidence": {
+          "evidence_id": "harness",
+          "evidence_type": "provider_or_retrieval_produced_untrusted_semantic_field",
+          "content": "provider_or_retrieval_produced_trace_backed_untrusted_semantic_content"
+        },
+        "provider_proposed_provenance": "preserve as untrusted trace metadata when exposed; never use as canonical authority",
+        "authoritative_owner_count_per_field": 1
+      },
+      "harness_construction_invariants": {
+        "retrieval_status_policy": "The provider or retrieval stage selects retrieval_status; missing or invalid values fail canonical schema validation and the harness never generates, infers, inserts, replaces, upgrades, downgrades, or repairs the value.",
+        "source_id_policy": "Generate deterministically from canonical trace ordering; provider omission is allowed and provider invention is non-authoritative trace metadata.",
+        "evidence_id_policy": "Generate deterministically from canonical source and evidence ordering; provider omission is allowed and evidence_id is not a provider-quality criterion.",
+        "evidence_type_policy": "The provider or retrieval stage selects evidence_type; missing or invalid values fail canonical schema validation, a schema-valid value inconsistent with trace-backed content fails evidence_trace_coherence_validator_v1, and the harness never generates, infers, maps, inserts, replaces, repairs, reclassifies, or chooses a better value.",
+        "source_display_name_policy": "Use a provider-returned or trace-derived display name with representation-only normalization under a documented rule; the text remains untrusted.",
+        "url_policy": "Use the exact final trace-owned retrieved URL; when unavailable, use the trace-owned requested URL only where trace establishes source identity.",
+        "retrieved_at_policy": "Use harness retrieval or response capture serialized as canonical UTC RFC3339 date-time.",
+        "source_type_policy": "Assign under the future frozen source-classification policy; provider proposals are non-authoritative.",
+        "evidence_content_policy": "Allow only trace-captured raw excerpts, provider-returned snippets tied to trace, or deterministic structured extraction from trace-backed content.",
+        "free_form_untraceable_model_summary_allowed": false,
+        "all_enrichment_actions_logged": true,
+        "before_and_after_hashes_preserved": true
+      },
+      "construction_flow": [
+        "provider or search or tool retrieval",
+        "capture retrieval trace",
+        "preserve provider-returned evidence and reference material",
+        "generate canonical source IDs",
+        "generate canonical evidence IDs",
+        "attach trace-owned canonical URL",
+        "attach trace-owned retrieved_at",
+        "attach canonical source_type under the frozen classification policy",
+        "construct retrieval_evidence_bundle_v1",
+        "canonical schema validation",
+        "evidence_trace_coherence_validator_v1",
+        "retrieval_status_coherence_validator_v1",
+        "other applicable retrieval trace and reference validation",
+        "freeze and hash bundle",
+        "provide validated bundle as untrusted synthesis input"
+      ],
+      "h3_boundary": {
+        "canonical_bundle_construction_is_field_insertion_into_model_owned_final_payload": false,
+        "model_authored_undeclared_semantic_fields_may_be_discarded": false,
+        "provider_retrieval_material_preserved_in_trace": true,
+        "harness_enrichment_allowlist": [
+          "source_id",
+          "evidence_id",
+          "url",
+          "source_type",
+          "retrieved_at"
+        ]
+      },
+      "pre_execution_dependencies": {
+        "source_classification_policy_status": "pending_creation",
+        "provider_calls_blocked_while_pending": true
+      },
       "pilot_applicable": true,
       "scored_applicable": true,
       "required_future_validators": [
         "retrieval_evidence_bundle_validator_v1",
+        "evidence_trace_coherence_validator_v1",
         "retrieval_status_coherence_validator_v1"
       ],
       "schema": {
@@ -643,7 +944,7 @@
           }
         ]
       },
-      "schema_sha256": "f5428e179090d07cbda4f69dde471a60a2b5aa8908fe9b12e3ee8d6fb4177a4c"
+      "schema_sha256": "2f44c267d28c298ef9ea65813ebaa6c101c4eb23f8dd162fd08fba49a66ed153"
     },
     {
       "schema_id": "search_output_schema_v1",
@@ -654,6 +955,18 @@
           "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:grounded_search",
           "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_synthesis_v1"
         ]
+      },
+      "ownership_model": {
+        "model_generated_semantic_ids": [
+          "claims[].claim_id",
+          "price_evidence[].price_evidence_id",
+          "uncertainties[].uncertainty_id",
+          "conflicts[].conflict_id"
+        ],
+        "harness_generation_or_repair_of_model_semantic_ids_allowed": false,
+        "source_references": "model selects only canonical source IDs already present in the validated retrieval evidence bundle",
+        "invented_source_reference_result": "cross_reference_validation_failure_without_repair",
+        "final_source_records": "model-selected unchanged projections of harness-owned canonical source records from the validated retrieval evidence bundle"
       },
       "pilot_applicable": true,
       "scored_applicable": true,
@@ -1370,7 +1683,7 @@
           }
         ]
       },
-      "schema_sha256": "851167f9ea34a66d79deb37c85c4d89a36aa69e5872ac6c303cf480c877719a3"
+      "schema_sha256": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05"
     },
     {
       "schema_id": "visual_output_schema_v1",
@@ -1445,5 +1758,5 @@
       "schema_sha256": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3"
     }
   ],
-  "schema_set_sha256": "dfa8049a6533bfb68b0e0833fc472170257ab0195e92752fce470ff6190f40e0"
+  "schema_set_sha256": "928547a93b94225a55e434688045df042a1b5fafc9590b5785e257d4fab7b41a"
 }
