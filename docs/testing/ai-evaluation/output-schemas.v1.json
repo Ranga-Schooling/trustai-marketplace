@@ -13,7 +13,7 @@
     "original_prompt_template_freeze": "249d3e4d9875b5d409b2fcfc5ae39d4696d42397",
     "prompt_template_base_commit": "a94c0797738fee0a963153228b069603ec22e73c",
     "prompt_template_base_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253",
-    "current_prompt_template_set_hash": "2fccbfa5cbcdcedcce167086d560de7a1e54b7d805ebf4abfefc5f687784163c"
+    "current_prompt_template_set_hash": "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2"
   },
   "schema_canonicalization": {
     "schema_canonicalization_id": "canonical_schema_json_v1",
@@ -312,12 +312,14 @@
         "attach trace-owned canonical URL",
         "attach trace-owned retrieved_at",
         "attach canonical source_type under the frozen classification policy",
-        "construct retrieval_evidence_bundle_v1",
-        "canonical schema validation",
-        "evidence_trace_coherence_validator_v1",
-        "retrieval_status_coherence_validator_v1",
-        "other applicable retrieval trace and reference validation",
-        "freeze and hash bundle",
+        "construct canonical_retrieval_candidate as retrieval_evidence_bundle_v1",
+        "canonical schema validation produces schema_validated_retrieval_candidate",
+        "trace, reference, source-membership, and source-classification validation produces trace_validated_retrieval_candidate",
+        "evidence_trace_coherence_validator_v1 produces evidence_coherent_retrieval_candidate",
+        "objective_support_validator_v1 produces objective_support_result",
+        "retrieval_status_coherence_validator_v1 consumes original retrieval_status, objective_support_result, and frozen non-empty material set M and produces retrieval_status_validated_candidate",
+        "remaining independent policy validation",
+        "freeze and hash validated_canonical_retrieval_bundle",
         "provide validated bundle as untrusted synthesis input"
       ]
     },
@@ -391,6 +393,66 @@
         "any later retry is governed only by the future frozen retry policy"
       ]
     },
+    "objective_support_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "owner": "application_harness",
+      "provider_visible_output_shape_changed": false,
+      "validation_input_stage": "evidence_coherent_retrieval_candidate",
+      "validator_inputs": [
+        "evidence_coherent_retrieval_candidate",
+        "frozen objective manifest",
+        "validated source classifications",
+        "frozen target context",
+        "retrieval_objective_support_policy_v1",
+        "required deterministic extractor and matcher outputs"
+      ],
+      "objective_manifest_contract": {
+        "frozen_before_provider_execution": true,
+        "objective_type_values": [
+          "identity",
+          "status",
+          "specification",
+          "price",
+          "availability",
+          "condition",
+          "warranty",
+          "bundle",
+          "regional_context"
+        ],
+        "materiality_values": [
+          "material_required",
+          "non_material_supporting"
+        ],
+        "applicability_values": [
+          "applicable",
+          "not_applicable"
+        ],
+        "materiality_or_applicability_may_change_after_evidence": false,
+        "zero_applicable_material_objectives_result": "topology_preflight_failure"
+      },
+      "objective_support_values": [
+        "sufficient",
+        "insufficient",
+        "conflicting",
+        "not_applicable"
+      ],
+      "rules": [
+        "exactly one objective-support result is required for every pre-frozen objective",
+        "not_applicable may only echo applicability frozen before provider execution",
+        "an applicable objective with missing, unavailable, or unresolved evidence is insufficient only under the frozen deterministic support policy",
+        "provider, retrieval, tool, or transport failure without a valid semantic retrieval result is an attempt failure rather than an objective-support state",
+        "sufficient requires every frozen objective requirement to be mechanically satisfied",
+        "conflicting requires the frozen deterministic conflict predicate to establish a qualifying conflict",
+        "non_material_supporting objectives do not affect retrieval_status",
+        "other_material evidence contributes zero material-objective support in V1 unless a future frozen predicate explicitly enables it",
+        "the validator never consumes validated_canonical_retrieval_bundle as input"
+      ],
+      "output": "objective_support_result",
+      "retrieval_objective_support_policy_status": "pending_creation",
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_dependencies_pending": true
+    },
     "retrieval_status_coherence_validator_v1": {
       "status": "declaration_only_not_implemented",
       "schema_id": "retrieval_evidence_bundle_v1",
@@ -407,60 +469,64 @@
         "missing_or_invalid_result": "canonical_schema_failure"
       },
       "validator_inputs": [
-        "validated harness-assembled retrieval_evidence_bundle_v1 object",
-        "captured retrieval trace",
-        "frozen research objectives",
-        "harness-owned objective applicability and support classifications"
+        "evidence_coherent_retrieval_candidate",
+        "objective_support_result",
+        "frozen non-empty material set M"
       ],
       "harness_classification_contract": {
-        "objective_classification_authority": "future deterministic harness operating on the frozen objective set and captured trace; never model prose; these support classifications validate but do not select retrieval_status",
+        "objective_classification_authority": "future deterministic harness operating on the frozen objective set, evidence-coherent retrieval input, validated source classifications, and frozen support policy; never model prose; these support classifications validate but do not select retrieval_status",
         "source_classification_policy_status": "pending_creation",
-        "objective_applicability_values": [
+        "materiality_values": [
           "material_required",
-          "optional_absence_permitted",
+          "non_material_supporting"
+        ],
+        "objective_applicability_values": [
+          "applicable",
           "not_applicable"
         ],
         "objective_support_values": [
           "sufficient",
           "insufficient",
-          "unresolved",
           "conflicting",
-          "unavailable"
+          "not_applicable"
         ],
-        "classification_inputs": [
-          "normalized evidence types",
-          "trace-backed source classifications",
-          "exact target identity and variant",
-          "target region",
-          "target condition and bundle when applicable",
-          "captured retrieval trace"
-        ]
+        "materiality_owner": "frozen objective manifest and retrieval_objective_support_policy_v1",
+        "applicability_owner": "frozen applicability_rule_id evaluated before provider execution",
+        "objective_support_owner": "objective_support_validator_v1",
+        "materiality_or_applicability_may_change_after_evidence": false,
+        "missing_or_unavailable_or_unresolved_evidence_for_applicable_objective": "insufficient only under the frozen deterministic support policy",
+        "provider_or_tool_failure_without_valid_semantic_result": "attempt_failure"
+      },
+      "material_set_contract": {
+        "definition": "M is the non-empty set frozen before provider execution containing exactly objectives whose materiality is material_required and applicability is applicable.",
+        "non_empty_required": true,
+        "zero_material_set_result": "topology_preflight_failure before provider execution",
+        "non_material_supporting_objectives_affect_status": false,
+        "not_applicable_objectives_affect_status": false
       },
       "status_rules": {
         "completed": {
           "minimum_sources": 1,
-          "required_material_objective_support": "every objective classified material_required has support_status sufficient",
-          "optional_absence_policy": "An objective classified optional_absence_permitted or not_applicable does not prevent completed."
+          "formula": "if and only if every objective in M is sufficient"
         },
         "partial": {
           "minimum_sources": 1,
-          "required_supported_material_objectives": 1,
-          "required_incomplete_material_objectives": 1,
+          "formula": "if and only if at least one objective in M is sufficient and at least one objective in M is insufficient or conflicting",
           "incomplete_support_values": [
             "insufficient",
-            "unresolved",
-            "conflicting",
-            "unavailable"
+            "conflicting"
           ]
         },
         "no_reliable_evidence": {
           "minimum_sources": 0,
-          "maximum_supported_material_objectives": 0,
+          "formula": "if and only if zero objectives in M are sufficient",
           "populated_sources_allowed": true,
-          "retained_evidence_policy": "Retained evidence may be weak, insufficient, ambiguous, conflicting, irrelevant to the exact target, stale for the current claim, or mismatched by region, condition, or bundle.",
-          "contradiction_failure": "Fail when any material_required objective has support_status sufficient while retrieval_status is no_reliable_evidence."
+          "retained_evidence_policy": "Retained evidence may be insufficient or conflicting for every objective in M while remaining trace-backed contextual input.",
+          "contradiction_failure": "Fail when any objective in M has objective_support sufficient while retrieval_status is no_reliable_evidence."
         }
       },
+      "status_formula_exhaustive_and_mutually_exclusive_when_M_non_empty": true,
+      "harness_replacement_status_generation_allowed": false,
       "tool_and_transport_failure_boundary": {
         "no_reliable_evidence_is_valid_only_when": "The provider or retrieval stage produced a canonical schema-valid semantic result and retained evidence and trace coherently support no_reliable_evidence.",
         "pure_transport_failure_result": "attempt_failure",
@@ -769,18 +835,20 @@
       "construction_flow": [
         "provider or search or tool retrieval",
         "capture retrieval trace",
-        "preserve provider-returned evidence and reference material",
+        "preserve provider-produced retrieval_status, evidence_type, evidence content, and returned reference material",
         "generate canonical source IDs",
         "generate canonical evidence IDs",
         "attach trace-owned canonical URL",
         "attach trace-owned retrieved_at",
         "attach canonical source_type under the frozen classification policy",
-        "construct retrieval_evidence_bundle_v1",
-        "canonical schema validation",
-        "evidence_trace_coherence_validator_v1",
-        "retrieval_status_coherence_validator_v1",
-        "other applicable retrieval trace and reference validation",
-        "freeze and hash bundle",
+        "construct canonical_retrieval_candidate as retrieval_evidence_bundle_v1",
+        "canonical schema validation produces schema_validated_retrieval_candidate",
+        "trace, reference, source-membership, and source-classification validation produces trace_validated_retrieval_candidate",
+        "evidence_trace_coherence_validator_v1 produces evidence_coherent_retrieval_candidate",
+        "objective_support_validator_v1 produces objective_support_result",
+        "retrieval_status_coherence_validator_v1 consumes original retrieval_status, objective_support_result, and frozen non-empty material set M and produces retrieval_status_validated_candidate",
+        "remaining independent policy validation",
+        "freeze and hash validated_canonical_retrieval_bundle",
         "provide validated bundle as untrusted synthesis input"
       ],
       "h3_boundary": {
@@ -804,6 +872,7 @@
       "required_future_validators": [
         "retrieval_evidence_bundle_validator_v1",
         "evidence_trace_coherence_validator_v1",
+        "objective_support_validator_v1",
         "retrieval_status_coherence_validator_v1"
       ],
       "schema": {
@@ -944,7 +1013,7 @@
           }
         ]
       },
-      "schema_sha256": "2f44c267d28c298ef9ea65813ebaa6c101c4eb23f8dd162fd08fba49a66ed153"
+      "schema_sha256": "a823c58173370aa2eb5e87bf96decec6c5b3a413e96aefc41783968181932201"
     },
     {
       "schema_id": "search_output_schema_v1",
@@ -1758,5 +1827,5 @@
       "schema_sha256": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3"
     }
   ],
-  "schema_set_sha256": "928547a93b94225a55e434688045df042a1b5fafc9590b5785e257d4fab7b41a"
+  "schema_set_sha256": "125809d08e911d51b4619002f02a969b03b8da5866bfab1b8346758c0bb9a6f4"
 }
