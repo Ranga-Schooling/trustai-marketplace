@@ -649,7 +649,7 @@
         "policy_version": "v1",
         "json_pointer": "/semantic_numeric_domain_policy",
         "hash_scope": "complete_selected_subtree",
-        "expected_semantic_hash": "9c31b4455cdcecffb95e58028c2ef724f17442e45cb25a104a83ffc3d57c2a1e"
+        "expected_semantic_hash": "7b672830ea04e1c0cd2df19d2c52f72ff4aec4c76c88365afff149074d2f49cd"
       },
       "semantic_repair_prohibition_v1": {
         "policy_id": "semantic_repair_prohibition_v1",
@@ -752,7 +752,7 @@
     },
     "derived_hash_cache": {
       "authoritative": false,
-      "normalization_spec_semantic_hash": "2a8738456c32907e8a06cf8279b9f6f9336180fc6ea3300c5d287c9c2202974d",
+      "normalization_spec_semantic_hash": "023ad80eeb6e08e9279c22b7955ebe5d04ec9ab3cd88626ceaccc4962c41b343",
       "registered_policy_semantic_hashes": {
         "attempt_run_outcome_model_v1": "4962aeb98a460f3331f3e08a4c8d7b6299bf16104b964a59cab54c5efefbb1eb",
         "attempt_stage_event_ledger_v1": "a54e4478a8de02ddbafe7ca7a56c69ceab998d18aaeb18c34bcad26a83a3db4f",
@@ -788,7 +788,7 @@
         "retrieval_trace_ordering_policy_v1": "b12d392784400defadf733241c4b1a3e2aefc61ea0ce8527c5c51c7e5096b3b0",
         "retrieval_validation_stage_model_v1": "deea1675ec15c58d6bb199af71e351975df8b89befb6923aab192ce0c6b569ea",
         "retrieved_at_policy_v1": "78a74f14488672097f3933c4f6ec9930ed43acd90a500835691f26e22483e182",
-        "semantic_numeric_domain_policy_v1": "9c31b4455cdcecffb95e58028c2ef724f17442e45cb25a104a83ffc3d57c2a1e",
+        "semantic_numeric_domain_policy_v1": "7b672830ea04e1c0cd2df19d2c52f72ff4aec4c76c88365afff149074d2f49cd",
         "semantic_repair_prohibition_v1": "bf223bca1076b9128e4e37c511a1e349a8e42e53e4dc18895ee560d0ba97c75f",
         "source_deduplication_policy_v1": "4d93c4072ce956f7d19fb25a215e01788343de0e344c0f87bc79acc794d84b4d",
         "source_display_name_policy_v1": "b3a8502bcbf3b992e486d0c1686ae518312214bc9be684afa72fd06e9171fca9",
@@ -1778,7 +1778,11 @@
         "significand or coefficient digit count",
         "absolute decimal exponent magnitude"
       ],
-      "exact_thresholds": "pending and execution-blocking",
+      "exact_thresholds": {
+        "maximum_numeric_lexeme_length": 16384,
+        "maximum_numeric_significand_or_coefficient_digits": 8192,
+        "maximum_absolute_decimal_exponent_magnitude": 32768
+      },
       "limit_terminal": "failed_resource_limit"
     },
     "hash_domain_separation": {

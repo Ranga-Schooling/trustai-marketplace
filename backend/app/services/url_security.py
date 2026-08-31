@@ -11,7 +11,7 @@ from typing import Any
 
 _POLICY_ID = "url_security_policy_v1"
 _POLICY_VERSION = "v1"
-_POLICY_HASH = "7ac11f5e947576098f73dc41e182c9c8b5ad50a9f667406ad689625e9a61168b"
+_POLICY_HASH = "fcc37b299f84cccb7522c2db150022e3e92f04430c50e01b94bb7f7fa6e5b44e"
 
 _URL_ROLES = {"requested_url", "intermediate_redirect_url", "final_url"}
 _AUTH_CONTEXTS = {

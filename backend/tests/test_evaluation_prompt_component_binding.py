@@ -65,7 +65,7 @@ def test_all_frozen_prompt_components_bind_to_verified_template_identities():
         "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2"
     )
     assert binding.normalization_spec_semantic_hash == (
-        "2a8738456c32907e8a06cf8279b9f6f9336180fc6ea3300c5d287c9c2202974d"
+        "023ad80eeb6e08e9279c22b7955ebe5d04ec9ab3cd88626ceaccc4962c41b343"
     )
     assert tuple(
         (item.manifest_name, item.ordered_template_ids, len(item.components))

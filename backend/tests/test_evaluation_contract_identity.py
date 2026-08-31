@@ -72,7 +72,7 @@ def test_frozen_normalization_spec_and_all_child_hashes_recompute():
     result = verify_normalization_parser_artifact(artifact)
 
     assert result.semantic_hash == (
-        "2a8738456c32907e8a06cf8279b9f6f9336180fc6ea3300c5d287c9c2202974d"
+        "023ad80eeb6e08e9279c22b7955ebe5d04ec9ab3cd88626ceaccc4962c41b343"
     )
     assert dict(result.child_hashes)["normalization_parser_resource_limits_v1"] == (
         "9269950928ddf05e6b691623c57e6b60797c1131ee96f893e4977d5f223b2d16"
@@ -80,6 +80,9 @@ def test_frozen_normalization_spec_and_all_child_hashes_recompute():
     assert len(result.child_hashes) == 49
     assert dict(result.child_hashes)["provider_role_mapping_contract_v1"] == (
         "e745dbb1a4b67a7c2d0bf2bdb069b27a36aa59278e2c515d1637ab840e671976"
+    )
+    assert dict(result.child_hashes)["semantic_numeric_domain_policy_v1"] == (
+        "7b672830ea04e1c0cd2df19d2c52f72ff4aec4c76c88365afff149074d2f49cd"
     )
 
 
