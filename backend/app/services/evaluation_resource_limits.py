@@ -417,6 +417,22 @@ def enforce_extracted_semantic_bytes(extracted_payload: bytes) -> None:
     _raise_if_exceeded("maximum_extracted_semantic_bytes", len(extracted_payload))
 
 
+def account_extracted_semantic_chunk(
+    accumulated_bytes: int,
+    chunk: bytes,
+) -> int:
+    """Account extracted bytes before a caller appends a semantic fragment."""
+    if isinstance(accumulated_bytes, bool) or type(accumulated_bytes) is not int:
+        raise TypeError("accumulated_bytes must be an integer")
+    if accumulated_bytes < 0:
+        raise ValueError("accumulated_bytes must be nonnegative")
+    if not isinstance(chunk, bytes):
+        raise TypeError("chunk must be bytes")
+    total = accumulated_bytes + len(chunk)
+    _raise_if_exceeded("maximum_extracted_semantic_bytes", total)
+    return total
+
+
 def account_canonical_payload_fragment(
     accumulated_bytes: int,
     fragment: bytes,
