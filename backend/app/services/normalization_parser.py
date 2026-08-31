@@ -717,6 +717,31 @@ def normalize_semantic_json(extracted_payload: bytes) -> CanonicalSemanticJson:
     return canonicalize_semantic_json(admitted)
 
 
+def replay_canonical_semantic_json(
+    canonical_payload: bytes,
+) -> CanonicalSemanticJson:
+    """Reconstruct an immutable-stage snapshot from exact canonical bytes.
+
+    Canonical bytes are governed by ``maximum_canonical_payload_bytes``, not
+    the earlier extracted-semantic byte ceiling. The replay must reproduce the
+    input byte-for-byte so this function cannot normalize or repair a caller's
+    representation.
+    """
+    if not isinstance(canonical_payload, bytes):
+        raise TypeError("canonical_payload must be bytes")
+    account_canonical_payload_fragment(0, canonical_payload)
+    parsed = _parse_strict_json_bytes(
+        canonical_payload,
+        payload_name="canonical_payload",
+    )
+    candidate = construct_unfiltered_canonical_validation_candidate(parsed)
+    admitted = admit_canonical_validation_candidate(candidate)
+    replayed = canonicalize_semantic_json(admitted)
+    if replayed.canonical_bytes != canonical_payload:
+        raise ValueError("canonical_payload is not exact canonical JSON")
+    return replayed
+
+
 def hash_raw_provider_response(raw_provider_response: bytes) -> str:
     """Return the SHA-256 identity of exact raw-provider-response bytes."""
     if not isinstance(raw_provider_response, bytes):
@@ -731,11 +756,23 @@ def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
         raise TypeError("extracted_payload must be bytes")
 
     enforce_extracted_semantic_bytes(extracted_payload)
+    return _parse_strict_json_bytes(
+        extracted_payload,
+        payload_name="extracted_payload",
+    )
+
+
+def _parse_strict_json_bytes(
+    payload: bytes,
+    *,
+    payload_name: str,
+) -> StrictParsedJson:
+    """Apply the shared strict parser after the caller enforces byte surface."""
 
     try:
-        decoded_text = extracted_payload.decode("utf-8", errors="strict")
+        decoded_text = payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
-        raise StrictUtf8DecodeError("extracted_payload is not strict UTF-8") from exc
+        raise StrictUtf8DecodeError(f"{payload_name} is not strict UTF-8") from exc
 
     if decoded_text.startswith("\ufeff"):
         raise StrictJsonSyntaxError("UTF-8 byte-order mark is forbidden")
@@ -743,7 +780,7 @@ def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
     try:
         scan_json_resource_limits(decoded_text)
     except JsonResourceSyntaxError as exc:
-        raise StrictJsonSyntaxError("extracted_payload is not strict JSON") from exc
+        raise StrictJsonSyntaxError(f"{payload_name} is not strict JSON") from exc
 
     try:
         temporary_tree = json.loads(
@@ -756,7 +793,7 @@ def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
     except StrictJsonSyntaxError:
         raise
     except json.JSONDecodeError as exc:
-        raise StrictJsonSyntaxError("extracted_payload is not strict JSON") from exc
+        raise StrictJsonSyntaxError(f"{payload_name} is not strict JSON") from exc
 
     _reject_duplicate_keys(temporary_tree)
     _reject_unpaired_surrogates(temporary_tree)
