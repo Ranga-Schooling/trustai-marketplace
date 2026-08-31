@@ -10,9 +10,29 @@ It carries no persistence, provider, retry, network, or execution authority.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
+import hashlib
+import json
+from pathlib import Path
+import re
 from typing import Any
 
-from app.services.evaluation_attempt_state import AttemptState, validate_attempt_state
+from app.services.evaluation_attempt_state import (
+    HIGHEST_COMPLETED_STAGES,
+    NORMALIZATION_ACTIONS,
+    NormalizationActionRecord,
+    AttemptState,
+    summarize_normalization_actions,
+    validate_attempt_state,
+)
+from app.services.evaluation_contract_identity import (
+    ContractIdentityError,
+    load_strict_contract_json,
+    load_strict_normalization_spec,
+    verify_normalization_parser_artifact,
+    verify_output_schema_artifact,
+    verify_prompt_template_artifact,
+)
 from app.services.evaluation_data_handling import (
     POLICY_HASH as DATA_HANDLING_POLICY_HASH,
     POLICY_ID as DATA_HANDLING_POLICY_ID,
@@ -25,7 +45,7 @@ from app.services.url_security import validate_url_security
 
 
 FULL_RESULT_RECORD_BLOCKERS = (
-    "future_result_record_artifact",
+    "pilot_result_record_builder_required",
     "immutable_run_binding",
     "adapter_and_transport_bindings",
     "complete_stage_hash_inventory",
@@ -34,6 +54,116 @@ FULL_RESULT_RECORD_BLOCKERS = (
 )
 
 _FOUNDATION_TOKEN = object()
+_PILOT_RECORD_TOKEN = object()
+_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_CONTRACT = (
+    _ROOT / "docs" / "testing" / "ai-evaluation" / "result-record.v1.json"
+)
+_NORMALIZATION_CONTRACT = (
+    _ROOT
+    / "docs"
+    / "testing"
+    / "ai-evaluation"
+    / "normalization-parser.v1.json"
+)
+_NORMALIZATION_IMPLEMENTATION = (
+    _ROOT / "backend" / "app" / "services" / "normalization_parser.py"
+)
+_RUBRIC_CONTRACT = (
+    _ROOT / "docs" / "testing" / "ai-evaluation" / "rubric.v1.json"
+)
+_PROMPT_CONTRACT = (
+    _ROOT / "docs" / "testing" / "ai-evaluation" / "prompt-templates.v1.json"
+)
+_SCHEMA_CONTRACT = (
+    _ROOT / "docs" / "testing" / "ai-evaluation" / "output-schemas.v1.json"
+)
+_LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_GIT_SHA = re.compile(r"[0-9a-f]{40}\Z")
+_SAFE_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+@\-]{0,255}\Z")
+_UTC_MILLISECOND = re.compile(
+    r"(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-"
+    r"(?:0[1-9]|[12][0-9]|3[01])T"
+    r"(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\."
+    r"[0-9]{3}Z\Z"
+)
+_ATTEMPT_KEY_FIELDS = (
+    "evaluation_id",
+    "fixture_id",
+    "candidate_id",
+    "provider",
+    "model",
+    "component_topology",
+    "workload",
+    "run_number",
+    "attempt_number",
+)
+_TRANSPORT_MODES = (
+    "non_streaming_http",
+    "streaming",
+    "sdk_native_structured",
+)
+_WORKLOAD_BY_BRANCH = {
+    "text_final": "text_risk_analysis",
+    "search_retrieval": "grounded_product_price_research",
+    "search_synthesis_final": "grounded_product_price_research",
+    "visual_final": "visual_inspection",
+}
+_PROMPT_SCHEMA_IDS_BY_BRANCH = {
+    "text_final": (
+        "text_system_v1",
+        "text_input_v1",
+        "text_output_schema_v1",
+    ),
+    "search_retrieval": (
+        "search_retrieval_v1",
+        "retrieval_evidence_bundle_v1",
+    ),
+    "search_synthesis_final": (
+        "search_synthesis_v1",
+        "search_output_schema_v1",
+    ),
+    "visual_final": (
+        "visual_system_v1",
+        "visual_context_v1",
+        "visual_output_schema_v1",
+    ),
+}
+_NORMALIZATION_ACTION_FIELDS = {
+    "ordinal",
+    "action",
+    "policy_id",
+    "policy_version",
+    "policy_hash",
+    "adapter_id_if_applicable",
+    "adapter_version_if_applicable",
+    "adapter_hash_if_applicable",
+    "input_hash",
+    "output_hash",
+    "trace_references",
+    "deterministic_parameters",
+    "action_result",
+}
+_RESULT_RECORD_ARTIFACT_KEYS = {
+    "artifact_id",
+    "artifact_version",
+    "status",
+    "purpose",
+    "provider_neutral",
+    "source_contracts",
+    "record_model",
+    "attempt_key",
+    "normalization_audit_fields",
+    "pilot_envelope_fields",
+    "scored_only_fields",
+    "rubric_aliases",
+    "retry_linkage",
+    "validation_rules",
+    "privacy",
+    "deferred",
+    "execution_boundary",
+    "specification_identity",
+}
 
 
 class ResultRecordFoundationError(ValueError):
@@ -294,4 +424,789 @@ def build_privacy_safe_attempt_record(
         complete_result_record_eligible=False,
         execution_authority=False,
         _token=_FOUNDATION_TOKEN,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ResultRecordContract:
+    policy_id: str
+    policy_version: str
+    policy_hash: str
+    normalization_audit_fields: tuple[str, ...]
+    pilot_envelope_fields: tuple[str, ...]
+    scored_only_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PilotAttemptKey:
+    evaluation_id: str
+    fixture_id: str
+    candidate_id: str
+    provider: str
+    model: str
+    component_topology: str
+    workload: str
+    run_number: int
+    attempt_number: int
+
+    def __post_init__(self) -> None:
+        for name in _ATTEMPT_KEY_FIELDS[:-2]:
+            value = getattr(self, name)
+            if type(value) is not str or _SAFE_IDENTIFIER.fullmatch(value) is None:
+                raise _fail(f"attempt_key:{name}")
+        for name in _ATTEMPT_KEY_FIELDS[-2:]:
+            value = getattr(self, name)
+            if type(value) is not int or value < 1:
+                raise _fail(f"attempt_key:{name}")
+
+    def as_dict(self) -> dict[str, Any]:
+        return {name: getattr(self, name) for name in _ATTEMPT_KEY_FIELDS}
+
+    @property
+    def identity(self) -> tuple[Any, ...]:
+        return tuple(getattr(self, name) for name in _ATTEMPT_KEY_FIELDS)
+
+
+@dataclass(frozen=True, slots=True)
+class PilotAttemptRecord:
+    key: PilotAttemptKey
+    ordinary_json: bytes = field(repr=False)
+    restricted_provider_data: RestrictedProviderDataProjection = field(repr=False)
+    _token: object | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self._token is not _PILOT_RECORD_TOKEN:
+            raise _fail("pilot_attempt_record_factory_required")
+
+    def as_dict(self) -> dict[str, Any]:
+        return json.loads(self.ordinary_json.decode("utf-8"))
+
+    @property
+    def record_hash(self) -> str:
+        return self.as_dict()["record_hash"]
+
+
+@dataclass(frozen=True, slots=True)
+class PilotRunBundle:
+    """Immutable local bundle; it grants no persistence or execution authority."""
+
+    attempts: tuple[PilotAttemptRecord, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.attempts, tuple):
+            raise _fail("run_bundle_not_immutable")
+        identities = tuple(record.key.identity for record in self.attempts)
+        if len(identities) != len(set(identities)):
+            raise _fail("duplicate_attempt_key")
+        if len({record.key.evaluation_id for record in self.attempts}) > 1:
+            raise _fail("mixed_evaluation_run_bundle")
+
+    def record_preflight_failure(self) -> PilotRunBundle:
+        """Preflight failures are not physical provider attempts."""
+        return self
+
+    def append_attempt(self, record: PilotAttemptRecord) -> PilotRunBundle:
+        if not isinstance(record, PilotAttemptRecord):
+            raise _fail("physical_attempt_record_required")
+        if record.key.identity in {item.key.identity for item in self.attempts}:
+            raise _fail("duplicate_attempt_key")
+        return PilotRunBundle(self.attempts + (record,))
+
+
+def _canonical_bytes(value: Any) -> bytes:
+    try:
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            allow_nan=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError) as exc:
+        raise _fail("record_canonicalization") from exc
+
+
+def _canonical_hash(value: Any) -> str:
+    return hashlib.sha256(_canonical_bytes(value)).hexdigest()
+
+
+def _require_hash(label: str, value: Any, *, nullable: bool = False) -> None:
+    if nullable and value is None:
+        return
+    if type(value) is not str or _LOWER_SHA256.fullmatch(value) is None:
+        raise _fail(label)
+
+
+def _require_identifier(label: str, value: Any, *, nullable: bool = False) -> None:
+    if nullable and value is None:
+        return
+    if type(value) is not str or _SAFE_IDENTIFIER.fullmatch(value) is None:
+        raise _fail(label)
+
+
+def _without_semantic_hash(artifact: dict[str, Any]) -> dict[str, Any]:
+    detached = json.loads(json.dumps(artifact))
+    try:
+        del detached["specification_identity"]["semantic_hash"]
+    except (KeyError, TypeError) as exc:
+        raise _fail("result_record_contract_identity") from exc
+    return detached
+
+
+def verify_result_record_contract(
+    path: str | Path = _DEFAULT_CONTRACT,
+) -> ResultRecordContract:
+    """Verify the pilot record contract against both frozen field inventories."""
+    try:
+        artifact = load_strict_contract_json(path)
+        parser = load_strict_normalization_spec(_NORMALIZATION_CONTRACT)
+        rubric = load_strict_contract_json(_RUBRIC_CONTRACT)
+        parser_identity = verify_normalization_parser_artifact(parser)
+    except ContractIdentityError as exc:
+        raise _fail("result_record_contract_source") from exc
+
+    if set(artifact) != _RESULT_RECORD_ARTIFACT_KEYS or (
+        artifact.get("artifact_id") != "pilot_result_record_v1"
+        or artifact.get("artifact_version") != "v1"
+        or artifact.get("status") != "frozen"
+        or artifact.get("provider_neutral") is not True
+    ):
+        raise _fail("result_record_contract_header")
+    normalization_fields = tuple(artifact.get("normalization_audit_fields", ()))
+    expected_normalization = tuple(parser["result_record_integration"]["required_fields"])
+    if normalization_fields != expected_normalization or len(normalization_fields) != 66:
+        raise _fail("normalization_audit_inventory")
+    pilot_fields = tuple(artifact.get("pilot_envelope_fields", ()))
+    scored_fields = tuple(artifact.get("scored_only_fields", ()))
+    rubric_fields = tuple(rubric["experimental_protocol"]["result_record_fields"])
+    if (
+        len(pilot_fields) != 55
+        or len(scored_fields) != 21
+        or len(set(pilot_fields)) != len(pilot_fields)
+        or len(set(scored_fields)) != len(scored_fields)
+        or set(pilot_fields).intersection(scored_fields)
+        or set(pilot_fields).union(scored_fields) != set(rubric_fields)
+    ):
+        raise _fail("rubric_field_partition")
+    if tuple(artifact["attempt_key"]["fields_in_order"]) != _ATTEMPT_KEY_FIELDS:
+        raise _fail("attempt_key_inventory")
+    if artifact["execution_boundary"] != {
+        "execution_state": "blocked_pre_execution",
+        "provider_calls_allowed": False,
+        "pilot_calls_allowed": False,
+        "scored_calls_allowed": False,
+        "provider_calls_completed": 0,
+        "this_artifact_independently_authorizes_execution": False,
+    }:
+        raise _fail("result_record_execution_boundary")
+    identity = artifact.get("specification_identity", {})
+    if identity.get("semantic_hash_excluded_json_pointers") != [
+        "/specification_identity/semantic_hash"
+    ]:
+        raise _fail("result_record_contract_identity")
+    stored_hash = identity.get("semantic_hash")
+    _require_hash("result_record_contract_hash", stored_hash)
+    if _canonical_hash(_without_semantic_hash(artifact)) != stored_hash:
+        raise _fail("result_record_contract_hash")
+    if parser_identity.semantic_hash != parser["specification_identity"][
+        "derived_hash_cache"
+    ]["normalization_spec_semantic_hash"]:
+        raise _fail("normalization_spec_identity")
+    return ResultRecordContract(
+        policy_id=artifact["artifact_id"],
+        policy_version=artifact["artifact_version"],
+        policy_hash=stored_hash,
+        normalization_audit_fields=normalization_fields,
+        pilot_envelope_fields=pilot_fields,
+        scored_only_fields=scored_fields,
+    )
+
+
+def _validate_normalization_identities(audit: dict[str, Any]) -> None:
+    try:
+        parser = load_strict_normalization_spec(_NORMALIZATION_CONTRACT)
+        identity = verify_normalization_parser_artifact(parser)
+    except ContractIdentityError as exc:
+        raise _fail("normalization_spec_identity") from exc
+    child_hashes = dict(identity.child_hashes)
+    expected = {
+        "normalization_spec_id": parser["specification_identity"][
+            "normalization_spec_id"
+        ],
+        "normalization_spec_version": parser["specification_identity"][
+            "normalization_spec_version"
+        ],
+        "normalization_spec_semantic_hash": identity.semantic_hash,
+        "canonical_parser_policy_id": "canonical_parser_policy_json_v1",
+        "canonical_parser_policy_version": "v1",
+        "canonical_parser_policy_hash": child_hashes[
+            "canonical_parser_policy_json_v1"
+        ],
+        "normalization_hashing_policy_id": "normalization_hashing_policy_v1",
+        "normalization_hashing_policy_version": "v1",
+        "normalization_hashing_policy_hash": child_hashes[
+            "normalization_hashing_policy_v1"
+        ],
+        "strict_json_policy_id": "strict_json_policy_v1",
+        "strict_json_policy_version": "v1",
+        "strict_json_policy_hash": child_hashes["strict_json_policy_v1"],
+        "semantic_numeric_domain_policy_id": "semantic_numeric_domain_policy_v1",
+        "semantic_numeric_domain_policy_version": "v1",
+        "semantic_numeric_domain_policy_hash": child_hashes[
+            "semantic_numeric_domain_policy_v1"
+        ],
+        "stage_event_ledger_policy_id": "attempt_stage_event_ledger_v1",
+        "stage_event_ledger_policy_version": "v1",
+        "stage_event_ledger_policy_hash": child_hashes[
+            "attempt_stage_event_ledger_v1"
+        ],
+        "compatibility_matrix_id": "attempt_state_compatibility_matrix_v1",
+        "compatibility_matrix_version": "v1",
+        "compatibility_matrix_hash": child_hashes[
+            "attempt_state_compatibility_matrix_v1"
+        ],
+        "validator_applicability_policy_id": "workload_validator_applicability_v1",
+        "validator_applicability_policy_version": "v1",
+        "validator_applicability_policy_hash": child_hashes[
+            "workload_validator_applicability_v1"
+        ],
+        "first_terminal_condition_reducer_id": "first_terminal_condition_reducer_v1",
+        "first_terminal_condition_reducer_version": "v1",
+        "first_terminal_condition_reducer_hash": child_hashes[
+            "first_terminal_condition_reducer_v1"
+        ],
+    }
+    for field_name, expected_value in expected.items():
+        if audit[field_name] != expected_value:
+            raise _fail(f"normalization_identity:{field_name}")
+
+
+def _validate_attempt_audit(
+    audit: dict[str, Any],
+    state: AttemptState,
+    contract: ResultRecordContract,
+) -> None:
+    if (
+        type(audit) is not dict
+        or len(audit) != len(contract.normalization_audit_fields)
+        or set(audit) != set(contract.normalization_audit_fields)
+    ):
+        raise _fail("normalization_audit_fields")
+    _validate_normalization_identities(audit)
+    _require_hash("adapter_hash", audit["adapter_hash"])
+    ledger_link = audit["stage_event_ledger_hash_or_safe_reference"]
+    if not (
+        type(ledger_link) is str
+        and (
+            _LOWER_SHA256.fullmatch(ledger_link) is not None
+            or _SAFE_IDENTIFIER.fullmatch(ledger_link) is not None
+        )
+    ):
+        raise _fail("stage_event_ledger_hash_or_safe_reference")
+    expected_spec_file_hash = hashlib.sha256(_NORMALIZATION_CONTRACT.read_bytes()).hexdigest()
+    if audit["normalization_spec_file_sha256_or_immutable_run_binding_reference"] != (
+        expected_spec_file_hash
+    ):
+        raise _fail("normalization_spec_file_binding")
+    expected_implementation_hash = hashlib.sha256(
+        _NORMALIZATION_IMPLEMENTATION.read_bytes()
+    ).hexdigest()
+    if audit["parser_implementation_hash"] != expected_implementation_hash:
+        raise _fail("parser_implementation_hash")
+    for name in (
+        "wire_response_hash_if_available",
+        "raw_provider_response_hash",
+        "stream_trace_hash_if_applicable",
+        "native_structured_object_hash_if_applicable",
+        "transport_extracted_payload_hash",
+        "strict_parsed_semantic_payload_hash",
+        "canonical_validation_candidate_hash",
+        "provider_trace_hash_if_applicable",
+        "retrieval_trace_hash_if_applicable",
+        "canonical_evidence_bundle_hash_if_applicable",
+        "final_semantic_payload_hash_if_applicable",
+    ):
+        _require_hash(name, audit[name], nullable=True)
+    for name in (
+        "parser_implementation_id",
+        "parser_implementation_version",
+        "adapter_id",
+        "adapter_version",
+        "content_decoding_responsibility",
+        "numeric_policy_execution_conformance_status",
+    ):
+        _require_identifier(name, audit[name])
+    if audit["response_transport_mode"] not in _TRANSPORT_MODES:
+        raise _fail("response_transport_mode")
+    if type(audit["canonical_raw_byte_availability"]) is not bool:
+        raise _fail("canonical_raw_byte_availability")
+    if (
+        audit["canonical_raw_byte_availability"]
+        and audit["raw_response_unavailable_reason_if_applicable"] is not None
+    ):
+        raise _fail("raw_response_availability")
+    if not audit["canonical_raw_byte_availability"]:
+        _require_identifier(
+            "raw_response_unavailable_reason_if_applicable",
+            audit["raw_response_unavailable_reason_if_applicable"],
+        )
+    stream_identity = (
+        audit["stream_framing_policy_id_if_applicable"],
+        audit["stream_framing_policy_hash_if_applicable"],
+    )
+    if audit["response_transport_mode"] == "streaming":
+        _require_identifier("stream_framing_policy_id_if_applicable", stream_identity[0])
+        _require_hash("stream_framing_policy_hash_if_applicable", stream_identity[1])
+    elif any(value is not None for value in stream_identity):
+        raise _fail("stream_framing_policy_not_applicable")
+    native_evidence = audit[
+        "native_object_lossless_equivalence_evidence_if_applicable"
+    ]
+    if audit["response_transport_mode"] == "sdk_native_structured":
+        _require_hash("native_object_lossless_equivalence_evidence", native_evidence)
+    elif native_evidence is not None:
+        raise _fail("native_equivalence_not_applicable")
+    if type(audit["normalization_actions"]) is not list:
+        raise _fail("normalization_actions")
+    validated_actions: list[NormalizationActionRecord] = []
+    for ordinal, action in enumerate(audit["normalization_actions"], start=1):
+        if type(action) is not dict or set(action) != _NORMALIZATION_ACTION_FIELDS:
+            raise _fail("normalization_action_fields")
+        if action["ordinal"] != ordinal or action["action"] not in NORMALIZATION_ACTIONS:
+            raise _fail("normalization_action_identity")
+        for name in ("policy_id", "policy_version"):
+            _require_identifier(f"normalization_action:{name}", action[name])
+        _require_hash("normalization_action:policy_hash", action["policy_hash"])
+        _require_hash("normalization_action:input_hash", action["input_hash"])
+        _require_hash(
+            "normalization_action:output_hash",
+            action["output_hash"],
+            nullable=action["action_result"] != "completed",
+        )
+        adapter_values = (
+            action["adapter_id_if_applicable"],
+            action["adapter_version_if_applicable"],
+            action["adapter_hash_if_applicable"],
+        )
+        if any(value is not None for value in adapter_values):
+            if not all(value is not None for value in adapter_values):
+                raise _fail("normalization_action:adapter_identity")
+            _require_identifier("normalization_action:adapter_id", adapter_values[0])
+            _require_identifier("normalization_action:adapter_version", adapter_values[1])
+            _require_hash("normalization_action:adapter_hash", adapter_values[2])
+        if type(action["trace_references"]) is not list:
+            raise _fail("normalization_action:trace_references")
+        for reference in action["trace_references"]:
+            _require_identifier("normalization_action:trace_reference", reference)
+        if type(action["deterministic_parameters"]) is not list:
+            raise _fail("normalization_action:deterministic_parameters")
+        for parameter in action["deterministic_parameters"]:
+            if (
+                type(parameter) is not list
+                or len(parameter) != 2
+            ):
+                raise _fail("normalization_action:deterministic_parameter")
+            _require_identifier(
+                "normalization_action:parameter_name", parameter[0]
+            )
+            _require_identifier(
+                "normalization_action:parameter_value", parameter[1]
+            )
+        if action["action_result"] not in {
+            "completed",
+            "failed",
+            "aborted_by_earlier_terminal",
+        }:
+            raise _fail("normalization_action:result")
+        try:
+            validated_actions.append(
+                NormalizationActionRecord(
+                    ordinal=action["ordinal"],
+                    action=action["action"],
+                    policy_id=action["policy_id"],
+                    policy_version=action["policy_version"],
+                    policy_hash=action["policy_hash"],
+                    adapter_id_if_applicable=action[
+                        "adapter_id_if_applicable"
+                    ],
+                    adapter_version_if_applicable=action[
+                        "adapter_version_if_applicable"
+                    ],
+                    adapter_hash_if_applicable=action[
+                        "adapter_hash_if_applicable"
+                    ],
+                    input_hash=action["input_hash"],
+                    output_hash=action["output_hash"],
+                    trace_references=tuple(action["trace_references"]),
+                    deterministic_parameters=tuple(
+                        (item[0], item[1])
+                        for item in action["deterministic_parameters"]
+                    ),
+                    action_result=action["action_result"],
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            raise _fail("normalization_action_invalid") from exc
+    try:
+        action_summary = summarize_normalization_actions(tuple(validated_actions))
+    except (TypeError, ValueError) as exc:
+        raise _fail("normalization_action_invalid") from exc
+    if action_summary != state.normalization_action_summary:
+        raise _fail("normalization_action_summary_mismatch")
+    numeric_reason = audit["numeric_domain_reason_if_applicable"]
+    if numeric_reason not in {None, "negative_zero", "binary64_overflow_nonfinite"}:
+        raise _fail("numeric_domain_reason_if_applicable")
+    bindings = audit["applied_policy_bindings"]
+    if type(bindings) is not list or not bindings:
+        raise _fail("applied_policy_bindings")
+    seen: set[tuple[str, str]] = set()
+    binding_hashes: dict[tuple[str, str], str] = {}
+    for binding in bindings:
+        if type(binding) is not dict or set(binding) != {
+            "policy_id",
+            "policy_version",
+            "policy_hash",
+        }:
+            raise _fail("applied_policy_bindings")
+        _require_identifier("applied_policy_id", binding["policy_id"])
+        _require_identifier("applied_policy_version", binding["policy_version"])
+        _require_hash("applied_policy_hash", binding["policy_hash"])
+        key = (binding["policy_id"], binding["policy_version"])
+        if key in seen:
+            raise _fail("applied_policy_binding_duplicate")
+        seen.add(key)
+        binding_hashes[key] = binding["policy_hash"]
+    required_bindings = {
+        (
+            audit["canonical_parser_policy_id"],
+            audit["canonical_parser_policy_version"],
+        ): audit["canonical_parser_policy_hash"],
+        (
+            audit["normalization_hashing_policy_id"],
+            audit["normalization_hashing_policy_version"],
+        ): audit["normalization_hashing_policy_hash"],
+        (
+            audit["strict_json_policy_id"],
+            audit["strict_json_policy_version"],
+        ): audit["strict_json_policy_hash"],
+        (
+            audit["semantic_numeric_domain_policy_id"],
+            audit["semantic_numeric_domain_policy_version"],
+        ): audit["semantic_numeric_domain_policy_hash"],
+        (
+            audit["stage_event_ledger_policy_id"],
+            audit["stage_event_ledger_policy_version"],
+        ): audit["stage_event_ledger_policy_hash"],
+        (
+            audit["compatibility_matrix_id"],
+            audit["compatibility_matrix_version"],
+        ): audit["compatibility_matrix_hash"],
+        (
+            audit["validator_applicability_policy_id"],
+            audit["validator_applicability_policy_version"],
+        ): audit["validator_applicability_policy_hash"],
+        (
+            audit["first_terminal_condition_reducer_id"],
+            audit["first_terminal_condition_reducer_version"],
+        ): audit["first_terminal_condition_reducer_hash"],
+        (DATA_HANDLING_POLICY_ID, DATA_HANDLING_POLICY_VERSION): (
+            DATA_HANDLING_POLICY_HASH
+        ),
+    }
+    try:
+        prompt_identity = verify_prompt_template_artifact(
+            load_strict_contract_json(_PROMPT_CONTRACT)
+        )
+        schema_identity = verify_output_schema_artifact(
+            load_strict_contract_json(_SCHEMA_CONTRACT)
+        )
+    except ContractIdentityError as exc:
+        raise _fail("prompt_schema_identity") from exc
+    prompt_schema_hashes = {
+        **dict(prompt_identity.child_hashes),
+        **dict(schema_identity.child_hashes),
+    }
+    for binding_id in _PROMPT_SCHEMA_IDS_BY_BRANCH[state.workload_branch]:
+        required_bindings[(binding_id, "v1")] = prompt_schema_hashes[binding_id]
+    if any(binding_hashes.get(key) != value for key, value in required_bindings.items()):
+        raise _fail("applied_policy_binding_incomplete")
+    state_fields = {
+        "normalized_presemantic_state": state.normalized_presemantic_state,
+        "highest_completed_stage": state.highest_completed_stage,
+        "normalization_disposition": state.normalization_disposition,
+        "terminal_outcome": state.terminal_outcome,
+        "attempt_outcome": state.attempt_outcome,
+        "refusal_state": state.refusal_state,
+        "failure_category": state.failure_category,
+        "raw_provider_response_hash": state.raw_provider_response_hash,
+        "canonical_evidence_bundle_hash_if_applicable": (
+            state.accepted_artifact_hash
+            if state.workload_branch == "search_retrieval"
+            else None
+        ),
+        "final_semantic_payload_hash_if_applicable": (
+            state.accepted_artifact_hash
+            if state.workload_branch != "search_retrieval"
+            else None
+        ),
+    }
+    for field_name, expected in state_fields.items():
+        if audit[field_name] != expected:
+            raise _fail(f"attempt_state_alias:{field_name}")
+    expected_validators = [
+        {
+            "validator_id": item.validator_id,
+            "applicability": item.applicability,
+            "state": item.state,
+        }
+        for item in state.validator_states
+    ]
+    if audit["validator_states"] != expected_validators:
+        raise _fail("attempt_state_alias:validator_states")
+    if audit["attempt_state_coherence"] != "passed":
+        raise _fail("attempt_state_coherence")
+    stage_index = HIGHEST_COMPLETED_STAGES.index(state.highest_completed_stage)
+    required_by_stage = (
+        (2, "transport_extracted_payload_hash"),
+        (3, "strict_parsed_semantic_payload_hash"),
+        (4, "canonical_validation_candidate_hash"),
+    )
+    for minimum_stage, field_name in required_by_stage:
+        if stage_index >= minimum_stage and audit[field_name] is None:
+            raise _fail(f"stage_hash_required:{field_name}")
+        if stage_index < minimum_stage and audit[field_name] is not None:
+            raise _fail(f"stage_hash_not_available:{field_name}")
+    if audit["response_transport_mode"] == "streaming":
+        if audit["stream_trace_hash_if_applicable"] is None:
+            raise _fail("stream_trace_hash_required")
+    elif audit["stream_trace_hash_if_applicable"] is not None:
+        raise _fail("stream_trace_hash_not_applicable")
+    if audit["response_transport_mode"] == "sdk_native_structured":
+        if (
+            audit["native_structured_object_hash_if_applicable"] is None
+            or audit["native_object_lossless_equivalence_evidence_if_applicable"]
+            is None
+        ):
+            raise _fail("native_object_evidence_required")
+    elif audit["native_structured_object_hash_if_applicable"] is not None:
+        raise _fail("native_object_hash_not_applicable")
+    if state.terminal_outcome == "accepted":
+        if state.workload_branch == "search_retrieval":
+            for field_name in (
+                "provider_trace_hash_if_applicable",
+                "retrieval_trace_hash_if_applicable",
+                "canonical_evidence_bundle_hash_if_applicable",
+            ):
+                if audit[field_name] is None:
+                    raise _fail(f"retrieval_hash_required:{field_name}")
+            if audit["final_semantic_payload_hash_if_applicable"] is not None:
+                raise _fail("retrieval_final_semantic_hash_not_applicable")
+        elif audit["final_semantic_payload_hash_if_applicable"] is None:
+            raise _fail("final_semantic_payload_hash_required")
+
+
+def _validate_pilot_envelope(
+    envelope: dict[str, Any],
+    key: PilotAttemptKey,
+    audit: dict[str, Any],
+    state: AttemptState,
+    foundation: PrivacySafeAttemptRecordFoundation,
+    contract: ResultRecordContract,
+) -> None:
+    if (
+        type(envelope) is not dict
+        or len(envelope) != len(contract.pilot_envelope_fields)
+        or set(envelope) != set(contract.pilot_envelope_fields)
+    ):
+        raise _fail("pilot_envelope_fields")
+    aliases = {
+        "evaluation_id": key.evaluation_id,
+        "fixture_id": key.fixture_id,
+        "provider": key.provider,
+        "model": key.model,
+        "component_topology": key.component_topology,
+        "workload": key.workload,
+        "run_number": key.run_number,
+        "attempt_number": key.attempt_number,
+        "refusal_state": state.refusal_state,
+        "raw_response_hash": audit["raw_provider_response_hash"],
+        "normalized_output_hash": audit["final_semantic_payload_hash_if_applicable"],
+        "normalization_parser_version": audit["parser_implementation_version"],
+        "normalization_performed": audit["normalization_disposition"] == "performed",
+        "normalization_actions": audit["normalization_actions"],
+        "safe_failure_code": state.failure_category,
+    }
+    for field_name, expected in aliases.items():
+        if envelope[field_name] != expected:
+            raise _fail(f"pilot_alias:{field_name}")
+    if envelope["experiment_phase"] != "pilot":
+        raise _fail("pilot_experiment_phase")
+    if key.workload != _WORKLOAD_BY_BRANCH[state.workload_branch]:
+        raise _fail("pilot_workload_branch")
+    for name in (
+        "experiment_version",
+        "harness_version",
+        "fixture_manifest_version",
+        "fixture_version",
+        "rubric_version",
+        "scoring_rule_version",
+        "api_endpoint",
+        "api_version",
+        "prompt_template_version",
+        "output_schema_version",
+    ):
+        _require_identifier(name, envelope[name])
+    _require_identifier(
+        "model_version_or_snapshot",
+        envelope["model_version_or_snapshot"],
+        nullable=True,
+    )
+    if (
+        type(envelope["repository_harness_commit_sha"]) is not str
+        or _GIT_SHA.fullmatch(envelope["repository_harness_commit_sha"]) is None
+    ):
+        raise _fail("repository_harness_commit_sha")
+    _require_hash("prompt_hash", envelope["prompt_hash"])
+    if envelope["provider_request_id"] is not None:
+        raise _fail("provider_request_id_verifier_pending")
+    for timestamp in ("started_at", "completed_at"):
+        value = envelope[timestamp]
+        if type(value) is not str or _UTC_MILLISECOND.fullmatch(value) is None:
+            raise _fail(timestamp)
+    try:
+        started = datetime.fromisoformat(
+            envelope["started_at"].replace("Z", "+00:00")
+        )
+        completed = datetime.fromisoformat(
+            envelope["completed_at"].replace("Z", "+00:00")
+        )
+    except ValueError as exc:
+        raise _fail("attempt_timestamp") from exc
+    if completed < started:
+        raise _fail("attempt_timing_order")
+    safe_metadata = foundation.ordinary.safe_transport_metadata.as_dict()
+    for name in (
+        "provider",
+        "model",
+        "model_version_or_snapshot",
+        "started_at",
+        "completed_at",
+        "http_or_result_status",
+        "finish_or_stop_reason",
+        "latency_measurements",
+        "input_token_usage",
+        "output_token_usage",
+        "reasoning_usage_if_exposed",
+        "image_usage_if_exposed",
+        "attempt_number",
+        "retry_count",
+    ):
+        if envelope[name] != safe_metadata.get(name):
+            raise _fail(f"transport_alias:{name}")
+    expected_schema_pass = next(
+        item.state == "passed"
+        for item in state.validator_states
+        if item.validator_id == "canonical_schema_validation"
+    )
+    if envelope["schema_pass"] is not expected_schema_pass:
+        raise _fail("schema_pass")
+    if type(envelope["input_hashes"]) is not dict or not envelope["input_hashes"]:
+        raise _fail("input_hashes")
+    for name, value in envelope["input_hashes"].items():
+        _require_identifier("input_hash_name", name)
+        _require_hash("input_hash", value)
+    if envelope["request_configuration"] is not None:
+        raise _fail("request_configuration_pending")
+    if key.attempt_number == 1:
+        if envelope["retry_count"] != 0 or envelope["retry_reason"] is not None:
+            raise _fail("first_attempt_retry_linkage")
+    else:
+        if envelope["retry_count"] != key.attempt_number - 1:
+            raise _fail("retry_count_linkage")
+        _require_identifier("retry_reason", envelope["retry_reason"])
+    for pending_field in (
+        "rate_limit_and_service_metadata_if_exposed",
+        "estimated_cost",
+        "search_and_tool_calls",
+    ):
+        if envelope[pending_field] is not None:
+            raise _fail(f"{pending_field}_contract_pending")
+    if key.workload != "grounded_product_price_research":
+        for field_name in (
+            "search_query_list",
+            "source_urls",
+            "source_retrieval_timestamps",
+            "claim_to_source_mapping",
+        ):
+            if envelope[field_name] not in (None, []):
+                raise _fail(f"{field_name}_not_applicable")
+    else:
+        for field_name in (
+            "search_query_list",
+            "source_urls",
+            "source_retrieval_timestamps",
+            "claim_to_source_mapping",
+        ):
+            if envelope[field_name] is not None:
+                raise _fail(f"{field_name}_safe_record_pending")
+    if key.workload == "visual_inspection":
+        if type(envelope["visual_asset_hashes"]) is not list:
+            raise _fail("visual_asset_hashes")
+        for value in envelope["visual_asset_hashes"]:
+            _require_hash("visual_asset_hash", value)
+    elif envelope["visual_asset_hashes"] not in (None, []):
+        raise _fail("visual_asset_hashes_not_applicable")
+    if type(envelope["notes_and_anomalies"]) is not list:
+        raise _fail("notes_and_anomalies")
+    for value in envelope["notes_and_anomalies"]:
+        _require_identifier("notes_and_anomalies", value)
+
+
+def build_pilot_attempt_record(
+    *,
+    attempt_key: PilotAttemptKey,
+    attempt_state: AttemptState,
+    provider_data: ProviderDataProjections,
+    normalization_audit: dict[str, Any],
+    pilot_envelope: dict[str, Any],
+    provider_attempt_started: bool,
+    contract_path: str | Path = _DEFAULT_CONTRACT,
+) -> PilotAttemptRecord:
+    """Build one immutable pilot attempt without granting execution authority."""
+    if provider_attempt_started is not True:
+        raise _fail("preflight_failure_is_not_provider_attempt")
+    if not isinstance(attempt_key, PilotAttemptKey):
+        raise _fail("attempt_key_required")
+    foundation = build_privacy_safe_attempt_record(
+        attempt_state=attempt_state,
+        provider_data=provider_data,
+    )
+    contract = verify_result_record_contract(contract_path)
+    _validate_attempt_audit(normalization_audit, attempt_state, contract)
+    _validate_pilot_envelope(
+        pilot_envelope,
+        attempt_key,
+        normalization_audit,
+        attempt_state,
+        foundation,
+        contract,
+    )
+    record = {
+        "record_type": "pilot_physical_attempt_v1",
+        "record_contract": {
+            "policy_id": contract.policy_id,
+            "policy_version": contract.policy_version,
+            "policy_hash": contract.policy_hash,
+        },
+        "attempt_key": attempt_key.as_dict(),
+        "pilot_envelope": pilot_envelope,
+        "normalization_audit": normalization_audit,
+        "ordinary_projection": foundation.ordinary.as_dict(),
+    }
+    record["record_hash"] = _canonical_hash(record)
+    return PilotAttemptRecord(
+        key=attempt_key,
+        ordinary_json=_canonical_bytes(record),
+        restricted_provider_data=foundation.restricted_provider_data,
+        _token=_PILOT_RECORD_TOKEN,
     )

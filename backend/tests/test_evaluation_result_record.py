@@ -368,7 +368,7 @@ def test_data_handling_factory_boundary_remains_required():
 
 def test_foundation_declares_the_full_contract_dependencies_it_does_not_invent():
     assert FULL_RESULT_RECORD_BLOCKERS == (
-        "future_result_record_artifact",
+        "pilot_result_record_builder_required",
         "immutable_run_binding",
         "adapter_and_transport_bindings",
         "complete_stage_hash_inventory",
