@@ -360,7 +360,7 @@ def derive_restricted_trace_reference(random_bytes: bytes) -> RestrictedTraceRef
 class RestrictedUrlTrace:
     """One complete frozen URL-classifier input retained only as evidence."""
 
-    restricted_input: tuple[tuple[str, Any], ...]
+    restricted_input: tuple[tuple[str, Any], ...] = field(repr=False)
     safe_classifier_result: tuple[tuple[str, Any], ...]
     _token: object | None = field(default=None, repr=False, compare=False)
 
@@ -642,10 +642,10 @@ class OrdinaryProviderDataProjection:
 
 @dataclass(frozen=True, slots=True)
 class RestrictedProviderDataProjection:
-    raw_provider_response: bytes | None
-    exact_url_traces: tuple[tuple[tuple[str, Any], ...], ...]
-    restricted_url_hashes: tuple[str, ...]
-    restricted_transport_metadata: tuple[tuple[str, Any], ...]
+    raw_provider_response: bytes | None = field(repr=False)
+    exact_url_traces: tuple[tuple[tuple[str, Any], ...], ...] = field(repr=False)
+    restricted_url_hashes: tuple[str, ...] = field(repr=False)
+    restricted_transport_metadata: tuple[tuple[str, Any], ...] = field(repr=False)
     _token: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -667,7 +667,7 @@ class RestrictedProviderDataProjection:
 @dataclass(frozen=True, slots=True)
 class ProviderDataProjections:
     ordinary: OrdinaryProviderDataProjection
-    restricted: RestrictedProviderDataProjection
+    restricted: RestrictedProviderDataProjection = field(repr=False)
     _token: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:

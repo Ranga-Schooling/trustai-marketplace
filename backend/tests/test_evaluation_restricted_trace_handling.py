@@ -178,6 +178,26 @@ def test_provider_data_projection_keeps_structured_trace_restricted():
         assert member["exact_url"] not in serialized_ordinary
 
 
+def test_restricted_trace_and_projection_representations_do_not_disclose_content():
+    classifier_input, capabilities, _ = _classifier_case("R2")
+    trace = capture_restricted_url_trace(
+        classifier_input,
+        reference_capabilities=capabilities,
+    )
+    raw = b"synthetic restricted response body"
+    projections = project_provider_data(
+        raw_provider_response=raw,
+        restricted_url_trace=trace,
+        safe_transport_metadata={},
+    )
+
+    for rendered in (repr(trace), repr(projections.restricted), repr(projections)):
+        assert raw.decode() not in rendered
+        assert classifier_input["exact_url"] not in rendered
+        for member in classifier_input["redirect_context"]["members"]:
+            assert member["exact_url"] not in rendered
+
+
 def test_public_safe_trace_still_remains_restricted_as_exact_trace():
     classifier_input, capabilities, expected = _classifier_case("D7")
     trace = capture_restricted_url_trace(
