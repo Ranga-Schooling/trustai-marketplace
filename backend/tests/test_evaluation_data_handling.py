@@ -17,6 +17,7 @@ from app.services.evaluation_data_handling import (
     RestrictedProviderDataProjection,
     SafeTransportMetadata,
     authorize_public_safe_url,
+    capture_restricted_url_trace,
     derive_restricted_trace_reference,
     evaluate_region_binding,
     evaluate_restricted_retention,
@@ -64,7 +65,12 @@ def _delete_pointer(document, pointer):
     del parent[segments[-1].replace("~1", "/").replace("~0", "~")]
 
 
-def _public_safe_key():
+def _public_safe_trace_and_key():
+    trace, classifier_input = _restricted_trace("D7")
+    return trace, derive_public_safe_deduplication_key(**classifier_input)
+
+
+def _restricted_trace(vector_id="D1"):
     artifact = json.loads(URL_POLICY_PATH.read_text(encoding="utf-8"))
     vector = next(
         vector
@@ -75,12 +81,27 @@ def _public_safe_key():
             "existing_positive_proof",
             "adversarial",
         )
-        for group in (artifact["test_vectors"][group_name],)
-        for vector in group
-        if vector["expected"]["classification"] == "public_safe"
-        and vector["classifier_input"]["url_role"] == "final_url"
+        for vector in artifact["test_vectors"][group_name]
+        if vector["id"] == vector_id
     )
-    return derive_public_safe_deduplication_key(**vector["classifier_input"])
+    classifier_input = json.loads(json.dumps(vector["classifier_input"]))
+    capabilities = {}
+    for member in classifier_input["redirect_context"]["members"]:
+        position = member["position"]
+        capability = derive_restricted_trace_reference(
+            position.to_bytes(2, "big") * 8
+        )
+        member["restricted_trace_reference"] = capability.value
+        capabilities[position] = capability
+    current = classifier_input["redirect_context"]["current_position"]
+    classifier_input["restricted_trace_reference"] = capabilities[current].value
+    return (
+        capture_restricted_url_trace(
+            classifier_input,
+            reference_capabilities=capabilities,
+        ),
+        classifier_input,
+    )
 
 
 def _valid_safe_metadata():
@@ -298,30 +319,27 @@ def test_nested_restricted_material_cannot_bypass_top_level_allowlist():
 
 def test_raw_response_and_exact_urls_are_restricted_only_and_hash_is_ordinary():
     raw = b'{"synthetic":"provider output"}'
-    reference = derive_restricted_trace_reference(bytes(range(16)))
+    trace, classifier_input = _restricted_trace()
     projections = project_provider_data(
         raw_provider_response=raw,
-        exact_url_traces=(
-            "https://private.example/item?token=SYNTHETIC-NON-SECRET",
-        ),
-        restricted_trace_reference=reference,
+        restricted_url_trace=trace,
         safe_transport_metadata=_valid_safe_metadata(),
     )
 
     ordinary = projections.ordinary.as_dict()
     restricted = projections.restricted.as_dict()
     assert ordinary["raw_provider_response_hash"] == hashlib.sha256(raw).hexdigest()
-    assert ordinary["restricted_trace_reference"] == reference.value
+    assert ordinary["restricted_trace_reference"] == (
+        classifier_input["restricted_trace_reference"]
+    )
     assert "raw_provider_response" not in ordinary
     assert "exact_url_traces" not in ordinary
     assert restricted["raw_provider_response"] == raw
-    assert restricted["exact_url_traces"] == (
-        "https://private.example/item?token=SYNTHETIC-NON-SECRET",
-    )
+    assert restricted["exact_url_traces"] == (classifier_input,)
 
 
 def test_public_safe_url_requires_frozen_downstream_permission():
-    key = _public_safe_key()
+    trace, key = _public_safe_trace_and_key()
     with pytest.raises(DataHandlingPolicyError, match="downstream_url_disclosure"):
         authorize_public_safe_url(key, downstream_contract_id="grader_package_v1")
 
@@ -331,8 +349,7 @@ def test_public_safe_url_requires_frozen_downstream_permission():
     )
     projections = project_provider_data(
         raw_provider_response=None,
-        exact_url_traces=(),
-        restricted_trace_reference=derive_restricted_trace_reference(b"x" * 16),
+        restricted_url_trace=trace,
         safe_transport_metadata={},
         public_safe_url_disclosures=(disclosure,),
     )
@@ -345,8 +362,7 @@ def test_restricted_url_hash_cannot_enter_ordinary_projection():
     with pytest.raises(DataHandlingPolicyError, match="restricted_url_hash"):
         project_provider_data(
             raw_provider_response=None,
-            exact_url_traces=(),
-            restricted_trace_reference=derive_restricted_trace_reference(b"x" * 16),
+            restricted_url_trace=None,
             safe_transport_metadata={},
             ordinary_hashes={"restricted_url_hash": "0" * 64},
         )
@@ -356,8 +372,7 @@ def test_ordinary_projection_rejects_credential_material():
     with pytest.raises(DataHandlingPolicyError, match="credential_material"):
         project_provider_data(
             raw_provider_response=None,
-            exact_url_traces=(),
-            restricted_trace_reference=None,
+            restricted_url_trace=None,
             safe_transport_metadata={},
             credential_material={"api_key": "synthetic-non-secret"},
         )
@@ -367,24 +382,22 @@ def test_restricted_transport_metadata_requires_later_explicit_binding():
     with pytest.raises(DataHandlingPolicyError, match="restricted_metadata_binding"):
         project_provider_data(
             raw_provider_response=None,
-            exact_url_traces=(),
-            restricted_trace_reference=None,
+            restricted_url_trace=None,
             safe_transport_metadata={},
             restricted_transport_metadata={"diagnostic": "synthetic"},
         )
 
 
 def test_restricted_projection_is_immutable_against_caller_mutation():
-    urls = ["https://private.example/path"]
+    trace, classifier_input = _restricted_trace()
     projections = project_provider_data(
         raw_provider_response=b"raw",
-        exact_url_traces=urls,
-        restricted_trace_reference=derive_restricted_trace_reference(b"x" * 16),
+        restricted_url_trace=trace,
         safe_transport_metadata={},
     )
-    urls[0] = "https://changed.example/"
+    classifier_input["exact_url"] = "https://changed.example/"
     assert projections.restricted.as_dict()["exact_url_traces"] == (
-        "https://private.example/path",
+        trace.as_restricted_dict(),
     )
     with pytest.raises(FrozenInstanceError):
         projections.restricted.raw_provider_response = b"changed"

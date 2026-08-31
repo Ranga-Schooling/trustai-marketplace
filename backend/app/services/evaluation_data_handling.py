@@ -20,6 +20,7 @@ from typing import Any
 from app.services.evaluation_attempt_state import TERMINAL_OUTCOMES
 from app.services.evaluation_contract_identity import load_strict_contract_json
 from app.services.evaluation_retrieval_trace import PublicSafeDeduplicationKey
+from app.services.url_security import validate_url_security
 
 
 POLICY_ID = "provider_data_handling_review_v1"
@@ -68,6 +69,46 @@ _LATENCY_FIELDS = frozenset(
 )
 _PUBLIC_URL_DOWNSTREAM_CONTRACTS = frozenset({"retrieval_evidence_bundle_v1"})
 _STATUS_KINDS = frozenset({"http_status", "terminal_outcome"})
+_URL_CLASSIFIER_INPUT_KEYS = frozenset(
+    {
+        "exact_url",
+        "url_role",
+        "retrieval_auth_context",
+        "redirect_context",
+        "origin_rule",
+        "restricted_trace_reference",
+    }
+)
+_REDIRECT_CONTEXT_KEYS = frozenset(
+    {
+        "capture_status",
+        "current_position",
+        "requested_position",
+        "final_position",
+        "members",
+    }
+)
+_REDIRECT_MEMBER_KEYS = frozenset(
+    {
+        "position",
+        "url_role",
+        "exact_url",
+        "retrieval_auth_context",
+        "origin_rule",
+        "restricted_trace_reference",
+    }
+)
+_URL_CLASSIFIER_OUTPUT_KEYS = frozenset(
+    {
+        "classification",
+        "reason_codes",
+        "url_role",
+        "restricted_trace_reference",
+        "policy_id",
+        "policy_version",
+        "policy_hash",
+    }
+)
 _LIFECYCLE_MEMBERS = frozenset(
     {
         "raw_provider_response",
@@ -119,6 +160,11 @@ class DataHandlingPolicyError(ValueError):
 
 def _fail(code: str) -> DataHandlingPolicyError:
     return DataHandlingPolicyError(code)
+
+
+@dataclass(frozen=True, slots=True)
+class _FrozenList:
+    items: tuple[Any, ...]
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -247,13 +293,15 @@ def _freeze_value(value: Any) -> Any:
     if type(value) is tuple:
         return tuple(_freeze_value(item) for item in value)
     if type(value) is list:
-        return tuple(_freeze_value(item) for item in value)
+        return _FrozenList(tuple(_freeze_value(item) for item in value))
     if type(value) is dict:
         return tuple((key, _freeze_value(item)) for key, item in value.items())
     raise _fail("projection_value_type")
 
 
 def _thaw_value(value: Any) -> Any:
+    if isinstance(value, _FrozenList):
+        return [_thaw_value(item) for item in value.items]
     if type(value) is tuple:
         if all(
             type(item) is tuple and len(item) == 2 and type(item[0]) is str
@@ -308,6 +356,116 @@ def derive_restricted_trace_reference(random_bytes: bytes) -> RestrictedTraceRef
     )
 
 
+@dataclass(frozen=True, slots=True)
+class RestrictedUrlTrace:
+    """One complete frozen URL-classifier input retained only as evidence."""
+
+    restricted_input: tuple[tuple[str, Any], ...]
+    safe_classifier_result: tuple[tuple[str, Any], ...]
+    _token: object | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self._token is not _PROJECTION_TOKEN:
+            raise _fail("restricted_url_trace_factory_required")
+
+    def as_restricted_dict(self) -> dict[str, Any]:
+        return {
+            key: _thaw_value(value)
+            for key, value in self.restricted_input
+        }
+
+    def as_safe_result_dict(self) -> dict[str, Any]:
+        return {
+            key: _thaw_value(value)
+            for key, value in self.safe_classifier_result
+        }
+
+
+def capture_restricted_url_trace(
+    classifier_input: Mapping[str, Any],
+    *,
+    reference_capabilities: Mapping[int, RestrictedTraceReference],
+) -> RestrictedUrlTrace:
+    """Validate and freeze one complete exact URL/redirect classifier input."""
+    if type(classifier_input) is not dict or set(classifier_input) != (
+        _URL_CLASSIFIER_INPUT_KEYS
+    ):
+        raise _fail("classifier_input_keys")
+    if type(reference_capabilities) is not dict:
+        raise _fail("reference_inventory")
+    try:
+        captured = copy.deepcopy(classifier_input)
+    except (TypeError, ValueError, RecursionError) as exc:
+        raise _fail("restricted_url_trace_copy") from exc
+    redirect = captured.get("redirect_context")
+    if type(redirect) is not dict or set(redirect) != _REDIRECT_CONTEXT_KEYS:
+        raise _fail("redirect_context_keys")
+    members = redirect.get("members")
+    if type(members) is not list or not members:
+        raise _fail("redirect_member_inventory")
+    positions: list[int] = []
+    for member in members:
+        if type(member) is not dict or set(member) != _REDIRECT_MEMBER_KEYS:
+            raise _fail("redirect_member_keys")
+        position = member.get("position")
+        if type(position) is not int or position < 0:
+            raise _fail("redirect_member_position")
+        positions.append(position)
+    if set(reference_capabilities) != set(positions) or len(positions) != len(
+        set(positions)
+    ):
+        raise _fail("reference_inventory")
+    for member in members:
+        position = member["position"]
+        capability = reference_capabilities[position]
+        if not isinstance(capability, RestrictedTraceReference):
+            raise _fail("reference_capability")
+        if member["restricted_trace_reference"] != capability.value:
+            raise _fail("reference_mismatch")
+    current_position = redirect.get("current_position")
+    if (
+        type(current_position) is not int
+        or current_position < 0
+        or current_position >= len(members)
+    ):
+        raise _fail("redirect_current_position")
+    current = members[current_position]
+    outer = {
+        key: captured[key]
+        for key in _REDIRECT_MEMBER_KEYS
+        if key != "position"
+    }
+    current_without_position = {
+        key: current[key]
+        for key in _REDIRECT_MEMBER_KEYS
+        if key != "position"
+    }
+    if outer != current_without_position:
+        raise _fail("classifier_current_member_mismatch")
+    try:
+        safe_result = validate_url_security(**captured)
+    except (KeyError, TypeError, ValueError, RecursionError) as exc:
+        raise _fail("restricted_url_trace_validation") from exc
+    if type(safe_result) is not dict or set(safe_result) != (
+        _URL_CLASSIFIER_OUTPUT_KEYS
+    ):
+        raise _fail("url_classifier_output_keys")
+    if (
+        safe_result.get("restricted_trace_reference")
+        != current["restricted_trace_reference"]
+    ):
+        raise _fail("url_classifier_reference_mismatch")
+    return RestrictedUrlTrace(
+        restricted_input=tuple(
+            (key, _freeze_value(value)) for key, value in captured.items()
+        ),
+        safe_classifier_result=tuple(
+            (key, _freeze_value(value)) for key, value in safe_result.items()
+        ),
+        _token=_PROJECTION_TOKEN,
+    )
+
+
 class PublicSafeUrlDisclosure:
     __slots__ = ("_canonical_url", "_downstream_contract_id", "_policy_identity")
 
@@ -331,6 +489,14 @@ class PublicSafeUrlDisclosure:
     @property
     def canonical_url(self) -> str:
         return self._canonical_url
+
+    @property
+    def downstream_contract_id(self) -> str:
+        return self._downstream_contract_id
+
+    @property
+    def policy_identity(self) -> tuple[str, str, str]:
+        return self._policy_identity
 
 
 _PUBLIC_URL_DISCLOSURE_TOKEN = object()
@@ -477,7 +643,7 @@ class OrdinaryProviderDataProjection:
 @dataclass(frozen=True, slots=True)
 class RestrictedProviderDataProjection:
     raw_provider_response: bytes | None
-    exact_url_traces: tuple[str, ...]
+    exact_url_traces: tuple[tuple[tuple[str, Any], ...], ...]
     restricted_url_hashes: tuple[str, ...]
     restricted_transport_metadata: tuple[tuple[str, Any], ...]
     _token: object | None = field(default=None, repr=False, compare=False)
@@ -489,7 +655,7 @@ class RestrictedProviderDataProjection:
     def as_dict(self) -> dict[str, Any]:
         return {
             "raw_provider_response": self.raw_provider_response,
-            "exact_url_traces": self.exact_url_traces,
+            "exact_url_traces": _thaw_value(self.exact_url_traces),
             "restricted_url_hashes": self.restricted_url_hashes,
             "restricted_transport_metadata": {
                 key: _thaw_value(value)
@@ -509,20 +675,10 @@ class ProviderDataProjections:
             raise _fail("provider_data_projections_factory_required")
 
 
-def _copy_exact_urls(values: Sequence[str]) -> tuple[str, ...]:
-    if type(values) not in {tuple, list}:
-        raise _fail("exact_url_trace_container")
-    copied = tuple(values)
-    if any(type(value) is not str or not value for value in copied):
-        raise _fail("exact_url_trace_type")
-    return copied
-
-
 def project_provider_data(
     *,
     raw_provider_response: bytes | None,
-    exact_url_traces: Sequence[str],
-    restricted_trace_reference: RestrictedTraceReference | None,
+    restricted_url_trace: RestrictedUrlTrace | None,
     safe_transport_metadata: Mapping[str, Any],
     public_safe_url_disclosures: Sequence[PublicSafeUrlDisclosure] = (),
     ordinary_hashes: Mapping[str, str] | None = None,
@@ -535,10 +691,10 @@ def project_provider_data(
         raise _fail("credential_material_forbidden")
     if raw_provider_response is not None and type(raw_provider_response) is not bytes:
         raise _fail("raw_provider_response_type")
-    if restricted_trace_reference is not None and not isinstance(
-        restricted_trace_reference, RestrictedTraceReference
+    if restricted_url_trace is not None and not isinstance(
+        restricted_url_trace, RestrictedUrlTrace
     ):
-        raise _fail("restricted_trace_reference_capability")
+        raise _fail("restricted_url_trace_capability")
     if ordinary_hashes is not None:
         if type(ordinary_hashes) is not dict:
             raise _fail("ordinary_hash_container")
@@ -574,13 +730,34 @@ def project_provider_data(
     if ordinary_hashes and ordinary_hashes.get("raw_provider_response_hash") != raw_hash:
         raise _fail("raw_provider_response_hash_mismatch")
     safe_metadata = sanitize_transport_metadata(dict(safe_transport_metadata))
-    exact_urls = _copy_exact_urls(exact_url_traces)
+    safe_url_result = (
+        restricted_url_trace.as_safe_result_dict()
+        if restricted_url_trace is not None
+        else None
+    )
+    if disclosures:
+        if restricted_url_trace is None or safe_url_result is None:
+            raise _fail("public_url_trace_binding")
+        restricted_url_input = restricted_url_trace.as_restricted_dict()
+        safe_policy_identity = (
+            safe_url_result["policy_id"],
+            safe_url_result["policy_version"],
+            safe_url_result["policy_hash"],
+        )
+        if (
+            len(disclosures) != 1
+            or safe_url_result["classification"] != "public_safe"
+            or safe_url_result["url_role"] != "final_url"
+            or disclosures[0].canonical_url != restricted_url_input["exact_url"]
+            or disclosures[0].policy_identity != safe_policy_identity
+        ):
+            raise _fail("public_url_trace_binding")
 
     ordinary = OrdinaryProviderDataProjection(
         raw_provider_response_hash=raw_hash,
         restricted_trace_reference=(
-            restricted_trace_reference.value
-            if restricted_trace_reference is not None
+            safe_url_result["restricted_trace_reference"]
+            if safe_url_result is not None
             else None
         ),
         public_safe_canonical_urls=tuple(
@@ -593,7 +770,11 @@ def project_provider_data(
         raw_provider_response=(
             bytes(raw_provider_response) if raw_provider_response is not None else None
         ),
-        exact_url_traces=exact_urls,
+        exact_url_traces=(
+            (restricted_url_trace.restricted_input,)
+            if restricted_url_trace is not None
+            else ()
+        ),
         restricted_url_hashes=restricted_hashes,
         restricted_transport_metadata=(),
         _token=_PROJECTION_TOKEN,
