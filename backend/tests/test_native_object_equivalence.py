@@ -123,8 +123,15 @@ def test_cyclic_native_payload_is_ineligible(cycle_kind):
             cursor = child
         cursor.append(candidate)
 
-    with pytest.raises(NativeEquivalenceIneligibleError, match="cycle"):
-        compare_independent_native_payloads(_reference("[]"), candidate)
+    if cycle_kind == "deep":
+        with pytest.raises(Exception) as caught:
+            compare_independent_native_payloads(_reference("[]"), candidate)
+        assert type(caught.value).__name__ == "ResourceLimitExceededError"
+        assert caught.value.category == "failed_resource_limit"
+        assert caught.value.limit_name == "maximum_json_nesting_depth"
+    else:
+        with pytest.raises(NativeEquivalenceIneligibleError, match="cycle"):
+            compare_independent_native_payloads(_reference("[]"), candidate)
 
 
 def test_shared_acyclic_native_child_is_materialized_as_json_tree():
@@ -140,13 +147,13 @@ def test_shared_acyclic_native_child_is_materialized_as_json_tree():
     )
 
 
-def test_ordinary_deep_native_tree_remains_eligible():
+def test_native_tree_at_frozen_maximum_depth_remains_eligible():
     candidate = {"value": 1}
-    for _ in range(100):
+    for _ in range(31):
         candidate = {"child": candidate}
 
     payload = '{"value":1}'
-    for _ in range(100):
+    for _ in range(31):
         payload = '{"child":' + payload + "}"
 
     assert compare_independent_native_payloads(_reference(payload), candidate) == (

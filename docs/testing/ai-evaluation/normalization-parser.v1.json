@@ -530,7 +530,7 @@
         "policy_version": "v1",
         "json_pointer": "/resource_limit_policy",
         "hash_scope": "complete_selected_subtree",
-        "expected_semantic_hash": "1383c561fc193c0a29627a30be0333cfe3a271f29c2bf8921c78ed95e336619b"
+        "expected_semantic_hash": "9269950928ddf05e6b691623c57e6b60797c1131ee96f893e4977d5f223b2d16"
       },
       "normalization_parser_security_v1": {
         "policy_id": "normalization_parser_security_v1",
@@ -752,7 +752,7 @@
     },
     "derived_hash_cache": {
       "authoritative": false,
-      "normalization_spec_semantic_hash": "8747fb7fc5ae63789e256f0268d90ea3bbce7c6481fabff41be269cf738cdd6e",
+      "normalization_spec_semantic_hash": "2a8738456c32907e8a06cf8279b9f6f9336180fc6ea3300c5d287c9c2202974d",
       "registered_policy_semantic_hashes": {
         "attempt_run_outcome_model_v1": "4962aeb98a460f3331f3e08a4c8d7b6299bf16104b964a59cab54c5efefbb1eb",
         "attempt_stage_event_ledger_v1": "a54e4478a8de02ddbafe7ca7a56c69ceab998d18aaeb18c34bcad26a83a3db4f",
@@ -771,7 +771,7 @@
         "normalization_action_log_v1": "a84e8468810cf8e93e771936ad63a1f407a45543a8ae51f9ae26cd2f5dbd15f9",
         "normalization_action_vocabulary_v1": "c0a42f8b5926b8fa2bd07aefa52cc26b2a64c3140473d13f98291f6770dec9c1",
         "normalization_hashing_policy_v1": "e1535ef9949ef588de38d2cb1dd4afede6c9ec13516d226e88628b7f9ca9d2e9",
-        "normalization_parser_resource_limits_v1": "1383c561fc193c0a29627a30be0333cfe3a271f29c2bf8921c78ed95e336619b",
+        "normalization_parser_resource_limits_v1": "9269950928ddf05e6b691623c57e6b60797c1131ee96f893e4977d5f223b2d16",
         "normalization_parser_security_v1": "1891d23f1512855ed5c4cd700f118b37f7b1907ad31a60f9def54c90699c8757",
         "normalization_result_record_requirements_v1": "c36ce62b953cbc6a38a0ed5283620103409ba6d0ba3ba1988a89cc2236061410",
         "normalization_status_model_v1": "261cff77d0633e8ed1aea9553cc8682cb831558ced8f89c8841ea0be488ffa41",
@@ -5022,25 +5022,90 @@
   },
   "resource_limit_policy": {
     "policy_id": "normalization_parser_resource_limits_v1",
-    "status": "pending_numeric_freeze",
+    "status": "frozen",
     "provider_calls_blocked_while_pending": true,
     "required_limits": {
-      "maximum_raw_response_bytes": null,
-      "maximum_extracted_semantic_bytes": null,
-      "maximum_json_nesting_depth": null,
-      "maximum_object_members": null,
-      "maximum_total_object_members": null,
-      "maximum_array_elements": null,
-      "maximum_total_array_elements": null,
-      "maximum_single_string_bytes": null,
-      "maximum_total_string_bytes": null,
-      "maximum_canonical_payload_bytes": null,
-      "maximum_numeric_lexeme_length": null,
-      "maximum_numeric_significand_or_coefficient_digits": null,
-      "maximum_absolute_decimal_exponent_magnitude": null
+      "maximum_raw_response_bytes": 2097152,
+      "maximum_extracted_semantic_bytes": 1048576,
+      "maximum_json_nesting_depth": 32,
+      "maximum_object_members": 64,
+      "maximum_total_object_members": 16384,
+      "maximum_array_elements": 1024,
+      "maximum_total_array_elements": 4096,
+      "maximum_single_string_bytes": 131072,
+      "maximum_total_string_bytes": 524288,
+      "maximum_canonical_payload_bytes": 2097152,
+      "maximum_numeric_lexeme_length": 16384,
+      "maximum_numeric_significand_or_coefficient_digits": 8192,
+      "maximum_absolute_decimal_exponent_magnitude": 32768
+    },
+    "counting_conventions": {
+      "limits_are_inclusive": true,
+      "byte_limits_count": "exact_bytes",
+      "json_nesting_depth": {
+        "root_object_or_array_depth": 1,
+        "scalar_root_depth": 0
+      },
+      "object_members": "every_syntactically_encountered_key_value_pair_including_duplicates_before_duplicate_key_failure",
+      "array_elements": "every_syntactically_encountered_element",
+      "string_bytes": {
+        "encoding": "decoded_utf8_bytes",
+        "includes": [
+          "object_keys",
+          "string_values"
+        ]
+      },
+      "numeric_lexeme_length_includes": [
+        "sign",
+        "integer_digits",
+        "decimal_point_and_fraction",
+        "exponent_marker",
+        "exponent_sign",
+        "exponent_digits"
+      ],
+      "numeric_coefficient_digits": "all_integer_and_fractional_digits_including_leading_and_trailing_zeros",
+      "absolute_decimal_exponent_magnitude": {
+        "meaning": "absolute_explicit_base_10_exponent",
+        "absent_exponent": 0
+      },
+      "canonical_payload_size": "exact_rfc8785_jcs_utf8_bytes"
+    },
+    "deterministic_limit_precedence": {
+      "stage_order": [
+        "maximum_raw_response_bytes",
+        "maximum_extracted_semantic_bytes",
+        "single_pass_lexical_json_preflight_in_input_order",
+        "maximum_canonical_payload_bytes"
+      ],
+      "lexical_traversal": "left_to_right_depth_first_json_token_order",
+      "same_event_order": {
+        "container_entry": [
+          "maximum_json_nesting_depth"
+        ],
+        "object_member_completion": [
+          "maximum_object_members",
+          "maximum_total_object_members"
+        ],
+        "array_element_completion": [
+          "maximum_array_elements",
+          "maximum_total_array_elements"
+        ],
+        "decoded_string_scalar": [
+          "maximum_single_string_bytes"
+        ],
+        "decoded_string_completion": [
+          "maximum_single_string_bytes",
+          "maximum_total_string_bytes"
+        ],
+        "numeric_lexeme_completion": [
+          "maximum_numeric_lexeme_length",
+          "maximum_numeric_significand_or_coefficient_digits",
+          "maximum_absolute_decimal_exponent_magnitude"
+        ]
+      }
     },
     "numeric_limit_order": "Apply lexically detectable numeric resource limits before expensive arbitrary-precision conversion, then strict numeric grammar, exact decimal parsing, semantic_numeric_domain_policy_v1, and canonical schema validation.",
-    "numeric_limit_thresholds_frozen_here": false,
+    "numeric_limit_thresholds_frozen_here": true,
     "numeric_limit_failure_terminal": "failed_resource_limit",
     "existing_schema_field_limits_still_apply": true,
     "byte_surface_application": {
@@ -5051,6 +5116,11 @@
     },
     "provider_request_configuration_also_requires_output_limits": true,
     "parser_limits_independent_of_provider_request_limits": true,
+    "enforcement_status": {
+      "provider_neutral_parser_and_normalizer": "implemented_and_tested",
+      "raw_transport_accumulation_primitive": "implemented_and_tested",
+      "provider_adapter_use_of_raw_transport_primitive": "pending_pre_pilot_and_execution_blocking"
+    },
     "numeric_values_may_be_invented_without_evidence": false,
     "freeze_basis": [
       "canonical schema maximum structures",
@@ -7776,7 +7846,8 @@
     "url security validator implementation and tests": "pending",
     "url_security_policy_v1 authoritative experiment-gate readiness integration": "pending_pre_pilot",
     "source_classification_policy_v1": "pending_creation",
-    "strict resource-limit numeric freeze": "pending",
+    "strict resource-limit numeric freeze": "resolved_by_frozen_balanced_limits_and_provider_neutral_enforcement",
+    "raw response resource-limit adapter integration proof": "pending_pre_pilot",
     "safe transport metadata allowlist": "pending_freeze",
     "privacy and retention review": "pending",
     "result-record implementation": "pending",

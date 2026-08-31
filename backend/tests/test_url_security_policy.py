@@ -33,7 +33,7 @@ POLICY_PATH = (
 POLICY_ID = "url_security_policy_v1"
 POLICY_VERSION = "v1"
 POLICY_SEMANTIC_HASH = (
-    "fce3fca2903a8455dc28344a2ce9267fcd1935dc4714584ca307b04212e064cf"
+    "7ac11f5e947576098f73dc41e182c9c8b5ad50a9f667406ad689625e9a61168b"
 )
 VALIDATOR_MODULE = "app.services.url_security"
 VALIDATOR_NAME = "validate_url_security"

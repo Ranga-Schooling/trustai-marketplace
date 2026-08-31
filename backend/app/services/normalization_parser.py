@@ -10,6 +10,18 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from app.services.evaluation_resource_limits import (
+    JsonResourceSyntaxError,
+    NativeResourceTopologyError,
+    account_canonical_payload_fragment,
+    account_raw_response_chunk,
+    enforce_extracted_semantic_bytes,
+    enforce_materialized_json_resource_limits,
+    enforce_native_json_resource_limits,
+    native_number_lexeme,
+    scan_json_resource_limits,
+)
+
 
 class StrictJsonPayloadError(ValueError):
     """Base error for the strict semantic-payload parsing boundary."""
@@ -441,17 +453,17 @@ def _native_number_to_exact(value: int | float | Decimal) -> ExactJsonNumber:
             raise NativeEquivalenceIneligibleError(
                 "Native number is not a finite JSON number"
             )
-        lexeme = str(value)
+        lexeme = native_number_lexeme(value)
         exact_decimal = value
     elif isinstance(value, int) and not isinstance(value, bool):
-        lexeme = str(value)
+        lexeme = native_number_lexeme(value)
         exact_decimal = Decimal(value)
     elif isinstance(value, float):
         if not math.isfinite(value):
             raise NativeEquivalenceIneligibleError(
                 "Native number is not a finite JSON number"
             )
-        lexeme = repr(value)
+        lexeme = native_number_lexeme(value)
         exact_decimal = Decimal(lexeme)
     else:
         raise NativeEquivalenceIneligibleError(
@@ -461,6 +473,13 @@ def _native_number_to_exact(value: int | float | Decimal) -> ExactJsonNumber:
 
 
 def _materialize_native_json_tree(value: Any) -> StrictParsedJson:
+    try:
+        enforce_native_json_resource_limits(value)
+    except NativeResourceTopologyError as exc:
+        raise NativeEquivalenceIneligibleError(
+            f"Native payload failed bounded topology preflight: {exc}"
+        ) from exc
+
     root: list[Any] = [None]
     active_container_ids: set[int] = set()
     stack: list[tuple[str, Any, Any, Any]] = [("enter", value, root, 0)]
@@ -605,22 +624,34 @@ def _utf16_sort_key(value: str) -> bytes:
 
 
 def _serialize_admitted_tree(value: Any) -> bytes:
-    output: list[str] = []
+    output = bytearray()
     stack: list[Any] = [value]
     while stack:
         current = stack.pop()
         if isinstance(current, _JcsLiteral):
-            output.append(current.value)
+            fragment = current.value.encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif isinstance(current, AdmittedJsonNumber):
-            output.append(current.jcs_numeric_representation)
+            fragment = current.jcs_numeric_representation.encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif isinstance(current, str):
-            output.append(_serialize_jcs_string(current))
+            fragment = _serialize_jcs_string(current).encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif current is True:
-            output.append("true")
+            fragment = b"true"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif current is False:
-            output.append("false")
+            fragment = b"false"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif current is None:
-            output.append("null")
+            fragment = b"null"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
         elif isinstance(current, list):
             sequence: list[Any] = [_JcsLiteral("[")]
             for index, child in enumerate(current):
@@ -647,7 +678,7 @@ def _serialize_admitted_tree(value: Any) -> bytes:
             stack.extend(reversed(sequence))
         else:
             raise TypeError("admitted tree contains a non-JCS semantic value")
-    return "".join(output).encode("utf-8")
+    return bytes(output)
 
 
 def canonicalize_semantic_json(
@@ -656,6 +687,19 @@ def canonicalize_semantic_json(
     """Produce RFC 8785 semantic bytes and their domain-specific SHA-256."""
     if not isinstance(admitted, NumericDomainAdmission):
         raise TypeError("admitted must be NumericDomainAdmission")
+    try:
+        enforce_materialized_json_resource_limits(
+            admitted.value,
+            numeric_lexeme_resolver=(
+                lambda current: current.lexeme
+                if isinstance(current, AdmittedJsonNumber)
+                else None
+            ),
+        )
+    except NativeResourceTopologyError as exc:
+        if str(exc) == "non_scalar_native_string":
+            raise ValueError("admitted tree contains a non-scalar string") from exc
+        raise TypeError("admitted tree contains a non-JCS semantic value") from exc
     canonical_bytes = _serialize_admitted_tree(admitted.value)
     semantic_hash = hashlib.sha256(canonical_bytes).hexdigest()
     return CanonicalSemanticJson(
@@ -677,6 +721,7 @@ def hash_raw_provider_response(raw_provider_response: bytes) -> str:
     """Return the SHA-256 identity of exact raw-provider-response bytes."""
     if not isinstance(raw_provider_response, bytes):
         raise TypeError("raw_provider_response must be bytes")
+    account_raw_response_chunk(0, raw_provider_response)
     return hashlib.sha256(raw_provider_response).hexdigest()
 
 
@@ -685,6 +730,8 @@ def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
     if not isinstance(extracted_payload, bytes):
         raise TypeError("extracted_payload must be bytes")
 
+    enforce_extracted_semantic_bytes(extracted_payload)
+
     try:
         decoded_text = extracted_payload.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
@@ -692,6 +739,11 @@ def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
 
     if decoded_text.startswith("\ufeff"):
         raise StrictJsonSyntaxError("UTF-8 byte-order mark is forbidden")
+
+    try:
+        scan_json_resource_limits(decoded_text)
+    except JsonResourceSyntaxError as exc:
+        raise StrictJsonSyntaxError("extracted_payload is not strict JSON") from exc
 
     try:
         temporary_tree = json.loads(

@@ -301,15 +301,16 @@ def test_numeric_admission_jcs_and_schema_remain_later_stages():
     assert "only after every contained number passes" in parsed_term["hash_requirement"]
 
 
-def test_parser_resource_thresholds_remain_pending_and_execution_blocking():
+def test_parser_resource_thresholds_are_frozen_without_authorizing_execution():
     resource_policy = SPEC["resource_limit_policy"]
     required_limits = resource_policy["required_limits"]
 
-    assert resource_policy["status"] == "pending_numeric_freeze"
+    assert resource_policy["status"] == "frozen"
     assert resource_policy["provider_calls_blocked_while_pending"] is True
-    assert resource_policy["numeric_limit_thresholds_frozen_here"] is False
+    assert resource_policy["numeric_limit_thresholds_frozen_here"] is True
     assert required_limits
-    assert all(value is None for value in required_limits.values())
+    assert all(type(value) is int and value > 0 for value in required_limits.values())
+    assert SPEC["provider_calls_allowed"] is False
 
 
 UTF8_CASES = (
@@ -1087,12 +1088,12 @@ def test_jcs_top_level_non_numeric_values(payload, expected, monkeypatch):
     assert pipeline(payload).canonical_bytes == expected
 
 
-def test_semantic_pipeline_handles_bounded_deep_arrays_iteratively(monkeypatch):
+def test_semantic_pipeline_handles_maximum_frozen_depth_iteratively(monkeypatch):
     _module, _admit_number, _admit_tree, _canonicalize, pipeline = (
         _load_semantic_core()
     )
     _deny_external_access(monkeypatch)
-    depth = 500
+    depth = 32
     payload = (b"[" * depth) + b"1" + (b"]" * depth)
 
     result = pipeline(payload)
