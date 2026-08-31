@@ -79,7 +79,7 @@ def validate_visual_photo_references(
 
     for finding in candidate["findings"]:
         if any(
-            photo_number > supplied_image_count
+            _numeric_value(photo_number) > supplied_image_count
             for photo_number in finding["photo_numbers"]
         ):
             _reject(
