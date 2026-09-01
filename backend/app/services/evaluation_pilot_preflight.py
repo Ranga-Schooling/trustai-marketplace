@@ -42,24 +42,31 @@ _VISUAL_CONTEXT_HASH = (
 )
 _ELIGIBLE_STAGE_MATRIX = (
     ("openai_unified_premium_v1", "text_analysis", 2),
-    ("openai_unified_premium_v1", "search_retrieval", 1),
     ("openai_unified_premium_v1", "search_synthesis", 1),
     ("openai_unified_premium_v1", "visual_inspection", 2),
     ("openai_unified_balanced_v1", "text_analysis", 2),
-    ("openai_unified_balanced_v1", "search_retrieval", 1),
     ("openai_unified_balanced_v1", "search_synthesis", 1),
     ("openai_unified_balanced_v1", "visual_inspection", 2),
     ("gemini_unified_v1", "text_analysis", 2),
-    ("gemini_unified_v1", "search_retrieval", 1),
     ("gemini_unified_v1", "search_synthesis", 1),
     ("gemini_unified_v1", "visual_inspection", 2),
     ("groq_split_v1", "text_analysis", 2),
-    ("groq_split_v1", "search_retrieval", 1),
     ("groq_split_v1", "search_synthesis", 1),
     ("groq_split_v1", "visual_inspection", 2),
     ("baseline_current_text_v1", "text_analysis", 2),
 )
-_INELIGIBLE_RETRIEVAL: tuple[tuple[str, str], ...] = ()
+_ELIGIBLE_DISCOVERY_MATRIX = (
+    ("openai_unified_premium_v1", "provider_native_url_discovery", 1),
+    ("openai_unified_balanced_v1", "provider_native_url_discovery", 1),
+    ("gemini_unified_v1", "provider_native_url_discovery", 1),
+    ("groq_split_v1", "provider_native_url_discovery", 1),
+)
+_INELIGIBLE_RETRIEVAL = (
+    ("openai_unified_premium_v1", "search_retrieval"),
+    ("openai_unified_balanced_v1", "search_retrieval"),
+    ("gemini_unified_v1", "search_retrieval"),
+    ("groq_split_v1", "search_retrieval"),
+)
 _RESOLVED_COMPONENTS = (
     "frozen_methodology_and_fixtures",
     "prompt_and_output_contracts",
@@ -100,6 +107,7 @@ class ProviderNeutralPilotPreflight:
     resolved_components: tuple[str, ...]
     remaining_decision_packages: tuple[str, ...]
     eligible_stage_matrix: tuple[tuple[str, str, int], ...]
+    eligible_discovery_matrix: tuple[tuple[str, str, int], ...]
     ineligible_stage_matrix: tuple[tuple[str, str], ...]
     ps1_provider_free_blockers: tuple[str, ...]
     ps1_reusable_primitives: tuple[str, ...]
@@ -108,6 +116,7 @@ class ProviderNeutralPilotPreflight:
     maximum_physical_attempts_after_ps1_resolution: int
     same_day_lifecycle_recheck_required: bool = True
     ps1_built_in_search_evidence_eligible: bool = False
+    ps1_provider_native_url_discovery_eligible: bool = True
     ps1_trace_backed_application_evidence_ready: bool = True
     ps1_security_contract_weakened: bool = False
     operation_country_code: str = "US"
@@ -180,19 +189,21 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
     non_search = sum(
         fixture_count
         for _, stage, fixture_count in _ELIGIBLE_STAGE_MATRIX
-        if stage not in {"search_retrieval", "search_synthesis"}
+        if stage != "search_synthesis"
     )
     search = sum(
         fixture_count
         for _, stage, fixture_count in _ELIGIBLE_STAGE_MATRIX
-        if stage in {"search_retrieval", "search_synthesis"}
+        if stage == "search_synthesis"
     )
-    planned = non_search + search
+    discovery = sum(item[2] for item in _ELIGIBLE_DISCOVERY_MATRIX)
+    planned = non_search + search + discovery
     return ProviderNeutralPilotPreflight(
         status="provider_neutral_ready_awaiting_budget_credentials_and_authorization",
         resolved_components=_RESOLVED_COMPONENTS,
         remaining_decision_packages=_DECISION_PACKAGES,
         eligible_stage_matrix=_ELIGIBLE_STAGE_MATRIX,
+        eligible_discovery_matrix=_ELIGIBLE_DISCOVERY_MATRIX,
         ineligible_stage_matrix=_INELIGIBLE_RETRIEVAL,
         ps1_provider_free_blockers=_PS1_BLOCKERS,
         ps1_reusable_primitives=_PS1_REUSE,

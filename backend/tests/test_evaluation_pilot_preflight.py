@@ -52,24 +52,31 @@ def test_preflight_stage_matrix_and_call_counts_are_exact():
 
     assert result.eligible_stage_matrix == (
         ("openai_unified_premium_v1", "text_analysis", 2),
-        ("openai_unified_premium_v1", "search_retrieval", 1),
         ("openai_unified_premium_v1", "search_synthesis", 1),
         ("openai_unified_premium_v1", "visual_inspection", 2),
         ("openai_unified_balanced_v1", "text_analysis", 2),
-        ("openai_unified_balanced_v1", "search_retrieval", 1),
         ("openai_unified_balanced_v1", "search_synthesis", 1),
         ("openai_unified_balanced_v1", "visual_inspection", 2),
         ("gemini_unified_v1", "text_analysis", 2),
-        ("gemini_unified_v1", "search_retrieval", 1),
         ("gemini_unified_v1", "search_synthesis", 1),
         ("gemini_unified_v1", "visual_inspection", 2),
         ("groq_split_v1", "text_analysis", 2),
-        ("groq_split_v1", "search_retrieval", 1),
         ("groq_split_v1", "search_synthesis", 1),
         ("groq_split_v1", "visual_inspection", 2),
         ("baseline_current_text_v1", "text_analysis", 2),
     )
-    assert result.ineligible_stage_matrix == ()
+    assert result.eligible_discovery_matrix == (
+        ("openai_unified_premium_v1", "provider_native_url_discovery", 1),
+        ("openai_unified_balanced_v1", "provider_native_url_discovery", 1),
+        ("gemini_unified_v1", "provider_native_url_discovery", 1),
+        ("groq_split_v1", "provider_native_url_discovery", 1),
+    )
+    assert result.ineligible_stage_matrix == (
+        ("openai_unified_premium_v1", "search_retrieval"),
+        ("openai_unified_balanced_v1", "search_retrieval"),
+        ("gemini_unified_v1", "search_retrieval"),
+        ("groq_split_v1", "search_retrieval"),
+    )
     assert result.provider_calls_in_currently_configured_non_search_scope == 18
     assert result.planned_provider_calls_after_ps1_resolution == 26
     assert result.maximum_physical_attempts_after_ps1_resolution == 52
@@ -87,6 +94,7 @@ def test_ps1_blockers_preserve_the_frozen_security_and_evidence_boundaries():
         "safe_search_tool_result_record",
     )
     assert result.ps1_built_in_search_evidence_eligible is False
+    assert result.ps1_provider_native_url_discovery_eligible is True
     assert result.ps1_trace_backed_application_evidence_ready is True
     assert result.ps1_security_contract_weakened is False
 
