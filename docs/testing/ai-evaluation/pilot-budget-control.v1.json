@@ -1,0 +1,148 @@
+{
+  "artifact_id": "pilot_budget_control_v1",
+  "artifact_version": "v1",
+  "status": "frozen_operator_ceiling_pre_execution",
+  "purpose": "Enforce the approved USD 5.00 pilot ceiling with exact decimal pre-attempt reservations while preserving every completed physical-attempt cost and never authorizing provider execution.",
+  "source_bindings": {
+    "pricing_snapshot_id": "pricing_snapshot_v1",
+    "pricing_snapshot_version": "v1",
+    "pricing_snapshot_hash": "0467643eafbe55e6e2215c9ad0e0576dac2d0d157a94418eef23382b0ec09282",
+    "pilot_cost_envelope_id": "pilot_cost_envelope_v1",
+    "pilot_cost_envelope_version": "v1",
+    "pilot_cost_envelope_hash": "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942",
+    "url_discovery_id": "provider_native_url_discovery_v1",
+    "url_discovery_version": "v1",
+    "url_discovery_hash": "c8c0c6280e665677ad211aa1240c42418b851a7537fbde7030200eec119d5145",
+    "retry_policy_id": "retry_policy_v1",
+    "retry_policy_version": "v1",
+    "retry_policy_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b"
+  },
+  "approved_ceiling": {
+    "currency": "USD",
+    "amount": "5.00",
+    "authorization_status": "approved_operator_ceiling",
+    "approval_scope": "pilot_only",
+    "spend_or_provider_execution_authority": false,
+    "binary_floating_point_money_authority": false,
+    "arithmetic": "exact_decimal"
+  },
+  "call_plan": {
+    "planned_nominal_calls": 26,
+    "planned_maximum_physical_attempts": 52,
+    "currently_eligible_nominal_calls": 22,
+    "currently_eligible_maximum_physical_attempts": 44,
+    "currently_eligible_breakdown": {
+      "text_analysis": 10,
+      "visual_inspection": 8,
+      "openai_url_discovery": 2,
+      "openai_search_synthesis": 2,
+      "preflight_no_call": 1
+    },
+    "ineligible_search_paths_excluded": [
+      "gemini_unified_v1",
+      "groq_split_v1"
+    ],
+    "retry_attempts_assumed_free": false
+  },
+  "known_cost_state": {
+    "known_charge_subtotal_one_attempt_usd": "1.36717440",
+    "known_charge_subtotal_two_attempts_usd": "2.73434880",
+    "remaining_headroom_over_known_subtotal_usd": "2.26565120",
+    "conservative_maximum_total_cost_usd": null,
+    "all_planned_costs_finalized": false,
+    "known_subtotal_is_attempt_reservation_authority": false,
+    "unknown_components": [
+      "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
+      "openai_web_search_content_tokens_billed_at_model_rates",
+      "gemini_billable_search_query_count_and_shared_free_allowance_state",
+      "groq_compound_internal_model_and_tool_usage_with_incomplete_official_pricing"
+    ]
+  },
+  "pre_attempt_reservation": {
+    "required_before_provider_invocation": true,
+    "reservation_must_be_conservative_upper_bound": true,
+    "reservation_must_be_non_null": true,
+    "reservation_must_be_positive": true,
+    "reservation_input_type": "canonical_decimal_string",
+    "maximum_fraction_digits": 8,
+    "maximum_fraction_digits_derivation": "maximum fractional precision of the frozen pricing_snapshot_v1 usd_per_unit rates",
+    "admission_equation": "committed_cost_plus_active_reservations_plus_requested_reservation_less_than_or_equal_to_5.00",
+    "unknown_or_unbounded_component_result": "pilot_attempt_cost_not_conservatively_bounded",
+    "ceiling_exhaustion_result": "pilot_budget_ceiling_exhausted",
+    "block_occurs_before_provider_invocation": true,
+    "blocked_reservation_creates_attempt": false,
+    "blocked_reservation_increments_provider_call_count": false
+  },
+  "immutable_ledger": {
+    "completed_physical_attempt_fields": [
+      "attempt_id",
+      "reserved_upper_bound_usd",
+      "actual_cost_usd",
+      "outcome"
+    ],
+    "active_reservation_fields": [
+      "attempt_id",
+      "conservative_upper_bound_usd"
+    ],
+    "completed_attempt_outcomes": [
+      "succeeded",
+      "failed_retryable",
+      "failed_nonretryable"
+    ],
+    "failed_attempt_cost_preserved": true,
+    "retried_attempt_cost_preserved": true,
+    "attempt_id_unique_across_active_and_completed": true,
+    "actual_cost_may_exceed_reservation": false,
+    "provider_calls_completed_equals_completed_physical_attempt_count": true,
+    "reservation_is_provider_call": false
+  },
+  "candidate_budget_eligibility": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "url_discovery_configuration_id": "openai_sol_url_discovery_pilot_v1",
+      "structurally_eligible": true,
+      "attempt_requires_same_day_conservative_reservation_proof": true
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "url_discovery_configuration_id": "openai_terra_url_discovery_pilot_v1",
+      "structurally_eligible": true,
+      "attempt_requires_same_day_conservative_reservation_proof": true
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "url_discovery_configuration_id": null,
+      "structurally_eligible": false,
+      "reason": "billable_search_query_count_is_not_bounded"
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "url_discovery_configuration_id": null,
+      "structurally_eligible": false,
+      "reason": "compound_internal_topology_and_complete_pricing_are_not_bounded"
+    }
+  ],
+  "same_day_boundary": {
+    "pricing_and_lifecycle_certification_required": true,
+    "attempt_specific_reservation_proof_required": true,
+    "provider_side_project_spend_limit_required_where_supported": true,
+    "missing_proof_result": "block_affected_attempt_before_provider_invocation"
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "provider_calls_completed": 0,
+  "pilot_calls_completed": 0,
+  "scored_calls_completed": 0,
+  "winner_selected": false,
+  "specification_identity": {
+    "hash_algorithm": "SHA-256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "2a6d8fdfdd39efcf8ddc027734988a557d222885f736ddc60d8162dd059b7b23"
+  }
+}

@@ -23,11 +23,10 @@ _DEFAULT_ARTIFACT = (
     _ROOT / "docs" / "testing" / "ai-evaluation" / "pilot-cost-envelope.v1.json"
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
-_EXPECTED_HASH = "7223f8fad4774b8fe431d90475b5aebe53456a509af69bb54daefd1e10636398"
+_EXPECTED_HASH = "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942"
 _EXPECTED_UNKNOWN = (
     "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
-    "provider_native_url_discovery_request_input_and_output_usage_without_an_approved_request_configuration",
-    "openai_web_search_tool_call_count_and_content_tokens_billed_at_model_rates",
+    "openai_web_search_content_tokens_billed_at_model_rates",
     "gemini_billable_search_query_count_and_shared_free_allowance_state",
     "groq_compound_internal_model_and_tool_usage_with_incomplete_official_pricing",
 )
@@ -69,10 +68,28 @@ _EXPECTED_COMPONENTS = (
         "0.00491520",
     ),
     (
+        "openai_sol_discovery_maximum_output_conservative_long_context_rate",
+        512,
+        "0.00003",
+        "0.01536000",
+    ),
+    (
+        "openai_terra_discovery_maximum_output_conservative_long_context_rate",
+        512,
+        "0.000018",
+        "0.00921600",
+    ),
+    (
         "groq_qwen_two_fixed_visual_image_inputs",
         4096,
         "0.0000008",
         "0.00327680",
+    ),
+    (
+        "openai_two_discovery_web_search_tool_calls",
+        2,
+        "0.01000000",
+        "0.02000000",
     ),
 )
 _TOP_KEYS = {
@@ -119,6 +136,8 @@ class PilotCostEnvelope:
     provider_native_url_discovery_calls: int
     nominal_physical_calls: int
     maximum_physical_attempts: int
+    currently_eligible_nominal_physical_calls: int
+    currently_eligible_maximum_physical_attempts: int
     regional_uplift_multiplier: Decimal
     conditional_short_context_output_charge_one_attempt: Decimal
     conditional_short_context_output_charge_two_attempts: Decimal
@@ -221,6 +240,9 @@ def verify_pilot_cost_envelope(
         "region_binding_id": "pilot_region_binding_v1",
         "region_binding_version": "v1",
         "region_binding_hash": "0c79df332d87bfdf1c902df26df9701bf531100f691650286eb7d5dd38627555",
+        "url_discovery_id": "provider_native_url_discovery_v1",
+        "url_discovery_version": "v1",
+        "url_discovery_hash": "c8c0c6280e665677ad211aa1240c42418b851a7537fbde7030200eec119d5145",
         "retry_policy_id": "retry_policy_v1",
         "retry_policy_version": "v1",
         "retry_policy_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b",
@@ -236,6 +258,11 @@ def verify_pilot_cost_envelope(
         "nominal_physical_calls": 26,
         "maximum_physical_attempts_per_run": 2,
         "maximum_physical_attempts": 52,
+        "currently_eligible_non_search_model_calls": 18,
+        "currently_eligible_search_synthesis_model_calls": 2,
+        "currently_eligible_url_discovery_calls": 2,
+        "currently_eligible_nominal_physical_calls": 22,
+        "currently_eligible_maximum_physical_attempts": 44,
         "application_owned_refetches_are_provider_model_calls": False,
         "provider_native_search_prose_or_snippets_are_canonical_evidence": False,
     }
@@ -275,30 +302,31 @@ def verify_pilot_cost_envelope(
             raise _fail(f"component_arithmetic:{component_id}")
         computed_components.append((component_id, calculated))
 
-    output_ids = {item[0] for item in _EXPECTED_COMPONENTS[:6]}
+    output_ids = {item[0] for item in _EXPECTED_COMPONENTS[:8]}
     conservative_output_one = sum(
         (value for component_id, value in computed_components if component_id in output_ids),
         Decimal(0),
     )
-    image_one = computed_components[6][1]
+    image_one = computed_components[8][1]
+    search_tool_one = computed_components[9][1]
     known_one = sum((value for _, value in computed_components), Decimal(0))
-    short_context_output_one = Decimal("0.92610560")
+    short_context_output_one = Decimal("0.94248960")
 
     summary = raw["cost_summary"]
     if type(summary) is not dict:
         raise _fail("cost_summary")
     expected_summary = {
         "currency": "USD",
-        "conditional_short_context_output_charge_one_attempt_usd": "0.92610560",
-        "conditional_short_context_output_charge_two_attempts_usd": "1.85221120",
-        "conservative_output_charge_one_attempt_usd": "1.31932160",
-        "conservative_output_charge_two_attempts_usd": "2.63864320",
+        "conditional_short_context_output_charge_one_attempt_usd": "0.94248960",
+        "conditional_short_context_output_charge_two_attempts_usd": "1.88497920",
+        "conservative_output_charge_one_attempt_usd": "1.34389760",
+        "conservative_output_charge_two_attempts_usd": "2.68779520",
         "qwen_fixed_image_charge_one_attempt_usd": "0.00327680",
         "qwen_fixed_image_charge_two_attempts_usd": "0.00655360",
-        "openai_search_tool_charge_one_attempt_usd": None,
-        "openai_search_tool_charge_two_attempts_usd": None,
-        "known_charge_subtotal_one_attempt_usd": "1.32259840",
-        "known_charge_subtotal_two_attempts_usd": "2.64519680",
+        "openai_search_tool_charge_one_attempt_usd": "0.02000000",
+        "openai_search_tool_charge_two_attempts_usd": "0.04000000",
+        "known_charge_subtotal_one_attempt_usd": "1.36717440",
+        "known_charge_subtotal_two_attempts_usd": "2.73434880",
         "nominal_total_cost_usd": None,
         "conservative_maximum_total_cost_usd": None,
         "all_planned_calls_cost_finalized": False,
@@ -328,6 +356,14 @@ def verify_pilot_cost_envelope(
         )
         or image_one
         != _decimal("image_one", summary["qwen_fixed_image_charge_one_attempt_usd"])
+        or search_tool_one
+        != _decimal(
+            "search_tool_one", summary["openai_search_tool_charge_one_attempt_usd"]
+        )
+        or search_tool_one * 2
+        != _decimal(
+            "search_tool_two", summary["openai_search_tool_charge_two_attempts_usd"]
+        )
         or known_one
         != _decimal("known_one", summary["known_charge_subtotal_one_attempt_usd"])
         or known_one * 2
@@ -341,19 +377,18 @@ def verify_pilot_cost_envelope(
     discovery = raw["discovery_configuration_boundary"]
     if (
         type(discovery) is not dict
-        or discovery.get("approved_discovery_maximum_output_tokens") is not None
-        or discovery.get("approved_discovery_request_configuration_count") != 0
+        or discovery.get("url_discovery_contract_hash")
+        != "c8c0c6280e665677ad211aa1240c42418b851a7537fbde7030200eec119d5145"
+        or discovery.get("approved_discovery_maximum_output_tokens") != 512
+        or discovery.get("approved_discovery_request_configuration_count") != 2
         or discovery.get("search_synthesis_8192_token_limit_may_be_reused_for_discovery")
         is not False
-        or not all(
-            type(discovery.get(name)) is str
-            and discovery[name].startswith("blocked_")
-            for name in (
-                "openai_discovery_status",
-                "gemini_discovery_status",
-                "groq_compound_discovery_status",
-            )
-        )
+        or discovery.get("openai_discovery_status")
+        != "structurally_eligible_attempt_requires_conservative_budget_reservation"
+        or discovery.get("gemini_discovery_status")
+        != "ineligible_pending_bounded_billable_search_query_configuration"
+        or discovery.get("groq_compound_discovery_status")
+        != "ineligible_pending_bounded_internal_topology_and_complete_pricing"
     ):
         raise _fail("discovery_configuration_boundary")
 
@@ -381,7 +416,7 @@ def verify_pilot_cost_envelope(
     if (
         recommendation != Decimal("5.00")
         or headroom != recommendation - known_one * 2
-        or budget.get("approval_status") != "pending_human_approval"
+        or budget.get("approval_status") != "approved_operator_ceiling"
         or budget.get("recommendation_is_spend_authority") is not False
     ):
         raise _fail("budget_recommendation")
@@ -420,6 +455,12 @@ def verify_pilot_cost_envelope(
         provider_native_url_discovery_calls=call_plan["provider_native_url_discovery_calls"],
         nominal_physical_calls=call_plan["nominal_physical_calls"],
         maximum_physical_attempts=call_plan["maximum_physical_attempts"],
+        currently_eligible_nominal_physical_calls=call_plan[
+            "currently_eligible_nominal_physical_calls"
+        ],
+        currently_eligible_maximum_physical_attempts=call_plan[
+            "currently_eligible_maximum_physical_attempts"
+        ],
         regional_uplift_multiplier=_decimal(
             "regional_uplift", region["regional_uplift_multiplier"]
         ),
@@ -429,8 +470,8 @@ def verify_pilot_cost_envelope(
         conservative_output_charge_two_attempts=conservative_output_one * 2,
         qwen_fixed_image_charge_one_attempt=image_one,
         qwen_fixed_image_charge_two_attempts=image_one * 2,
-        openai_search_tool_charge_one_attempt=None,
-        openai_search_tool_charge_two_attempts=None,
+        openai_search_tool_charge_one_attempt=search_tool_one,
+        openai_search_tool_charge_two_attempts=search_tool_one * 2,
         known_charge_subtotal_one_attempt=known_one,
         known_charge_subtotal_two_attempts=known_one * 2,
         nominal_total_cost_usd=None,

@@ -835,8 +835,8 @@
     "provider_specific_post_result_tuning_forbidden": true
   },
   "cost_controls": {
-    "status": "pending_budget_freeze",
-    "pilot_cost_ceiling_usd": null,
+    "status": "pilot_budget_frozen_scored_budget_pending",
+    "pilot_cost_ceiling_usd": 5,
     "scored_experiment_cost_ceiling_usd": null,
     "provider_calls_allowed_while_pending": false,
     "priority_rule": "Quality and safety remain more important than selecting the lowest-cost candidate."

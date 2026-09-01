@@ -105,7 +105,7 @@ def test_current_frozen_experiment_is_deterministically_blocked():
     assert result.provider_calls_completed == 0
     assert result.scored_provider_calls_completed == 0
     assert result.winner_selected is False
-    assert len(result.universal_blockers) == 17
+    assert len(result.universal_blockers) == 16
     assert len(result.pilot_blockers) == 3
     assert len(result.scored_blockers) == 21
     assert result.universal_blockers[0].prerequisite_id == (
@@ -114,6 +114,29 @@ def test_current_frozen_experiment_is_deterministically_blocked():
     assert result.universal_blockers[-1].prerequisite_id == (
         "no_unresolved_execution_blocking_prerequisite"
     )
+
+
+def test_current_frozen_experiment_binds_five_dollar_pilot_ceiling_only():
+    artifact = _experiment()
+
+    result = assess_execution_gate(artifact)
+
+    assert artifact["cost_controls"] == {
+        "status": "pilot_budget_frozen_scored_budget_pending",
+        "pilot_cost_ceiling_usd": 5,
+        "scored_experiment_cost_ceiling_usd": None,
+        "provider_calls_allowed_while_pending": False,
+        "priority_rule": (
+            "Quality and safety remain more important than selecting the "
+            "lowest-cost candidate."
+        ),
+    }
+    assert all(
+        blocker.prerequisite_id != "pilot_cost_ceiling_frozen"
+        for blocker in result.universal_blockers
+    )
+    assert result.provider_calls_allowed is False
+    assert result.pilot_calls_allowed is False
 
 
 def test_all_pass_aggregate_clears_only_after_every_universal_requirement():

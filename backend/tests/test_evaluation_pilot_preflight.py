@@ -15,9 +15,9 @@ from app.services.evaluation_pilot_preflight import (
 def test_preflight_reports_exact_resolved_scope_and_remaining_gates():
     result = assess_provider_neutral_pilot_preflight()
 
-    assert result.status == "construction_blocked_pending_discovery_configuration"
-    assert result.provider_free_common_preflight_ready is False
-    assert result.ready_awaiting_only_human_and_live_gates is False
+    assert result.status == "pilot_preflight_ready_awaiting_live_gates"
+    assert result.provider_free_common_preflight_ready is True
+    assert result.ready_awaiting_only_human_and_live_gates is True
     assert result.resolved_components == (
         "frozen_methodology_and_fixtures",
         "prompt_and_output_contracts",
@@ -33,14 +33,12 @@ def test_preflight_reports_exact_resolved_scope_and_remaining_gates():
         "ps1_discovery_refetch_classification_extraction_and_support",
         "approved_us_operation_and_restricted_local_storage_binding",
         "same_day_lifecycle_and_pricing_checklist_prepared",
+        "provider_native_url_discovery_and_application_refetch_linkage",
+        "approved_five_dollar_budget_and_pre_attempt_reservation_enforcement",
     )
-    assert result.provider_free_technical_blockers == (
-        "provider_native_url_discovery_request_adapter_extraction_and_result_binding",
-    )
+    assert result.provider_free_technical_blockers == ()
     assert result.pending_human_gates == (
-        "provider_native_url_discovery_configuration_governance",
-        "pilot_budget_ceiling_authorization",
-        "credential_authorization_handling_and_scope",
+        "pilot_credential_authorization_and_provisioning",
         "explicit_pilot_authorization",
     )
     assert result.pending_live_gates == (
@@ -79,10 +77,11 @@ def test_preflight_separates_planned_discovery_from_configured_eligible_calls():
         ("gemini_unified_v1", "provider_native_url_discovery", 1),
         ("groq_split_v1", "provider_native_url_discovery", 1),
     )
-    assert result.eligible_discovery_matrix == ()
+    assert result.eligible_discovery_matrix == (
+        ("openai_unified_premium_v1", "provider_native_url_discovery", 1),
+        ("openai_unified_balanced_v1", "provider_native_url_discovery", 1),
+    )
     assert result.ineligible_stage_matrix == (
-        ("openai_unified_premium_v1", "search_retrieval"),
-        ("openai_unified_balanced_v1", "search_retrieval"),
         ("gemini_unified_v1", "search_retrieval"),
         ("groq_split_v1", "search_retrieval"),
     )
@@ -91,6 +90,8 @@ def test_preflight_separates_planned_discovery_from_configured_eligible_calls():
     assert result.planned_provider_calls == 26
     assert result.maximum_configured_physical_attempts == 44
     assert result.maximum_planned_physical_attempts == 52
+    assert result.currently_eligible_provider_calls == 22
+    assert result.maximum_currently_eligible_physical_attempts == 44
 
 
 def test_ps1_blockers_preserve_the_frozen_security_and_evidence_boundaries():
@@ -106,7 +107,7 @@ def test_ps1_blockers_preserve_the_frozen_security_and_evidence_boundaries():
     )
     assert result.ps1_built_in_search_evidence_eligible is False
     assert result.ps1_provider_native_url_discovery_capability_approved is True
-    assert result.ps1_provider_native_url_discovery_configured_eligible is False
+    assert result.ps1_provider_native_url_discovery_configured_eligible is True
     assert result.ps1_trace_backed_application_evidence_ready is True
     assert result.ps1_security_contract_weakened is False
 
@@ -124,13 +125,18 @@ def test_preflight_binds_exact_cost_envelope_without_fabricating_a_total():
     result = assess_provider_neutral_pilot_preflight()
 
     assert result.cost_envelope_hash == (
-        "7223f8fad4774b8fe431d90475b5aebe53456a509af69bb54daefd1e10636398"
+        "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942"
     )
-    assert result.known_two_attempt_cost_subtotal_usd == "2.64519680"
+    assert result.budget_control_hash == (
+        "2a6d8fdfdd39efcf8ddc027734988a557d222885f736ddc60d8162dd059b7b23"
+    )
+    assert result.known_two_attempt_cost_subtotal_usd == "2.73434880"
     assert result.nominal_total_cost_usd is None
     assert result.conservative_maximum_total_cost_usd is None
-    assert result.recommended_budget_ceiling_usd == "5.00"
-    assert result.budget_authorization_status == "pending_human_approval"
+    assert result.approved_budget_ceiling_usd == "5.00"
+    assert result.budget_authorization_status == "approved_operator_ceiling"
+    assert result.attempt_specific_budget_reservation_required is True
+    assert result.budget_ceiling_is_execution_authority is False
 
 
 def test_preflight_cross_checks_exact_candidate_models_and_pilot_fixtures():
@@ -147,6 +153,14 @@ def test_preflight_cross_checks_exact_candidate_models_and_pilot_fixtures():
         ("baseline_current_text_v1", ("openai/gpt-oss-120b",)),
     )
     assert result.pilot_fixture_ids == ("PT1", "PT2", "PS1", "PV1", "PV2", "PF1")
+    assert result.fixture_readiness == (
+        ("PT1", "ready_awaiting_live_gates"),
+        ("PT2", "ready_awaiting_live_gates"),
+        ("PS1", "ready_for_openai_candidates_awaiting_live_gates"),
+        ("PV1", "ready_awaiting_live_gates"),
+        ("PV2", "ready_awaiting_live_gates"),
+        ("PF1", "provider_free_ready_no_call"),
+    )
 
 
 def test_preflight_has_the_exact_same_day_operational_checklist():
@@ -160,6 +174,8 @@ def test_preflight_has_the_exact_same_day_operational_checklist():
         "official_pricing_schedule_and_current_rate_binding",
         "frozen_request_configuration_validity",
         "approved_standard_global_region_mode_compatibility",
+        "attempt_specific_conservative_budget_reservation_and_remaining_ceiling",
+        "provider_project_spend_limit_where_supported",
     )
     assert result.same_day_evidence_required_fields == (
         "candidate_id",
@@ -174,6 +190,10 @@ def test_preflight_has_the_exact_same_day_operational_checklist():
         "lifecycle_status",
         "pricing_status",
         "request_configuration_status",
+        "budget_control_id",
+        "budget_control_hash",
+        "conservative_attempt_reservation_usd",
+        "remaining_unreserved_budget_usd",
         "blockers",
     )
     assert result.same_day_lifecycle_recheck_required is True
@@ -185,23 +205,21 @@ def test_preflight_scopes_candidate_specific_discovery_blockers():
     assert result.candidate_specific_blockers == (
         (
             "openai_unified_premium_v1",
-            ("provider_native_url_discovery_request_configuration",),
+            (),
         ),
         (
             "openai_unified_balanced_v1",
-            ("provider_native_url_discovery_request_configuration",),
+            (),
         ),
         (
             "gemini_unified_v1",
             (
-                "provider_native_url_discovery_request_configuration",
                 "billable_search_query_count_and_shared_allowance_state",
             ),
         ),
         (
             "groq_split_v1",
             (
-                "provider_native_url_discovery_request_configuration",
                 "compound_official_pricing_and_internal_topology",
                 "qwen_preview_same_day_lifecycle",
             ),
@@ -247,4 +265,21 @@ def test_preflight_fails_closed_when_the_cost_envelope_identity_is_wrong(monkeyp
     )
 
     with pytest.raises(PilotPreflightError, match="cost_envelope_identity"):
+        assess_provider_neutral_pilot_preflight()
+
+
+def test_preflight_fails_closed_when_discovery_or_budget_identity_is_wrong(monkeypatch):
+    monkeypatch.setattr(
+        "app.services.evaluation_pilot_preflight.URL_DISCOVERY_HASH",
+        "0" * 64,
+    )
+    with pytest.raises(PilotPreflightError, match="url_discovery_identity"):
+        assess_provider_neutral_pilot_preflight()
+
+    monkeypatch.undo()
+    monkeypatch.setattr(
+        "app.services.evaluation_pilot_preflight.PILOT_BUDGET_HASH",
+        "0" * 64,
+    )
+    with pytest.raises(PilotPreflightError, match="pilot_budget_identity"):
         assess_provider_neutral_pilot_preflight()

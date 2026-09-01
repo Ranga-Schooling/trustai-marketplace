@@ -19,6 +19,7 @@ from app.services.evaluation_contract_identity import (
 )
 from app.services.evaluation_data_handling import verify_provider_data_handling_artifact
 from app.services.evaluation_pilot_visual_assets import verify_pilot_visual_assets
+from app.services.evaluation_pilot_budget import verify_pilot_budget_control
 from app.services.evaluation_pilot_cost_envelope import verify_pilot_cost_envelope
 from app.services.evaluation_pricing import verify_pricing_snapshot
 from app.services.evaluation_ps1 import verify_ps1_contracts
@@ -32,6 +33,7 @@ from app.services.evaluation_retry_policy import load_retry_policy
 from app.services.evaluation_search_authority import bind_search_authority_v2
 from app.services.evaluation_search_tool_record import verify_safe_search_tool_record_contract
 from app.services.evaluation_visual_context import bind_visual_context_contract
+from app.services.evaluation_url_discovery import verify_url_discovery_contract
 
 
 _ROOT = Path(__file__).resolve().parents[3]
@@ -40,13 +42,19 @@ REQUEST_CONFIGURATION_HASH = (
     "1aaca1df3d67f51c3d9c1e5638d63b541bd947a1301aa509291cc7445e60b152"
 )
 COST_ENVELOPE_HASH = (
-    "7223f8fad4774b8fe431d90475b5aebe53456a509af69bb54daefd1e10636398"
+    "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942"
+)
+PILOT_BUDGET_HASH = (
+    "2a6d8fdfdd39efcf8ddc027734988a557d222885f736ddc60d8162dd059b7b23"
+)
+URL_DISCOVERY_HASH = (
+    "c8c0c6280e665677ad211aa1240c42418b851a7537fbde7030200eec119d5145"
 )
 _VISUAL_CONTEXT_HASH = (
     "7e6c51a9484f7e9de6910caa829728298b5e4d787af52106e9e2797ddbcae961"
 )
 _EXPERIMENT_FILE_SHA256 = (
-    "157615e8aea8565389b11f1c041a2a3a5013a4e740887bb60cc70563114e9e79"
+    "1a86ae5904ee7a15439540ac24334a51c2206418c80aa17e1d4a2bd97edeabc9"
 )
 _PILOT_FIXTURE_FILE_SHA256 = (
     "95a6670975becfdecd39f091c6760652c237ad4c449c9fdb8b7e68d93010cfb9"
@@ -73,8 +81,6 @@ _PLANNED_DISCOVERY_MATRIX = (
     ("groq_split_v1", "provider_native_url_discovery", 1),
 )
 _INELIGIBLE_RETRIEVAL = (
-    ("openai_unified_premium_v1", "search_retrieval"),
-    ("openai_unified_balanced_v1", "search_retrieval"),
     ("gemini_unified_v1", "search_retrieval"),
     ("groq_split_v1", "search_retrieval"),
 )
@@ -93,14 +99,12 @@ _RESOLVED_COMPONENTS = (
     "ps1_discovery_refetch_classification_extraction_and_support",
     "approved_us_operation_and_restricted_local_storage_binding",
     "same_day_lifecycle_and_pricing_checklist_prepared",
+    "provider_native_url_discovery_and_application_refetch_linkage",
+    "approved_five_dollar_budget_and_pre_attempt_reservation_enforcement",
 )
-_TECHNICAL_BLOCKERS = (
-    "provider_native_url_discovery_request_adapter_extraction_and_result_binding",
-)
+_TECHNICAL_BLOCKERS: tuple[str, ...] = ()
 _HUMAN_GATES = (
-    "provider_native_url_discovery_configuration_governance",
-    "pilot_budget_ceiling_authorization",
-    "credential_authorization_handling_and_scope",
+    "pilot_credential_authorization_and_provisioning",
     "explicit_pilot_authorization",
 )
 _LIVE_GATES = ("same_day_provider_lifecycle_and_pricing_certification",)
@@ -120,6 +124,8 @@ _SAME_DAY_CHECKLIST = (
     "official_pricing_schedule_and_current_rate_binding",
     "frozen_request_configuration_validity",
     "approved_standard_global_region_mode_compatibility",
+    "attempt_specific_conservative_budget_reservation_and_remaining_ceiling",
+    "provider_project_spend_limit_where_supported",
 )
 _SAME_DAY_EVIDENCE_REQUIRED_FIELDS = (
     "candidate_id",
@@ -134,6 +140,10 @@ _SAME_DAY_EVIDENCE_REQUIRED_FIELDS = (
     "lifecycle_status",
     "pricing_status",
     "request_configuration_status",
+    "budget_control_id",
+    "budget_control_hash",
+    "conservative_attempt_reservation_usd",
+    "remaining_unreserved_budget_usd",
     "blockers",
 )
 _CANDIDATE_MODEL_MATRIX = (
@@ -150,27 +160,33 @@ _PILOT_FIXTURE_IDS = ("PT1", "PT2", "PS1", "PV1", "PV2", "PF1")
 _CANDIDATE_SPECIFIC_BLOCKERS = (
     (
         "openai_unified_premium_v1",
-        ("provider_native_url_discovery_request_configuration",),
+        (),
     ),
     (
         "openai_unified_balanced_v1",
-        ("provider_native_url_discovery_request_configuration",),
+        (),
     ),
     (
         "gemini_unified_v1",
         (
-            "provider_native_url_discovery_request_configuration",
             "billable_search_query_count_and_shared_allowance_state",
         ),
     ),
     (
         "groq_split_v1",
         (
-            "provider_native_url_discovery_request_configuration",
             "compound_official_pricing_and_internal_topology",
             "qwen_preview_same_day_lifecycle",
         ),
     ),
+)
+_FIXTURE_READINESS = (
+    ("PT1", "ready_awaiting_live_gates"),
+    ("PT2", "ready_awaiting_live_gates"),
+    ("PS1", "ready_for_openai_candidates_awaiting_live_gates"),
+    ("PV1", "ready_awaiting_live_gates"),
+    ("PV2", "ready_awaiting_live_gates"),
+    ("PF1", "provider_free_ready_no_call"),
 )
 
 
@@ -203,17 +219,23 @@ class ProviderNeutralPilotPreflight:
     planned_provider_calls: int
     maximum_configured_physical_attempts: int
     maximum_planned_physical_attempts: int
+    currently_eligible_provider_calls: int
+    maximum_currently_eligible_physical_attempts: int
     cost_envelope_hash: str
+    budget_control_hash: str
     known_two_attempt_cost_subtotal_usd: str
     nominal_total_cost_usd: str | None
     conservative_maximum_total_cost_usd: str | None
-    recommended_budget_ceiling_usd: str
+    approved_budget_ceiling_usd: str
     budget_authorization_status: str
+    attempt_specific_budget_reservation_required: bool
+    budget_ceiling_is_execution_authority: bool
+    fixture_readiness: tuple[tuple[str, str], ...]
     authoritative_execution_state: str
     same_day_lifecycle_recheck_required: bool = True
     ps1_built_in_search_evidence_eligible: bool = False
     ps1_provider_native_url_discovery_capability_approved: bool = True
-    ps1_provider_native_url_discovery_configured_eligible: bool = False
+    ps1_provider_native_url_discovery_configured_eligible: bool = True
     ps1_trace_backed_application_evidence_ready: bool = True
     ps1_security_contract_weakened: bool = False
     operation_country_code: str = "US"
@@ -256,6 +278,17 @@ def _verify_experiment_and_fixture_inventory() -> None:
         or experiment.get("provider_calls_completed") != 0
         or experiment.get("scored_provider_calls_completed") != 0
         or experiment.get("winner_selected") is not False
+        or experiment.get("cost_controls")
+        != {
+            "status": "pilot_budget_frozen_scored_budget_pending",
+            "pilot_cost_ceiling_usd": 5,
+            "scored_experiment_cost_ceiling_usd": None,
+            "provider_calls_allowed_while_pending": False,
+            "priority_rule": (
+                "Quality and safety remain more important than selecting the "
+                "lowest-cost candidate."
+            ),
+        }
     ):
         raise PilotPreflightError("experiment_execution_gate")
 
@@ -353,6 +386,20 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
     cost = verify_pilot_cost_envelope()
     if cost.semantic_hash != COST_ENVELOPE_HASH:
         raise PilotPreflightError("cost_envelope_identity")
+    discovery_contract = verify_url_discovery_contract()
+    if discovery_contract.semantic_hash != URL_DISCOVERY_HASH:
+        raise PilotPreflightError("url_discovery_identity")
+    budget = verify_pilot_budget_control()
+    if budget.semantic_hash != PILOT_BUDGET_HASH:
+        raise PilotPreflightError("pilot_budget_identity")
+    if (
+        budget.approved_ceiling_usd != cost.recommended_budget_ceiling_usd
+        or budget.known_charge_subtotal_two_attempts_usd
+        != cost.known_charge_subtotal_two_attempts
+        or budget.provider_calls_allowed
+        or budget.pilot_calls_allowed
+    ):
+        raise PilotPreflightError("pilot_budget_binding")
 
     non_search = sum(
         fixture_count
@@ -367,17 +414,34 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
     discovery = sum(item[2] for item in _PLANNED_DISCOVERY_MATRIX)
     configured = non_search + search
     planned = non_search + search + discovery
+    eligible_candidate_ids = frozenset(discovery_contract.eligible_candidates)
+    eligible_discovery_matrix = tuple(
+        item for item in _PLANNED_DISCOVERY_MATRIX if item[0] in eligible_candidate_ids
+    )
+    eligible_search_synthesis = sum(
+        fixture_count
+        for candidate_id, stage, fixture_count in _CONFIGURED_STAGE_MATRIX
+        if stage == "search_synthesis" and candidate_id in eligible_candidate_ids
+    )
+    currently_eligible = non_search + eligible_search_synthesis + sum(
+        item[2] for item in eligible_discovery_matrix
+    )
+    if (
+        currently_eligible != budget.currently_eligible_nominal_calls
+        or planned != budget.planned_nominal_calls
+    ):
+        raise PilotPreflightError("pilot_call_plan_binding")
     return ProviderNeutralPilotPreflight(
-        status="construction_blocked_pending_discovery_configuration",
-        provider_free_common_preflight_ready=False,
-        ready_awaiting_only_human_and_live_gates=False,
+        status="pilot_preflight_ready_awaiting_live_gates",
+        provider_free_common_preflight_ready=True,
+        ready_awaiting_only_human_and_live_gates=True,
         resolved_components=_RESOLVED_COMPONENTS,
         provider_free_technical_blockers=_TECHNICAL_BLOCKERS,
         pending_human_gates=_HUMAN_GATES,
         pending_live_gates=_LIVE_GATES,
         configured_stage_matrix=_CONFIGURED_STAGE_MATRIX,
         planned_discovery_matrix=_PLANNED_DISCOVERY_MATRIX,
-        eligible_discovery_matrix=(),
+        eligible_discovery_matrix=eligible_discovery_matrix,
         ineligible_stage_matrix=_INELIGIBLE_RETRIEVAL,
         candidate_specific_blockers=_CANDIDATE_SPECIFIC_BLOCKERS,
         candidate_model_matrix=_CANDIDATE_MODEL_MATRIX,
@@ -391,14 +455,20 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
         planned_provider_calls=planned,
         maximum_configured_physical_attempts=configured * 2,
         maximum_planned_physical_attempts=planned * 2,
+        currently_eligible_provider_calls=currently_eligible,
+        maximum_currently_eligible_physical_attempts=currently_eligible * 2,
         cost_envelope_hash=cost.semantic_hash,
+        budget_control_hash=budget.semantic_hash,
         known_two_attempt_cost_subtotal_usd=str(
             cost.known_charge_subtotal_two_attempts
         ),
         nominal_total_cost_usd=None,
         conservative_maximum_total_cost_usd=None,
-        recommended_budget_ceiling_usd=str(cost.recommended_budget_ceiling_usd),
+        approved_budget_ceiling_usd=str(budget.approved_ceiling_usd),
         budget_authorization_status=cost.budget_authorization_status,
+        attempt_specific_budget_reservation_required=True,
+        budget_ceiling_is_execution_authority=False,
+        fixture_readiness=_FIXTURE_READINESS,
         authoritative_execution_state="blocked_pre_execution",
         operation_country_code=region.operation_country_code,
         provider_service_mode=region.provider_service_mode,

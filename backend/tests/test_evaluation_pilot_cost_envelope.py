@@ -43,6 +43,8 @@ def test_cost_envelope_binds_exact_frozen_inputs_and_call_plan():
     assert envelope.provider_native_url_discovery_calls == 4
     assert envelope.nominal_physical_calls == 26
     assert envelope.maximum_physical_attempts == 52
+    assert envelope.currently_eligible_nominal_physical_calls == 22
+    assert envelope.currently_eligible_maximum_physical_attempts == 44
 
 
 def test_cost_envelope_exact_known_charges_and_no_regional_uplift():
@@ -50,19 +52,19 @@ def test_cost_envelope_exact_known_charges_and_no_regional_uplift():
 
     assert envelope.regional_uplift_multiplier == Decimal("1")
     assert envelope.conditional_short_context_output_charge_one_attempt == Decimal(
-        "0.92610560"
+        "0.94248960"
     )
     assert envelope.conditional_short_context_output_charge_two_attempts == Decimal(
-        "1.85221120"
+        "1.88497920"
     )
-    assert envelope.conservative_output_charge_one_attempt == Decimal("1.31932160")
-    assert envelope.conservative_output_charge_two_attempts == Decimal("2.63864320")
+    assert envelope.conservative_output_charge_one_attempt == Decimal("1.34389760")
+    assert envelope.conservative_output_charge_two_attempts == Decimal("2.68779520")
     assert envelope.qwen_fixed_image_charge_one_attempt == Decimal("0.00327680")
     assert envelope.qwen_fixed_image_charge_two_attempts == Decimal("0.00655360")
-    assert envelope.openai_search_tool_charge_one_attempt is None
-    assert envelope.openai_search_tool_charge_two_attempts is None
-    assert envelope.known_charge_subtotal_one_attempt == Decimal("1.32259840")
-    assert envelope.known_charge_subtotal_two_attempts == Decimal("2.64519680")
+    assert envelope.openai_search_tool_charge_one_attempt == Decimal("0.02000000")
+    assert envelope.openai_search_tool_charge_two_attempts == Decimal("0.04000000")
+    assert envelope.known_charge_subtotal_one_attempt == Decimal("1.36717440")
+    assert envelope.known_charge_subtotal_two_attempts == Decimal("2.73434880")
 
 
 def test_cost_envelope_never_misrepresents_unknowns_as_an_exact_total():
@@ -72,8 +74,7 @@ def test_cost_envelope_never_misrepresents_unknowns_as_an_exact_total():
     assert envelope.conservative_maximum_total_cost_usd is None
     assert envelope.remaining_unknown_cost_components == (
         "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
-        "provider_native_url_discovery_request_input_and_output_usage_without_an_approved_request_configuration",
-        "openai_web_search_tool_call_count_and_content_tokens_billed_at_model_rates",
+        "openai_web_search_content_tokens_billed_at_model_rates",
         "gemini_billable_search_query_count_and_shared_free_allowance_state",
         "groq_compound_internal_model_and_tool_usage_with_incomplete_official_pricing",
     )
@@ -81,14 +82,14 @@ def test_cost_envelope_never_misrepresents_unknowns_as_an_exact_total():
     assert envelope.groq_compound_discovery_cost_finalized is False
 
 
-def test_cost_envelope_recommends_but_does_not_authorize_five_dollars():
+def test_cost_envelope_binds_approved_ceiling_but_does_not_authorize_execution():
     envelope = verify_pilot_cost_envelope()
 
     assert envelope.recommended_budget_ceiling_usd == Decimal("5.00")
     assert envelope.budget_headroom_over_known_two_attempt_subtotal_usd == Decimal(
-        "2.35480320"
+        "2.26565120"
     )
-    assert envelope.budget_authorization_status == "pending_human_approval"
+    assert envelope.budget_authorization_status == "approved_operator_ceiling"
     assert envelope.recommendation_is_spend_authority is False
     assert envelope.provider_calls_allowed is False
     assert envelope.pilot_calls_allowed is False
