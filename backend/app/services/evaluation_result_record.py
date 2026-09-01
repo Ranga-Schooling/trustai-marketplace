@@ -46,6 +46,13 @@ from app.services.evaluation_pricing import (
     PricingContractError,
     verify_estimated_cost_record,
 )
+from app.services.evaluation_ps1 import (
+    EVIDENCE_EXTRACTOR_POLICY_HASH,
+    OBJECTIVE_SUPPORT_POLICY_HASH,
+    ORIGIN_RULE_REGISTRY_HASH,
+    SOURCE_CLASSIFICATION_POLICY_HASH,
+    Ps1AssemblyResult,
+)
 from app.services.evaluation_retry_policy import (
     MAXIMUM_PHYSICAL_ATTEMPTS,
     SAFE_RETRY_REASONS,
@@ -1074,6 +1081,7 @@ def _validate_pilot_envelope(
     foundation: PrivacySafeAttemptRecordFoundation,
     contract: ResultRecordContract,
     search_tool_data: SearchToolProjections | None,
+    ps1_evidence: Ps1AssemblyResult | None,
     request_configuration_selection: PilotRequestConfigurationSelection | None,
 ) -> None:
     if (
@@ -1226,6 +1234,8 @@ def _validate_pilot_envelope(
     if key.workload != "grounded_product_price_research":
         if search_tool_data is not None:
             raise _fail("search_tool_data_not_applicable")
+        if ps1_evidence is not None:
+            raise _fail("ps1_evidence_not_applicable")
         for field_name in (
             "search_query_list",
             "search_and_tool_calls",
@@ -1238,7 +1248,67 @@ def _validate_pilot_envelope(
     else:
         if not isinstance(search_tool_data, SearchToolProjections):
             raise _fail("safe_search_tool_data_required")
+        if not isinstance(ps1_evidence, Ps1AssemblyResult):
+            raise _fail("ps1_evidence_required")
+        if (
+            audit["canonical_evidence_bundle_hash_if_applicable"]
+            != ps1_evidence.canonical_evidence_bundle_hash
+        ):
+            raise _fail("ps1_evidence_hash_binding")
+        expected_ps1_bindings = {
+            ("source_classification_policy_v1", "v1"): (
+                SOURCE_CLASSIFICATION_POLICY_HASH
+            ),
+            ("url_security_operational_origin_rule_registry_v1", "v1"): (
+                ORIGIN_RULE_REGISTRY_HASH
+            ),
+            ("retrieval_objective_support_policy_v1", "v1"): (
+                OBJECTIVE_SUPPORT_POLICY_HASH
+            ),
+            (
+                "deterministic_trace_backed_evidence_extractor_and_matcher_v1",
+                "v1",
+            ): EVIDENCE_EXTRACTOR_POLICY_HASH,
+        }
+        actual_bindings = {
+            (item["policy_id"], item["policy_version"]): item["policy_hash"]
+            for item in audit["applied_policy_bindings"]
+        }
+        if any(
+            actual_bindings.get(identity) != policy_hash
+            for identity, policy_hash in expected_ps1_bindings.items()
+        ):
+            raise _fail("ps1_policy_binding")
         ordinary_search = search_tool_data.ordinary.as_dict()
+        canonical_sources = ps1_evidence.canonical_bundle["sources"]
+        expected_sources = {
+            source["source_id"]: {
+                "url": source["url"],
+                "retrieved_at": source["retrieved_at"],
+            }
+            for source in canonical_sources
+        }
+        observed_sources = {
+            source["source_id"]: {
+                "url": source["public_safe_canonical_url"],
+                "retrieved_at": source["retrieved_at"],
+            }
+            for source in ordinary_search["sources"]
+        }
+        expected_evidence = {
+            evidence["evidence_id"]: source["source_id"]
+            for source in canonical_sources
+            for evidence in source["evidence_items"]
+        }
+        observed_evidence = {
+            evidence["evidence_id"]: evidence["source_id"]
+            for evidence in ordinary_search["evidence"]
+        }
+        if (
+            observed_sources != expected_sources
+            or observed_evidence != expected_evidence
+        ):
+            raise _fail("ps1_safe_projection_binding")
         expected_aliases = {
             "search_and_tool_calls": ordinary_search,
             "search_query_list": [
@@ -1286,6 +1356,7 @@ def build_pilot_attempt_record(
     pilot_envelope: dict[str, Any],
     provider_attempt_started: bool,
     search_tool_data: SearchToolProjections | None = None,
+    ps1_evidence: Ps1AssemblyResult | None = None,
     request_configuration_selection: PilotRequestConfigurationSelection | None = None,
     contract_path: str | Path = _DEFAULT_CONTRACT,
 ) -> PilotAttemptRecord:
@@ -1308,6 +1379,7 @@ def build_pilot_attempt_record(
         foundation,
         contract,
         search_tool_data,
+        ps1_evidence,
         request_configuration_selection,
     )
     record = {

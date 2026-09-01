@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import FrozenInstanceError
+from datetime import UTC, datetime
 import hashlib
 import json
 from pathlib import Path
@@ -33,6 +34,17 @@ from app.services.evaluation_data_handling import (
 from app.services.evaluation_pricing import (
     calculate_estimated_cost,
     verify_pricing_snapshot,
+)
+from app.services.evaluation_ps1 import (
+    EVIDENCE_EXTRACTOR_POLICY_HASH,
+    OBJECTIVE_SUPPORT_POLICY_HASH,
+    ORIGIN_RULE_REGISTRY_HASH,
+    SOURCE_CLASSIFICATION_POLICY_HASH,
+    Ps1EvidenceCandidate,
+    Ps1RefetchObservation,
+    assemble_ps1_evidence_bundle,
+    build_ps1_classifier_input,
+    record_ps1_discovery_url,
 )
 from app.services.evaluation_provider_adapters import bind_provider_adapters
 from app.services.evaluation_provider_role_mappings import bind_provider_role_mappings
@@ -84,7 +96,7 @@ RAW_HASH = hashlib.sha256(RAW).hexdigest()
 FINAL_HASH = "b" * 64
 
 
-def _state(*, workload_branch="text_final"):
+def _state(*, workload_branch="text_final", accepted_artifact_hash=FINAL_HASH):
     events = [
         StageEvent(
             event_ordinal=index,
@@ -111,7 +123,7 @@ def _state(*, workload_branch="text_final"):
         ledger=AttemptStageEventLedger(tuple(events)),
         normalization_actions=(),
         raw_provider_response_hash=RAW_HASH,
-        accepted_artifact_hash=FINAL_HASH,
+        accepted_artifact_hash=accepted_artifact_hash,
     )
 
 
@@ -365,6 +377,35 @@ def _audit(state=None):
                 "policy_hash": child_hashes[binding_id],
             }
         )
+    if state.workload_branch == "search_retrieval":
+        values["applied_policy_bindings"].extend(
+            (
+                {
+                    "policy_id": "source_classification_policy_v1",
+                    "policy_version": "v1",
+                    "policy_hash": SOURCE_CLASSIFICATION_POLICY_HASH,
+                },
+                {
+                    "policy_id": (
+                        "url_security_operational_origin_rule_registry_v1"
+                    ),
+                    "policy_version": "v1",
+                    "policy_hash": ORIGIN_RULE_REGISTRY_HASH,
+                },
+                {
+                    "policy_id": "retrieval_objective_support_policy_v1",
+                    "policy_version": "v1",
+                    "policy_hash": OBJECTIVE_SUPPORT_POLICY_HASH,
+                },
+                {
+                    "policy_id": (
+                        "deterministic_trace_backed_evidence_extractor_and_matcher_v1"
+                    ),
+                    "policy_version": "v1",
+                    "policy_hash": EVIDENCE_EXTRACTOR_POLICY_HASH,
+                },
+            )
+        )
     return values
 
 
@@ -502,20 +543,72 @@ def _envelope(
     return values
 
 
-def _search_tool_data():
-    inventory = validate_trace_position_inventory(
-        retrieval_attempt_ordinals=[1],
-        tool_call_ordinals_by_attempt={1: [1]},
-        result_ordinals_by_tool_call={(1, 1): [1]},
-        evidence_ordinals_by_result={(1, 1, 1): []},
+def _ps1_evidence():
+    url = "https://www.logitech.com/en-us/shop/p/mx-master-3s.910-006557"
+    discovery = record_ps1_discovery_url(
+        candidate_id="synthetic-candidate-v1",
+        provider="synthetic-provider",
+        discovery_ordinal=1,
+        exact_url=url,
+        provider_snippet="restricted discovery prose",
+        provider_citation="restricted discovery citation",
     )
-    plan = allocate_retrieval_observations(
-        inventory,
-        (
-            RetrievalSourceObservation(1, 1, 1, False, None, None, None),
+    capabilities = {0: derive_restricted_trace_reference(b"p" * 16)}
+    classifier_input = build_ps1_classifier_input(
+        exact_urls=(url,),
+        retrieval_auth_contexts=("public_unauthenticated",),
+        reference_capabilities=capabilities,
+    )
+    body = (
+        "MX Master 3S Graphite standard right-handed mouse. "
+        "Includes Logi Bolt USB receiver."
+    )
+    refetch = Ps1RefetchObservation(
+        discovery=discovery,
+        retrieval_attempt_ordinal=1,
+        tool_call_ordinal=1,
+        result_ordinal=1,
+        classifier_input=classifier_input,
+        reference_capabilities=capabilities,
+        status_code=200,
+        captured_at=datetime(2026, 8, 31, 20, 0, tzinfo=UTC),
+        display_name="Logitech MX Master 3S",
+        decoded_body=body,
+        evidence_candidates=(
+            Ps1EvidenceCandidate(
+                "identity",
+                "MX Master 3S Graphite standard right-handed mouse.",
+            ),
+            Ps1EvidenceCandidate("bundle", "Includes Logi Bolt USB receiver."),
         ),
-        (),
     )
+    return assemble_ps1_evidence_bundle(
+        retrieval_status="partial",
+        discoveries=(discovery,),
+        refetch_observations=(refetch,),
+    )
+
+
+def _search_tool_data(ps1_evidence=None):
+    if ps1_evidence is not None:
+        inventory = ps1_evidence.trace_inventory
+        plan = ps1_evidence.allocation_plan
+        restricted_url_traces = ps1_evidence.restricted_traces
+    else:
+        inventory = validate_trace_position_inventory(
+            retrieval_attempt_ordinals=[1],
+            tool_call_ordinals_by_attempt={1: [1]},
+            result_ordinals_by_tool_call={(1, 1): [1]},
+            evidence_ordinals_by_result={(1, 1, 1): []},
+        )
+        plan = allocate_retrieval_observations(
+            inventory,
+            (
+                RetrievalSourceObservation(1, 1, 1, False, None, None, None),
+            ),
+            (),
+        )
+        restricted_url_traces = ()
     operation = RawSearchToolOperation(
         retrieval_attempt_ordinal=1,
         tool_call_ordinal=1,
@@ -528,7 +621,7 @@ def _search_tool_data():
         completed_at="2026-08-31T20:00:00.250Z",
         latency_ms=250,
         restricted_trace_reference=derive_restricted_trace_reference(b"q" * 16),
-        restricted_url_traces=(),
+        restricted_url_traces=restricted_url_traces,
     )
     return build_search_tool_projections(
         operations=(operation,),
@@ -634,8 +727,12 @@ def test_complete_pilot_attempt_is_immutable_hashed_and_privacy_safe():
 
 
 def test_grounded_search_attempt_binds_exact_safe_projection_and_restricted_inputs():
-    state = _state(workload_branch="search_retrieval")
-    search_tool_data = _search_tool_data()
+    ps1_evidence = _ps1_evidence()
+    state = _state(
+        workload_branch="search_retrieval",
+        accepted_artifact_hash=ps1_evidence.canonical_evidence_bundle_hash,
+    )
+    search_tool_data = _search_tool_data(ps1_evidence)
     key = _key(
         fixture_id="PS1",
         workload="grounded_product_price_research",
@@ -655,14 +752,24 @@ def test_grounded_search_attempt_binds_exact_safe_projection_and_restricted_inpu
         pilot_envelope=envelope,
         provider_attempt_started=True,
         search_tool_data=search_tool_data,
+        ps1_evidence=ps1_evidence,
     )
     exposed = record.as_dict()["pilot_envelope"]
     serialized = json.dumps(record.as_dict(), sort_keys=True)
 
     assert exposed["search_query_list"] == ["qry-0001-0001"]
     assert exposed["search_and_tool_calls"] == search_tool_data.ordinary.as_dict()
-    assert exposed["source_urls"] == []
-    assert exposed["source_retrieval_timestamps"] == []
+    assert exposed["source_urls"] == [
+        ps1_evidence.canonical_bundle["sources"][0]["url"]
+    ]
+    assert exposed["source_retrieval_timestamps"] == [
+        {
+            "source_id": "src-0001",
+            "retrieved_at": ps1_evidence.canonical_bundle["sources"][0][
+                "retrieved_at"
+            ],
+        }
+    ]
     assert exposed["claim_to_source_mapping"] == []
     assert "synthetic pilot product query" not in serialized
     assert record.restricted_search_tool_data is not None
@@ -673,8 +780,12 @@ def test_grounded_search_attempt_binds_exact_safe_projection_and_restricted_inpu
 
 
 def test_grounded_search_attempt_rejects_missing_or_tampered_safe_projection():
-    state = _state(workload_branch="search_retrieval")
-    search_tool_data = _search_tool_data()
+    ps1_evidence = _ps1_evidence()
+    state = _state(
+        workload_branch="search_retrieval",
+        accepted_artifact_hash=ps1_evidence.canonical_evidence_bundle_hash,
+    )
+    search_tool_data = _search_tool_data(ps1_evidence)
     key = _key(
         fixture_id="PS1",
         workload="grounded_product_price_research",
@@ -694,6 +805,39 @@ def test_grounded_search_attempt_rejects_missing_or_tampered_safe_projection():
             normalization_audit=_audit(state),
             pilot_envelope=envelope,
             provider_attempt_started=True,
+            ps1_evidence=ps1_evidence,
+        )
+
+    with pytest.raises(ResultRecordFoundationError, match="ps1_evidence_required"):
+        build_pilot_attempt_record(
+            attempt_key=key,
+            attempt_state=state,
+            provider_data=_provider_data(),
+            normalization_audit=_audit(state),
+            pilot_envelope=envelope,
+            provider_attempt_started=True,
+            search_tool_data=search_tool_data,
+        )
+
+    mismatched_state = _state(
+        workload_branch="search_retrieval",
+        accepted_artifact_hash="0" * 64,
+    )
+    with pytest.raises(ResultRecordFoundationError, match="ps1_evidence_hash_binding"):
+        build_pilot_attempt_record(
+            attempt_key=key,
+            attempt_state=mismatched_state,
+            provider_data=_provider_data(),
+            normalization_audit=_audit(mismatched_state),
+            pilot_envelope=_envelope(
+                mismatched_state,
+                fixture_id="PS1",
+                workload="grounded_product_price_research",
+                search_tool_data=search_tool_data,
+            ),
+            provider_attempt_started=True,
+            search_tool_data=search_tool_data,
+            ps1_evidence=ps1_evidence,
         )
 
     tampered = deepcopy(envelope)
@@ -710,6 +854,7 @@ def test_grounded_search_attempt_rejects_missing_or_tampered_safe_projection():
             pilot_envelope=tampered,
             provider_attempt_started=True,
             search_tool_data=search_tool_data,
+            ps1_evidence=ps1_evidence,
         )
 
 
