@@ -1,0 +1,13 @@
+Summary
+Solid, well-contained addition — genuinely additive (no existing route path, status code, or response model touched), shipped disabled by default pending real credentials, and honest about the evidence-policy gate not being comprehensive semantic grounding. Tests mock every external call; nothing here needs network access or a real key. One convention violation worth fixing before merge, plus a handful of non-blocking efficiency/simplification notes.
+
+Please fix
+
+backend/tests/test_visual_inspection_api.py:736 — assert analysis["risk_level"] == "low" hardcodes the label instead of using the enum. CLAUDE.md is explicit: "Always reference the RiskLevel and Recommendation enums; never hardcode label strings, including in tests." RiskLevel isn't even imported in this file (only ListingIn is pulled from schemas.py) — one-line fix: import RiskLevel and assert against RiskLevel.low.value.
+Worth doing, not blocking
+
+backend/app/api/routes.py:400-416 — the three uploaded photos are normalized one at a time (await run_in_threadpool(...) inside a for loop), so latency for a 3-photo request is roughly the sum of three Pillow decode/resize/encode passes instead of the max. Building the coroutines up front and await asyncio.gather(*coros) would run them concurrently on the threadpool.
+backend/app/services/visual_inspection_images.py:99-103 — after encoding the normalized image to JPEG, the code reopens and fully re-decodes those same bytes just to read final_width/final_height. normalized.size already has the correct dimensions before encoding; the format/mode re-check has some defensive value but a full .load() is a heavier way to get it than necessary.
+The same three limits (3 photos / 4 MiB per photo / 10 MiB combined) are hardcoded independently in three places — routes.py, visual_inspection_images.py, and VisualInspection.jsx. If one ever changes, it's easy to update the backend and forget the frontend copy (or vice versa), producing a UI that lets through what the server rejects. Worth one shared source of truth.
+frontend/src/components/VisualInspection.jsx — error state duplicates selectionError (both derived from the same validateFiles() call), two parallel sources of truth for what should be one displayed message.
+backend/app/services/visual_inspection.py's evidence-policy gate (_FORBIDDEN_CLAIM_FAMILIES etc.) is a hand-rolled multi-family regex classifier — copy-pasted regex per claim family, each needing separate updates as new phrasings are found. Not a blocker (the design notes already call this best-effort, not comprehensive), but worth a tech-debt note if it needs to grow.
