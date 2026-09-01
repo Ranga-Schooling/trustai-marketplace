@@ -1685,7 +1685,7 @@ class ProviderFreePilotRunner:
             payload = {
                 "model": configuration.model,
                 "system_instruction": instruction,
-                "input": [{"role": "user", "content": content}],
+                "input": [{"type": "user_input", "content": content}],
                 "response_format": {
                     "type": "text",
                     "mime_type": "application/json",

@@ -369,6 +369,12 @@ def test_gemini_request_uses_current_documented_interactions_shapes(runner):
         "mime_type": "application/json",
         "schema": text["response_format"]["schema"],
     }
+    assert text["input"] == [
+        {
+            "type": "user_input",
+            "content": text["input"][0]["content"],
+        }
+    ]
     image = visual["input"][0]["content"][-1]
     assert set(image) == {"type", "data", "mime_type"}
     assert image["type"] == "image"

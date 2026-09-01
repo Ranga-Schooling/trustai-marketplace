@@ -516,6 +516,26 @@ class CapstoneCrossProviderValidation:
             raise _fail("source_call_identity")
         call = calls[0]
         request = self._runner.build_native_request(call)
+        if case.case_id == _GEMINI_CASE_ID:
+            legacy_payload = request.payload
+            legacy_payload["input"] = [
+                {"role": "user", "content": item["content"]}
+                for item in legacy_payload["input"]
+            ]
+            legacy_payload_json = _canonical(legacy_payload)
+            request = NativeProviderRequest(
+                call=request.call,
+                role_selection=request.role_selection,
+                request_configuration_selection=(
+                    request.request_configuration_selection
+                ),
+                payload_json=legacy_payload_json,
+                payload_hash=hashlib.sha256(legacy_payload_json).hexdigest(),
+                synthetic_semantic_json=request.synthetic_semantic_json,
+                ps1_evidence=request.ps1_evidence,
+                search_tool_data=request.search_tool_data,
+                visual_asset_hashes=request.visual_asset_hashes,
+            )
         configuration = request.request_configuration_selection.configuration
         try:
             payload = json.loads(request.payload_json.decode("utf-8"))
