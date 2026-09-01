@@ -127,6 +127,7 @@ def run_cli(
             binding = validator.validate_authorization(authorization)
             case = validator.case(binding.case_id)
             validator.build_request(case.case_id)
+            validator.validate_case_availability(case.case_id, state_root)
             ConcreteLivePilotTransport(sender_factory()).validate_runtime()
             _emit(
                 {

@@ -248,3 +248,21 @@ def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, t
     assert inspection["result_status"] == "accepted"
     assert inspection["provider"] == "OpenAI"
     assert CANARY not in json.dumps(inspection)
+
+    assert run_cli(
+        [
+            "preflight",
+            "--repository-head",
+            HEAD,
+            "--authorization",
+            str(authorization_path),
+        ],
+        repository_root=ROOT,
+        operational_root=state_root,
+        sender_factory=lambda: sender,
+        require_clean_repository=False,
+    ) == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "reason": "case_already_reserved",
+        "status": "blocked",
+    }

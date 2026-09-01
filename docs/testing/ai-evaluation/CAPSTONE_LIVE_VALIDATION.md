@@ -26,7 +26,8 @@ inventing tokenizer or provider-accounting semantics.
 Run these from `backend` using the repository's configured Python environment
 with `requirements.txt` installed. They do not read credentials or make network
 calls. Preflight fails before authorization can be consumed when the required
-HTTP client runtime is unavailable.
+HTTP client runtime is unavailable or the case already has an immutable
+reservation or result.
 
 ```sh
 CAPSTONE_HEAD=$(git rev-parse HEAD)

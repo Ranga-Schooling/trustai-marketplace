@@ -677,6 +677,19 @@ class CapstoneLiveValidation:
         root = Path(operational_root).resolve() / _STATE_DIRECTORY
         return root, root / _RESERVATION_FILE, root / _RESULT_FILE
 
+    def validate_case_availability(
+        self,
+        case_id: str,
+        operational_root: str | Path,
+    ) -> None:
+        """Fail offline when an immutable reservation already consumed the case."""
+        self.case(case_id)
+        state_root, reservation_path, result_path = self._state_paths(operational_root)
+        if reservation_path.exists() or result_path.exists():
+            raise _fail("case_already_reserved")
+        if state_root.exists() and not state_root.is_dir():
+            raise _fail("operational_state_path")
+
     def execute_one(
         self,
         *,
@@ -702,13 +715,10 @@ class CapstoneLiveValidation:
             raise _fail("repository_head_mismatch")
         if self._require_clean_repository_on_execute:
             _require_clean_repository(self.repository_root)
+        self.validate_case_availability(case.case_id, operational_root)
         state_root, reservation_path, result_path = self._state_paths(operational_root)
-        if reservation_path.exists() or result_path.exists():
-            raise _fail("case_already_reserved")
         if getattr(transport, "invocation_count", None) != 0:
             raise _fail("physical_provider_attempt_count")
-        if state_root.exists() and not state_root.is_dir():
-            raise _fail("operational_state_path")
         credential = credential_resolver.resolve(
             CapstoneCredentialReference(
                 case.provider,
