@@ -20,6 +20,11 @@ from app.services.evaluation_ps1 import (
     record_ps1_discovery_url,
     verify_ps1_contracts,
 )
+from app.services.evaluation_url_discovery import (
+    bind_url_discovery_to_ps1_refetch,
+    extract_openai_url_discovery,
+    select_url_discovery_configuration,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -215,6 +220,93 @@ def test_public_safe_refetch_builds_deterministic_schema_valid_bundle():
                 [{"objective_id": "forged", "support": "sufficient"}]
             ).encode(),
         )
+
+
+def test_discovery_refetch_linkage_proves_canonical_ids_descend_from_candidates():
+    response = json.dumps(
+        {
+            "id": "resp_safe_synthetic",
+            "status": "completed",
+            "output": [
+                {
+                    "id": "ws_safe_synthetic",
+                    "type": "web_search_call",
+                    "status": "completed",
+                    "action": {
+                        "type": "search",
+                        "sources": [
+                            {"url": MANUFACTURER_URL},
+                            {"url": RETAILER_URL},
+                        ],
+                    },
+                }
+            ],
+            "usage": {
+                "input_tokens": 10,
+                "output_tokens": 4,
+                "total_tokens": 14,
+            },
+        },
+        separators=(",", ":"),
+    ).encode()
+    configuration = select_url_discovery_configuration(
+        "openai_unified_premium_v1"
+    )
+    discovery = extract_openai_url_discovery(
+        response_bytes=response,
+        raw_query="synthetic PS1 target",
+        raw_tool_arguments={"search_context_size": "low"},
+        evaluation_id="evaluation-pilot-v1",
+        fixture_id="PS1",
+        run_number=1,
+        attempt_number=1,
+        operation_id="discovery-op-0001",
+        candidate_id=configuration.candidate_id,
+        provider=configuration.provider,
+        model=configuration.model,
+        configuration_id=configuration.configuration_id,
+        configuration_hash=configuration.semantic_hash,
+        mapping_id=configuration.role_mapping_id,
+        mapping_hash=configuration.role_mapping_hash,
+        adapter_id=configuration.adapter_id,
+        adapter_hash=configuration.adapter_hash,
+        started_at="2026-08-31T18:00:00.000Z",
+        completed_at="2026-08-31T18:00:00.125Z",
+        latency_ms=125,
+        restricted_trace_references=(
+            derive_restricted_trace_reference(b"d" * 16),
+            derive_restricted_trace_reference(b"e" * 16),
+        ),
+    )
+    evidence = assemble_ps1_evidence_bundle(
+        retrieval_status="completed",
+        discoveries=(
+            _manufacturer_refetch().discovery,
+            _retailer_refetch().discovery,
+        ),
+        refetch_observations=(
+            _manufacturer_refetch(),
+            _retailer_refetch(),
+        ),
+    )
+
+    linkage = bind_url_discovery_to_ps1_refetch(
+        discovery=discovery,
+        ps1_evidence=evidence,
+    ).as_dict()
+
+    assert linkage["provider_native_output_evidence_authority"] is False
+    assert linkage["application_refetch_authoritative"] is True
+    assert [item["source_id"] for item in linkage["links"]] == [
+        "src-0001",
+        "src-0002",
+    ]
+    assert all(
+        item["url_security_result"] == "public_safe"
+        for item in linkage["links"]
+    )
+    assert MANUFACTURER_URL not in json.dumps(linkage)
+    assert RETAILER_URL not in json.dumps(linkage)
 
 
 def test_duplicate_discovery_and_refetch_url_deduplicate_to_one_source():
