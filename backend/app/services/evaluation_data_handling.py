@@ -29,6 +29,7 @@ POLICY_HASH = "e3c909e117177208eac123986318d5ba448479ef4d68d226c00d656b7e3e47a5"
 
 _LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+\-]{0,127}\Z")
+_FROZEN_PROVIDER_DISPLAY_NAMES = frozenset({"Google Gemini"})
 _UTC_MILLISECOND = re.compile(
     r"(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-"
     r"(?:0[1-9]|[12][0-9]|3[01])T"
@@ -532,7 +533,10 @@ def authorize_public_safe_url(
 
 
 def _require_safe_identifier(field: str, value: Any) -> str:
-    if type(value) is not str or _SAFE_IDENTIFIER.fullmatch(value) is None:
+    if type(value) is not str or (
+        _SAFE_IDENTIFIER.fullmatch(value) is None
+        and not (field == "provider" and value in _FROZEN_PROVIDER_DISPLAY_NAMES)
+    ):
         raise _fail(f"metadata_type:{field}")
     return value
 

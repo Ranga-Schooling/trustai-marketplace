@@ -117,6 +117,7 @@ _SAFE_SEARCH_TOOL_CONTRACT = (
 _LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _GIT_SHA = re.compile(r"[0-9a-f]{40}\Z")
 _SAFE_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+@\-]{0,255}\Z")
+_FROZEN_PROVIDER_DISPLAY_NAMES = frozenset({"Google Gemini"})
 _UTC_MILLISECOND = re.compile(
     r"(?:19|20)[0-9]{2}-(?:0[1-9]|1[0-2])-"
     r"(?:0[1-9]|[12][0-9]|3[01])T"
@@ -488,7 +489,12 @@ class PilotAttemptKey:
     def __post_init__(self) -> None:
         for name in _ATTEMPT_KEY_FIELDS[:-2]:
             value = getattr(self, name)
-            if type(value) is not str or _SAFE_IDENTIFIER.fullmatch(value) is None:
+            if type(value) is not str or (
+                _SAFE_IDENTIFIER.fullmatch(value) is None
+                and not (
+                    name == "provider" and value in _FROZEN_PROVIDER_DISPLAY_NAMES
+                )
+            ):
                 raise _fail(f"attempt_key:{name}")
         if type(self.run_number) is not int or self.run_number < 1:
             raise _fail("attempt_key:run_number")
@@ -1007,17 +1013,18 @@ def _validate_attempt_audit(
         "refusal_state": state.refusal_state,
         "failure_category": state.failure_category,
         "raw_provider_response_hash": state.raw_provider_response_hash,
-        "canonical_evidence_bundle_hash_if_applicable": (
-            state.accepted_artifact_hash
-            if state.workload_branch == "search_retrieval"
-            else None
-        ),
         "final_semantic_payload_hash_if_applicable": (
             state.accepted_artifact_hash
             if state.workload_branch != "search_retrieval"
             else None
         ),
     }
+    if state.workload_branch != "search_synthesis_final":
+        state_fields["canonical_evidence_bundle_hash_if_applicable"] = (
+            state.accepted_artifact_hash
+            if state.workload_branch == "search_retrieval"
+            else None
+        )
     for field_name, expected in state_fields.items():
         if audit[field_name] != expected:
             raise _fail(f"attempt_state_alias:{field_name}")
@@ -1246,6 +1253,29 @@ def _validate_pilot_envelope(
             if envelope[field_name] not in (None, []):
                 raise _fail(f"{field_name}_not_applicable")
     else:
+        if (
+            state.terminal_outcome != "accepted"
+            and search_tool_data is None
+            and ps1_evidence is None
+        ):
+            if audit["canonical_evidence_bundle_hash_if_applicable"] is not None:
+                raise _fail("ps1_evidence_hash_binding")
+            for field_name in (
+                "search_query_list",
+                "search_and_tool_calls",
+                "source_urls",
+                "source_retrieval_timestamps",
+                "claim_to_source_mapping",
+            ):
+                if envelope[field_name] not in (None, []):
+                    raise _fail(f"{field_name}_without_evidence")
+            if envelope["visual_asset_hashes"] not in (None, []):
+                raise _fail("visual_asset_hashes_not_applicable")
+            if type(envelope["notes_and_anomalies"]) is not list:
+                raise _fail("notes_and_anomalies")
+            for value in envelope["notes_and_anomalies"]:
+                _require_identifier("notes_and_anomalies", value)
+            return
         if not isinstance(search_tool_data, SearchToolProjections):
             raise _fail("safe_search_tool_data_required")
         if not isinstance(ps1_evidence, Ps1AssemblyResult):
