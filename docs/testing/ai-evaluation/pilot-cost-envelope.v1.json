@@ -1,0 +1,177 @@
+{
+  "artifact_id": "pilot_cost_envelope_v1",
+  "artifact_version": "v1",
+  "status": "provider_free_complete_with_explicit_unknowns",
+  "purpose": "Bind the approved pilot call plan to dated official pricing evidence, compute only exact known charge components, preserve unknown provider billing quantities explicitly, and recommend without authorizing a pilot budget.",
+  "source_bindings": {
+    "pricing_snapshot_id": "pricing_snapshot_v1",
+    "pricing_snapshot_version": "v1",
+    "pricing_snapshot_hash": "0467643eafbe55e6e2215c9ad0e0576dac2d0d157a94418eef23382b0ec09282",
+    "pricing_observed_on": "2026-08-31",
+    "request_configuration_id": "pilot_request_configurations_v1",
+    "request_configuration_version": "v1",
+    "request_configuration_hash": "1aaca1df3d67f51c3d9c1e5638d63b541bd947a1301aa509291cc7445e60b152",
+    "region_binding_id": "pilot_region_binding_v1",
+    "region_binding_version": "v1",
+    "region_binding_hash": "0c79df332d87bfdf1c902df26df9701bf531100f691650286eb7d5dd38627555",
+    "retry_policy_id": "retry_policy_v1",
+    "retry_policy_version": "v1",
+    "retry_policy_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b"
+  },
+  "call_plan": {
+    "configured_non_search_synthesis_model_calls": 18,
+    "configured_search_synthesis_model_calls": 4,
+    "configured_model_calls": 22,
+    "provider_native_url_discovery_calls": 4,
+    "nominal_physical_calls": 26,
+    "maximum_physical_attempts_per_run": 2,
+    "maximum_physical_attempts": 52,
+    "application_owned_refetches_are_provider_model_calls": false,
+    "provider_native_search_prose_or_snippets_are_canonical_evidence": false
+  },
+  "region_pricing_binding": {
+    "provider_service_mode": "standard_global",
+    "regional_uplift_multiplier": "1",
+    "regional_uplift_applied": false,
+    "provider_internal_processing_location_asserted": false
+  },
+  "known_charge_components_one_attempt": [
+    {
+      "component_id": "openai_sol_configured_maximum_output_conservative_long_context_rate",
+      "unit_count": 24576,
+      "usd_per_unit": "0.00003",
+      "total_usd": "0.73728000"
+    },
+    {
+      "component_id": "openai_terra_configured_maximum_output_conservative_long_context_rate",
+      "unit_count": 24576,
+      "usd_per_unit": "0.000018",
+      "total_usd": "0.44236800"
+    },
+    {
+      "component_id": "gemini_flash_configured_maximum_output_including_thinking",
+      "unit_count": 24576,
+      "usd_per_unit": "0.00000375",
+      "total_usd": "0.09216000"
+    },
+    {
+      "component_id": "groq_gpt_oss_configured_candidate_maximum_output",
+      "unit_count": 16384,
+      "usd_per_unit": "0.0000006",
+      "total_usd": "0.00983040"
+    },
+    {
+      "component_id": "groq_qwen_configured_visual_maximum_output",
+      "unit_count": 8192,
+      "usd_per_unit": "0.000004",
+      "total_usd": "0.03276800"
+    },
+    {
+      "component_id": "groq_gpt_oss_baseline_maximum_output",
+      "unit_count": 8192,
+      "usd_per_unit": "0.0000006",
+      "total_usd": "0.00491520"
+    },
+    {
+      "component_id": "groq_qwen_two_fixed_visual_image_inputs",
+      "unit_count": 4096,
+      "usd_per_unit": "0.0000008",
+      "total_usd": "0.00327680"
+    }
+  ],
+  "cost_summary": {
+    "currency": "USD",
+    "conditional_short_context_output_charge_one_attempt_usd": "0.92610560",
+    "conditional_short_context_output_charge_two_attempts_usd": "1.85221120",
+    "conservative_output_charge_one_attempt_usd": "1.31932160",
+    "conservative_output_charge_two_attempts_usd": "2.63864320",
+    "qwen_fixed_image_charge_one_attempt_usd": "0.00327680",
+    "qwen_fixed_image_charge_two_attempts_usd": "0.00655360",
+    "openai_search_tool_charge_one_attempt_usd": null,
+    "openai_search_tool_charge_two_attempts_usd": null,
+    "known_charge_subtotal_one_attempt_usd": "1.32259840",
+    "known_charge_subtotal_two_attempts_usd": "2.64519680",
+    "nominal_total_cost_usd": null,
+    "conservative_maximum_total_cost_usd": null,
+    "all_planned_calls_cost_finalized": false,
+    "rounding": "none_exact_decimal_arithmetic"
+  },
+  "remaining_unknown_cost_components": [
+    "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
+    "provider_native_url_discovery_request_input_and_output_usage_without_an_approved_request_configuration",
+    "openai_web_search_tool_call_count_and_content_tokens_billed_at_model_rates",
+    "gemini_billable_search_query_count_and_shared_free_allowance_state",
+    "groq_compound_internal_model_and_tool_usage_with_incomplete_official_pricing"
+  ],
+  "discovery_configuration_boundary": {
+    "approved_discovery_maximum_output_tokens": null,
+    "approved_discovery_request_configuration_count": 0,
+    "openai_discovery_status": "blocked_pending_governed_discovery_request_configuration",
+    "gemini_discovery_status": "blocked_pending_governed_discovery_request_configuration_and_billable_query_state",
+    "groq_compound_discovery_status": "blocked_pending_governed_discovery_request_configuration_and_complete_official_pricing",
+    "search_synthesis_8192_token_limit_may_be_reused_for_discovery": false,
+    "reason": "The approved 8192-token limit is explicitly search synthesis only; no provider-native URL-discovery output limit or request identity has been approved."
+  },
+  "candidate_cost_readiness": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "configured_model_stage_pricing": "complete_after_provider_usage_binding",
+      "provider_native_url_discovery_pricing": "tool_unit_rate_known_but_request_usage_unbounded",
+      "complete_candidate_cost_envelope": false
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "configured_model_stage_pricing": "complete_after_provider_usage_binding",
+      "provider_native_url_discovery_pricing": "tool_unit_rate_known_but_request_usage_unbounded",
+      "complete_candidate_cost_envelope": false
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "configured_model_stage_pricing": "complete_after_provider_usage_binding",
+      "provider_native_url_discovery_pricing": "billable_query_count_and_allowance_state_unknown",
+      "complete_candidate_cost_envelope": false
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "configured_text_synthesis_and_visual_pricing": "complete_after_provider_usage_binding",
+      "provider_native_url_discovery_pricing": "incomplete_official_compound_schedule",
+      "complete_candidate_cost_envelope": false
+    },
+    {
+      "candidate_id": "baseline_current_text_v1",
+      "configured_text_stage_pricing": "complete_after_provider_usage_binding",
+      "provider_native_url_discovery_pricing": "not_applicable",
+      "complete_candidate_cost_envelope": true
+    }
+  ],
+  "budget_recommendation": {
+    "recommended_ceiling_usd": "5.00",
+    "headroom_over_known_two_attempt_subtotal_usd": "2.35480320",
+    "approval_status": "pending_human_approval",
+    "recommendation_is_spend_authority": false,
+    "adequacy_statement": "Five dollars provides headroom over the rate-regime-independent conservative maximum-output and fixed-image subtotal, but it is a hard operator ceiling rather than a claim that currently unknown discovery and provider-reported usage can be calculated exactly before execution.",
+    "execution_requirement": "Configure provider-side project spend limits where supported and block any attempt that cannot remain within the approved remaining ceiling."
+  },
+  "same_day_requirement": {
+    "pricing_recheck_required": true,
+    "lifecycle_recheck_required": true,
+    "price_or_lifecycle_change_result": "block_affected_candidate_and_version_replacement_binding"
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "provider_calls_completed": 0,
+  "pilot_calls_completed": 0,
+  "scored_calls_completed": 0,
+  "winner_selected": false,
+  "specification_identity": {
+    "hash_algorithm": "SHA-256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "c451125aa2cb6a5621a6908793a3859129ca0b3f8fe07c4e596889a5f4de21c3"
+  }
+}
