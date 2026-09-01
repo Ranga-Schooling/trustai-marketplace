@@ -181,7 +181,7 @@
     {
       "mapping_id": "groq_baseline_chat_v1",
       "mapping_version": "v1",
-      "semantic_hash": "88682bfe0967593171e7d5848dca2df793e6594ea2d35372eee1e0d537a51cc9",
+      "semantic_hash": "f9034ce72afd00be0e60ae7e5a3c4dad713fac0d45e5ec97efb177721f164ce1",
       "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
       "envelope": {
         "identity_domain": "trustai.provider_role_mapping.v1",
@@ -194,7 +194,7 @@
           "candidate_ids": ["baseline_current_text_v1"],
           "model_ids": ["openai/gpt-oss-120b"],
           "workload_bindings": [
-            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"response_format json_schema strict true text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null}
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"response_format json_object; harness validates text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null}
           ],
           "ordering_rule":"exact listed workload binding and native segment order",
           "selection_time":"before physical attempt creation",
@@ -274,6 +274,6 @@
   "specification_identity": {
     "canonicalization": "UTF-8 JSON with object keys sorted lexicographically, compact separators, array order preserved, and no non-finite values",
     "semantic_hash_excluded_json_pointers": ["/specification_identity/semantic_hash"],
-    "semantic_hash": "2e2e3183a2ab21b811e404a9f03578f1aaea8b9075867af5587b03ccd28b9df3"
+    "semantic_hash": "feb8921abaac76b43d81d65f250b4081793a8ed5eff9b14527ff73ced389bdf9"
   }
 }

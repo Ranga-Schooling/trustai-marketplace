@@ -33,7 +33,7 @@ _MAPPING_ORDER = (
     "groq_qwen_vision_chat_v1",
 )
 _EXPECTED_ARTIFACT_HASH = (
-    "2e2e3183a2ab21b811e404a9f03578f1aaea8b9075867af5587b03ccd28b9df3"
+    "feb8921abaac76b43d81d65f250b4081793a8ed5eff9b14527ff73ced389bdf9"
 )
 _EXPECTED_MAPPING_HASHES = {
     "openai_responses_sol_v1": (
@@ -49,7 +49,7 @@ _EXPECTED_MAPPING_HASHES = {
         "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6"
     ),
     "groq_baseline_chat_v1": (
-        "88682bfe0967593171e7d5848dca2df793e6594ea2d35372eee1e0d537a51cc9"
+        "f9034ce72afd00be0e60ae7e5a3c4dad713fac0d45e5ec97efb177721f164ce1"
     ),
     "groq_compound_chat_v1": (
         "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667"
