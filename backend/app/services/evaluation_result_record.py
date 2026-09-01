@@ -4,7 +4,8 @@ The frozen normalization contract explicitly requires a future complete result
 record artifact.  This module does not invent that contract.  It only composes
 the attempt-state and provider-data projections whose ownership is already
 frozen, while retaining restricted data behind its existing capability type.
-It carries no persistence, provider, retry, network, or execution authority.
+It performs no persistence, provider call, network operation, retry, or other
+execution action.
 """
 
 from __future__ import annotations
@@ -44,6 +45,12 @@ from app.services.evaluation_data_handling import (
 from app.services.evaluation_pricing import (
     PricingContractError,
     verify_estimated_cost_record,
+)
+from app.services.evaluation_retry_policy import (
+    MAXIMUM_PHYSICAL_ATTEMPTS,
+    SAFE_RETRY_REASONS,
+    RetryPolicyError,
+    validate_retry_linkage,
 )
 from app.services.url_security import validate_url_security
 
@@ -458,10 +465,13 @@ class PilotAttemptKey:
             value = getattr(self, name)
             if type(value) is not str or _SAFE_IDENTIFIER.fullmatch(value) is None:
                 raise _fail(f"attempt_key:{name}")
-        for name in _ATTEMPT_KEY_FIELDS[-2:]:
-            value = getattr(self, name)
-            if type(value) is not int or value < 1:
-                raise _fail(f"attempt_key:{name}")
+        if type(self.run_number) is not int or self.run_number < 1:
+            raise _fail("attempt_key:run_number")
+        if (
+            type(self.attempt_number) is not int
+            or not 1 <= self.attempt_number <= MAXIMUM_PHYSICAL_ATTEMPTS
+        ):
+            raise _fail("attempt_key:attempt_number")
 
     def as_dict(self) -> dict[str, Any]:
         return {name: getattr(self, name) for name in _ATTEMPT_KEY_FIELDS}
@@ -514,6 +524,26 @@ class PilotRunBundle:
             raise _fail("physical_attempt_record_required")
         if record.key.identity in {item.key.identity for item in self.attempts}:
             raise _fail("duplicate_attempt_key")
+        series_identity = record.key.identity[:-1]
+        series_attempts = tuple(
+            item for item in self.attempts if item.key.identity[:-1] == series_identity
+        )
+        if record.key.attempt_number != len(series_attempts) + 1:
+            raise _fail("retry_policy:missing_previous_attempt")
+        previous_outcome = (
+            series_attempts[-1].as_dict()["normalization_audit"]["attempt_outcome"]
+            if series_attempts
+            else None
+        )
+        retry_reason = record.as_dict()["pilot_envelope"]["retry_reason"]
+        try:
+            validate_retry_linkage(
+                previous_attempt_outcome=previous_outcome,
+                attempt_number=record.key.attempt_number,
+                retry_reason=retry_reason,
+            )
+        except RetryPolicyError as exc:
+            raise _fail(f"retry_policy:{exc}") from exc
         return PilotRunBundle(self.attempts + (record,))
 
 
@@ -1127,7 +1157,8 @@ def _validate_pilot_envelope(
     else:
         if envelope["retry_count"] != key.attempt_number - 1:
             raise _fail("retry_count_linkage")
-        _require_identifier("retry_reason", envelope["retry_reason"])
+        if envelope["retry_reason"] not in SAFE_RETRY_REASONS:
+            raise _fail("retry_reason")
     for pending_field in (
         "rate_limit_and_service_metadata_if_exposed",
         "search_and_tool_calls",

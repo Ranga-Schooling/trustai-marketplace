@@ -381,7 +381,9 @@ def _envelope(
             "request_configuration": None,
             "run_number": 1,
             "attempt_number": attempt_number,
-            "retry_reason": None if attempt_number == 1 else "provider_timeout",
+            "retry_reason": (
+                None if attempt_number == 1 else "provider_attempt_timeout"
+            ),
             "input_hashes": {"rendered_prompt": "7" * 64},
             "started_at": metadata["started_at"],
             "completed_at": metadata["completed_at"],
@@ -566,6 +568,57 @@ def test_failed_or_earlier_attempts_are_never_replaced_by_a_later_retry():
     assert bundle.attempts[0].record_hash == first.record_hash
     with pytest.raises(ResultRecordFoundationError, match="duplicate_attempt_key"):
         bundle.append_attempt(first)
+
+
+def test_retry_bundle_rejects_attempts_outside_the_frozen_budget():
+    with pytest.raises(ResultRecordFoundationError, match="attempt_key:attempt_number"):
+        _key(attempt_number=3)
+
+
+def test_retry_bundle_requires_a_contiguous_retryable_predecessor():
+    with pytest.raises(ResultRecordFoundationError, match="retry_policy:missing_previous_attempt"):
+        PilotRunBundle().append_attempt(_record(attempt_number=2))
+
+    first = _record()
+    second = _record(attempt_number=2)
+    with pytest.raises(
+        ResultRecordFoundationError,
+        match="retry_policy:previous_attempt_nonretryable",
+    ):
+        PilotRunBundle().append_attempt(first).append_attempt(second)
+
+
+def test_retry_bundle_requires_the_exact_safe_reason_mapped_from_attempt_one():
+    state = _state()
+    envelope = _envelope(state, attempt_number=2)
+    envelope["retry_reason"] = "transient_provider_connection_error"
+    second = build_pilot_attempt_record(
+        attempt_key=_key(attempt_number=2),
+        attempt_state=state,
+        provider_data=_provider_data(attempt_number=2),
+        normalization_audit=_audit(state),
+        pilot_envelope=envelope,
+        provider_attempt_started=True,
+    )
+
+    with pytest.raises(ResultRecordFoundationError, match="retry_policy:retry_reason"):
+        PilotRunBundle().append_attempt(_timeout_record()).append_attempt(second)
+
+
+def test_attempt_record_rejects_retry_reason_outside_the_closed_vocabulary():
+    state = _state()
+    envelope = _envelope(state, attempt_number=2)
+    envelope["retry_reason"] = "provider said please retry later"
+
+    with pytest.raises(ResultRecordFoundationError, match="retry_reason"):
+        build_pilot_attempt_record(
+            attempt_key=_key(attempt_number=2),
+            attempt_state=state,
+            provider_data=_provider_data(attempt_number=2),
+            normalization_audit=_audit(state),
+            pilot_envelope=envelope,
+            provider_attempt_started=True,
+        )
 
 
 def test_json_object_member_order_is_not_semantic_but_record_hash_is_stable():
