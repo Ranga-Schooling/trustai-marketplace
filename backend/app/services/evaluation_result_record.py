@@ -52,6 +52,11 @@ from app.services.evaluation_retry_policy import (
     RetryPolicyError,
     validate_retry_linkage,
 )
+from app.services.evaluation_request_configurations import (
+    PilotRequestConfigurationError,
+    PilotRequestConfigurationSelection,
+    validate_request_configuration_record,
+)
 from app.services.evaluation_search_tool_record import (
     RestrictedSearchToolProjection,
     SearchToolRecordError,
@@ -1069,6 +1074,7 @@ def _validate_pilot_envelope(
     foundation: PrivacySafeAttemptRecordFoundation,
     contract: ResultRecordContract,
     search_tool_data: SearchToolProjections | None,
+    request_configuration_selection: PilotRequestConfigurationSelection | None,
 ) -> None:
     if (
         type(envelope) is not dict
@@ -1172,8 +1178,34 @@ def _validate_pilot_envelope(
     for name, value in envelope["input_hashes"].items():
         _require_identifier("input_hash_name", name)
         _require_hash("input_hash", value)
-    if envelope["request_configuration"] is not None:
-        raise _fail("request_configuration_pending")
+    if request_configuration_selection is None:
+        if envelope["request_configuration"] is not None:
+            raise _fail("request_configuration_selection_required")
+    else:
+        configuration = request_configuration_selection.configuration
+        expected_stage = {
+            "text_final": "text_analysis",
+            "search_synthesis_final": "search_synthesis",
+            "visual_final": "visual_inspection",
+        }.get(state.workload_branch)
+        if (
+            expected_stage is None
+            or configuration.workload_stage != expected_stage
+            or configuration.candidate_id != key.candidate_id
+            or configuration.provider != key.provider
+            or configuration.model != key.model
+            or configuration.adapter_id != audit["adapter_id"]
+            or configuration.adapter_version != audit["adapter_version"]
+            or configuration.adapter_hash != audit["adapter_hash"]
+        ):
+            raise _fail("request_configuration_binding")
+        try:
+            validate_request_configuration_record(
+                request_configuration_selection,
+                envelope["request_configuration"],
+            )
+        except PilotRequestConfigurationError as exc:
+            raise _fail("request_configuration_record") from exc
     if key.attempt_number == 1:
         if envelope["retry_count"] != 0 or envelope["retry_reason"] is not None:
             raise _fail("first_attempt_retry_linkage")
@@ -1254,6 +1286,7 @@ def build_pilot_attempt_record(
     pilot_envelope: dict[str, Any],
     provider_attempt_started: bool,
     search_tool_data: SearchToolProjections | None = None,
+    request_configuration_selection: PilotRequestConfigurationSelection | None = None,
     contract_path: str | Path = _DEFAULT_CONTRACT,
 ) -> PilotAttemptRecord:
     """Build one immutable pilot attempt without granting execution authority."""
@@ -1275,6 +1308,7 @@ def build_pilot_attempt_record(
         foundation,
         contract,
         search_tool_data,
+        request_configuration_selection,
     )
     record = {
         "record_type": "pilot_physical_attempt_v1",

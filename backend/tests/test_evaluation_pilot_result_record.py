@@ -17,6 +17,7 @@ from app.services.evaluation_attempt_state import (
     derive_attempt_state,
 )
 from app.services.evaluation_contract_identity import (
+    load_strict_contract_json,
     load_strict_normalization_spec,
     verify_normalization_parser_artifact,
     verify_output_schema_artifact,
@@ -32,6 +33,12 @@ from app.services.evaluation_data_handling import (
 from app.services.evaluation_pricing import (
     calculate_estimated_cost,
     verify_pricing_snapshot,
+)
+from app.services.evaluation_provider_adapters import bind_provider_adapters
+from app.services.evaluation_provider_role_mappings import bind_provider_role_mappings
+from app.services.evaluation_request_configurations import (
+    bind_pilot_request_configurations,
+    select_pilot_request_configuration,
 )
 from app.services.evaluation_result_record import (
     PilotAttemptKey,
@@ -50,6 +57,7 @@ from app.services.evaluation_search_tool_record import (
     RawSearchToolOperation,
     build_search_tool_projections,
 )
+from app.services.evaluation_search_authority import bind_search_authority_v2
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -62,6 +70,14 @@ CONTRACT_PATH = (
 )
 PROMPT_PATH = ROOT / "docs" / "testing" / "ai-evaluation" / "prompt-templates.v1.json"
 SCHEMA_PATH = ROOT / "docs" / "testing" / "ai-evaluation" / "output-schemas.v1.json"
+ADAPTER_PATH = ROOT / "docs" / "testing" / "ai-evaluation" / "provider-adapters.v1.json"
+MAPPING_PATH = ROOT / "docs" / "testing" / "ai-evaluation" / "provider-role-mappings.v1.json"
+REQUEST_CONFIGURATION_PATH = (
+    ROOT / "docs" / "testing" / "ai-evaluation" / "request-configurations.v1.json"
+)
+SEARCH_AUTHORITY_PATH = (
+    ROOT / "docs" / "testing" / "ai-evaluation" / "search-authority.v2.json"
+)
 POLICY_IDENTITY = ("test_policy_v1", "v1", "1" * 64)
 RAW = b"synthetic provider output retained only in restricted projection"
 RAW_HASH = hashlib.sha256(RAW).hexdigest()
@@ -534,6 +550,26 @@ def _record(*, attempt_number: int = 1):
     )
 
 
+def _request_configuration_selection():
+    authority = bind_search_authority_v2(
+        load_strict_contract_json(SEARCH_AUTHORITY_PATH),
+        load_strict_contract_json(PROMPT_PATH),
+        load_strict_contract_json(PARSER_PATH),
+    )
+    mappings = bind_provider_role_mappings(
+        load_strict_contract_json(MAPPING_PATH), authority
+    )
+    adapters = bind_provider_adapters(load_strict_contract_json(ADAPTER_PATH), mappings)
+    configurations = bind_pilot_request_configurations(
+        load_strict_contract_json(REQUEST_CONFIGURATION_PATH), mappings, adapters
+    )
+    return select_pilot_request_configuration(
+        configurations,
+        candidate_id="openai_unified_balanced_v1",
+        workload_stage="text_analysis",
+    )
+
+
 def _timeout_record():
     state = _timeout_state()
     return build_pilot_attempt_record(
@@ -674,6 +710,69 @@ def test_grounded_search_attempt_rejects_missing_or_tampered_safe_projection():
             pilot_envelope=tampered,
             provider_attempt_started=True,
             search_tool_data=search_tool_data,
+        )
+
+
+def test_pilot_attempt_binds_exact_frozen_request_configuration_projection():
+    selection = _request_configuration_selection()
+    configuration = selection.configuration
+    state = _state()
+    key = PilotAttemptKey(
+        evaluation_id="capstone-evaluation-v1",
+        fixture_id="PT1",
+        candidate_id=configuration.candidate_id,
+        provider=configuration.provider,
+        model=configuration.model,
+        component_topology="unified",
+        workload="text_risk_analysis",
+        run_number=1,
+        attempt_number=1,
+    )
+    audit = _audit(state)
+    audit.update(
+        {
+            "adapter_id": configuration.adapter_id,
+            "adapter_version": configuration.adapter_version,
+            "adapter_hash": configuration.adapter_hash,
+        }
+    )
+    envelope = _envelope(
+        state,
+        provider=configuration.provider,
+        model=configuration.model,
+    )
+    envelope["request_configuration"] = configuration.safe_record_projection()
+
+    record = build_pilot_attempt_record(
+        attempt_key=key,
+        attempt_state=state,
+        provider_data=_provider_data(
+            provider=configuration.provider,
+            model=configuration.model,
+        ),
+        normalization_audit=audit,
+        pilot_envelope=envelope,
+        provider_attempt_started=True,
+        request_configuration_selection=selection,
+    )
+
+    assert record.as_dict()["pilot_envelope"]["request_configuration"] == (
+        configuration.safe_record_projection()
+    )
+    tampered = deepcopy(envelope)
+    tampered["request_configuration"]["maximum_output_tokens"] = 1
+    with pytest.raises(ResultRecordFoundationError, match="request_configuration"):
+        build_pilot_attempt_record(
+            attempt_key=key,
+            attempt_state=state,
+            provider_data=_provider_data(
+                provider=configuration.provider,
+                model=configuration.model,
+            ),
+            normalization_audit=audit,
+            pilot_envelope=tampered,
+            provider_attempt_started=True,
+            request_configuration_selection=selection,
         )
 
 
