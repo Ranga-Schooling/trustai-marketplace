@@ -28,6 +28,10 @@ from app.services.evaluation_data_handling import (
     POLICY_VERSION as DATA_POLICY_VERSION,
     project_provider_data,
 )
+from app.services.evaluation_pricing import (
+    calculate_estimated_cost,
+    verify_pricing_snapshot,
+)
 from app.services.evaluation_result_record import (
     PilotAttemptKey,
     PilotAttemptRecord,
@@ -85,13 +89,19 @@ def _state():
     )
 
 
-def _provider_data(*, attempt_number: int = 1, status: str = "accepted"):
+def _provider_data(
+    *,
+    attempt_number: int = 1,
+    status: str = "accepted",
+    provider: str = "synthetic-provider",
+    model: str = "synthetic-model",
+):
     return project_provider_data(
         raw_provider_response=RAW,
         restricted_url_trace=None,
         safe_transport_metadata={
-            "provider": "synthetic-provider",
-            "model": "synthetic-model",
+            "provider": provider,
+            "model": model,
             "model_version_or_snapshot": "synthetic-snapshot-v1",
             "http_or_result_status": {
                 "kind": "terminal_outcome",
@@ -307,13 +317,18 @@ def _audit(state=None):
     return values
 
 
-def _key(*, attempt_number: int = 1):
+def _key(
+    *,
+    attempt_number: int = 1,
+    provider: str = "synthetic-provider",
+    model: str = "synthetic-model",
+):
     return PilotAttemptKey(
         evaluation_id="capstone-evaluation-v1",
         fixture_id="PT1",
         candidate_id="synthetic-candidate-v1",
-        provider="synthetic-provider",
-        model="synthetic-model",
+        provider=provider,
+        model=model,
         component_topology="unified",
         workload="text_risk_analysis",
         run_number=1,
@@ -321,12 +336,20 @@ def _key(*, attempt_number: int = 1):
     )
 
 
-def _envelope(state=None, *, attempt_number: int = 1):
+def _envelope(
+    state=None,
+    *,
+    attempt_number: int = 1,
+    provider: str = "synthetic-provider",
+    model: str = "synthetic-model",
+):
     state = state or _state()
     audit = _audit(state)
     metadata = _provider_data(
         attempt_number=attempt_number,
         status=state.terminal_outcome,
+        provider=provider,
+        model=model,
     ).ordinary.safe_transport_metadata.as_dict()
     contract = verify_result_record_contract()
     values = {field: None for field in contract.pilot_envelope_fields}
@@ -344,8 +367,8 @@ def _envelope(state=None, *, attempt_number: int = 1):
             "scoring_rule_version": "v1",
             "truth_sheet_version": None,
             "visual_asset_set_version": None,
-            "provider": "synthetic-provider",
-            "model": "synthetic-model",
+            "provider": provider,
+            "model": model,
             "model_version_or_snapshot": "synthetic-snapshot-v1",
             "provider_request_id": None,
             "api_endpoint": "synthetic-endpoint-v1",
@@ -487,6 +510,46 @@ def test_preflight_failure_never_creates_a_fake_attempt_or_increments_bundle():
             normalization_audit=_audit(),
             pilot_envelope=_envelope(),
             provider_attempt_started=False,
+        )
+
+
+def test_exact_pricing_record_can_bind_to_its_physical_attempt():
+    provider = "OpenAI"
+    model = "gpt-5.6-sol"
+    schedule_id = "openai_gpt_5_6_sol_standard_short_context_v1"
+    snapshot = verify_pricing_snapshot()
+    schedule = next(item for item in snapshot.schedules if item.schedule_id == schedule_id)
+    usage = {component: 0 for component, _ in schedule.rates}
+    usage.update({"uncached_input_tokens": 100, "output_tokens": 10})
+    estimated_cost = calculate_estimated_cost(
+        snapshot,
+        schedule_id=schedule_id,
+        usage=usage,
+    ).as_dict()
+    state = _state()
+    envelope = _envelope(state, provider=provider, model=model)
+    envelope["estimated_cost"] = estimated_cost
+
+    record = build_pilot_attempt_record(
+        attempt_key=_key(provider=provider, model=model),
+        attempt_state=state,
+        provider_data=_provider_data(provider=provider, model=model),
+        normalization_audit=_audit(state),
+        pilot_envelope=envelope,
+        provider_attempt_started=True,
+    )
+
+    assert record.as_dict()["pilot_envelope"]["estimated_cost"] == estimated_cost
+
+    envelope["estimated_cost"]["total_usd"] = "0"
+    with pytest.raises(ResultRecordFoundationError, match="estimated_cost_contract"):
+        build_pilot_attempt_record(
+            attempt_key=_key(provider=provider, model=model),
+            attempt_state=state,
+            provider_data=_provider_data(provider=provider, model=model),
+            normalization_audit=_audit(state),
+            pilot_envelope=envelope,
+            provider_attempt_started=True,
         )
 
 

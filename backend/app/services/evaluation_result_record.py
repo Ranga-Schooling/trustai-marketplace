@@ -41,6 +41,10 @@ from app.services.evaluation_data_handling import (
     RestrictedProviderDataProjection,
     SafeTransportMetadata,
 )
+from app.services.evaluation_pricing import (
+    PricingContractError,
+    verify_estimated_cost_record,
+)
 from app.services.url_security import validate_url_security
 
 
@@ -1126,11 +1130,17 @@ def _validate_pilot_envelope(
         _require_identifier("retry_reason", envelope["retry_reason"])
     for pending_field in (
         "rate_limit_and_service_metadata_if_exposed",
-        "estimated_cost",
         "search_and_tool_calls",
     ):
         if envelope[pending_field] is not None:
             raise _fail(f"{pending_field}_contract_pending")
+    if envelope["estimated_cost"] is not None:
+        try:
+            cost = verify_estimated_cost_record(envelope["estimated_cost"])
+        except PricingContractError as exc:
+            raise _fail("estimated_cost_contract") from exc
+        if cost.provider != key.provider or cost.model != key.model:
+            raise _fail("estimated_cost_attempt_binding")
     if key.workload != "grounded_product_price_research":
         for field_name in (
             "search_query_list",

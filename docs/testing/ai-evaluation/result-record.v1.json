@@ -8,6 +8,7 @@
     "normalization_audit": "normalization-parser.v1.json#/result_record_integration",
     "rubric_result_fields": "rubric.v1.json#/experimental_protocol/result_record_fields",
     "privacy": "provider-data-handling-review.v1.json",
+    "pricing": "pricing-snapshot.v1.json",
     "pilot_fixtures": "pilot-fixtures.v1.json",
     "execution_authority": "experiment.v1.json#/execution_gate"
   },
@@ -226,7 +227,7 @@
     "provider_request_id_runtime_state": "null_until_provider_specific_non_secret_verifier_is_frozen",
     "rate_limit_metadata_runtime_state": "null_until_closed_non_secret_structure_is_frozen",
     "search_and_tool_calls_runtime_state": "null_until_safe_search_tool_record_v1_is_frozen",
-    "estimated_cost_runtime_state": "null_until_pricing_snapshot_and_cost_calculation_are_frozen"
+    "estimated_cost_runtime_state": "null_until_an_attempt_has_a_bound_complete_pricing_schedule_and_exact_chargeable_usage; otherwise an exact recomputable estimated_cost record from pricing_snapshot_v1"
   },
   "privacy": {
     "ordinary_projection_authority": "provider-data-handling-review.v1.json",
@@ -266,6 +267,6 @@
     "semantic_hash_excluded_json_pointers": [
       "/specification_identity/semantic_hash"
     ],
-    "semantic_hash": "a1d027085e35906102c9d91a89aa879cb8d04ffb6aee964ddef733fd7d9c08e7"
+    "semantic_hash": "9af97c3e4792e098abd9711b3abf1ba3224319ad10e068cd3bc3c64b019949e4"
   }
 }
