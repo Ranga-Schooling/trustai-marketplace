@@ -30,7 +30,7 @@ SEARCH_AUTHORITY_PATH = ARTIFACT_DIRECTORY / "search-authority.v2.json"
 PROMPT_PATH = ARTIFACT_DIRECTORY / "prompt-templates.v1.json"
 SPEC_PATH = ARTIFACT_DIRECTORY / "normalization-parser.v1.json"
 EXPECTED_ARTIFACT_HASH = (
-    "feb8921abaac76b43d81d65f250b4081793a8ed5eff9b14527ff73ced389bdf9"
+    "eed99c137d409cdb067c1bcd983daa33f0c69ee55fd9c71fa58fbcf9424e0d8a"
 )
 EXPECTED_MAPPING_HASHES = {
     "openai_responses_sol_v1": (
@@ -52,7 +52,7 @@ EXPECTED_MAPPING_HASHES = {
         "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667"
     ),
     "groq_qwen_vision_chat_v1": (
-        "2969a59036227fa88497b83f0a2053627b23ae8e98bf9c164cbadd1c18bae322"
+        "e908746cc8a02251bfafbad5514451b381b4486e6428b1fac2e2d27eb3741754"
     ),
 }
 SELECTIONS = (
@@ -371,6 +371,24 @@ def test_current_baseline_preserves_json_object_response_mode():
 
     assert selection.workload_binding.schema_placement == (
         "response_format json_object; harness validates text_output_schema_v1"
+    )
+
+
+def test_qwen_visual_uses_best_effort_schema_with_harness_validation():
+    values = SELECTIONS[-2][:-1]
+    selection = select_provider_role_mapping(
+        _bound_set(),
+        candidate_id=values[0],
+        provider=values[1],
+        model_id=values[2],
+        api_family=values[3],
+        workload_stage=values[4],
+        topology_id=values[5],
+    )
+
+    assert selection.workload_binding.schema_placement == (
+        "response_format json_schema strict false visual_output_schema_v1; "
+        "harness validates visual_output_schema_v1"
     )
 
 
