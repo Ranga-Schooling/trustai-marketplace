@@ -23,7 +23,7 @@ _DEFAULT_ARTIFACT = (
     _ROOT / "docs" / "testing" / "ai-evaluation" / "pilot-cost-envelope.v1.json"
 )
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
-_EXPECTED_HASH = "c451125aa2cb6a5621a6908793a3859129ca0b3f8fe07c4e596889a5f4de21c3"
+_EXPECTED_HASH = "7223f8fad4774b8fe431d90475b5aebe53456a509af69bb54daefd1e10636398"
 _EXPECTED_UNKNOWN = (
     "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
     "provider_native_url_discovery_request_input_and_output_usage_without_an_approved_request_configuration",
@@ -368,7 +368,10 @@ def verify_pilot_cost_envelope(
             "groq_split_v1",
             "baseline_current_text_v1",
         ]
-        or candidates[3].get("complete_candidate_cost_envelope") is not False
+        or any(
+            item.get("complete_candidate_cost_envelope") is not False
+            for item in candidates
+        )
     ):
         raise _fail("candidate_cost_readiness")
 

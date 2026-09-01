@@ -141,7 +141,7 @@
       "candidate_id": "baseline_current_text_v1",
       "configured_text_stage_pricing": "complete_after_provider_usage_binding",
       "provider_native_url_discovery_pricing": "not_applicable",
-      "complete_candidate_cost_envelope": true
+      "complete_candidate_cost_envelope": false
     }
   ],
   "budget_recommendation": {
@@ -172,6 +172,6 @@
   "specification_identity": {
     "hash_algorithm": "SHA-256",
     "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
-    "semantic_hash": "c451125aa2cb6a5621a6908793a3859129ca0b3f8fe07c4e596889a5f4de21c3"
+    "semantic_hash": "7223f8fad4774b8fe431d90475b5aebe53456a509af69bb54daefd1e10636398"
   }
 }
