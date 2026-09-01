@@ -28,11 +28,12 @@ _MAPPING_ORDER = (
     "openai_responses_terra_v1",
     "gemini_interactions_flash_v1",
     "groq_gpt_oss_chat_v1",
+    "groq_baseline_chat_v1",
     "groq_compound_chat_v1",
     "groq_qwen_vision_chat_v1",
 )
 _EXPECTED_ARTIFACT_HASH = (
-    "ba246ab6e9ecdcd7bee09b40364508e880596c97bbffd856052f0c4b64b01766"
+    "2e2e3183a2ab21b811e404a9f03578f1aaea8b9075867af5587b03ccd28b9df3"
 )
 _EXPECTED_MAPPING_HASHES = {
     "openai_responses_sol_v1": (
@@ -46,6 +47,9 @@ _EXPECTED_MAPPING_HASHES = {
     ),
     "groq_gpt_oss_chat_v1": (
         "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6"
+    ),
+    "groq_baseline_chat_v1": (
+        "88682bfe0967593171e7d5848dca2df793e6594ea2d35372eee1e0d537a51cc9"
     ),
     "groq_compound_chat_v1": (
         "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667"
@@ -87,6 +91,9 @@ _EXPECTED_COVERAGE = {
             "two_call_search_synthesis",
         ),
         "visual_inspection": ("qwen/qwen3.8-27b", "single_call_visual"),
+    },
+    "baseline_current_text_v1": {
+        "text_analysis": ("openai/gpt-oss-120b", "single_call_text"),
     },
 }
 _AUTHORITY_CLASSES = {

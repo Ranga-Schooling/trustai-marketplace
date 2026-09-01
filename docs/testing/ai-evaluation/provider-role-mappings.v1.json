@@ -10,6 +10,7 @@
     "openai_responses_terra_v1",
     "gemini_interactions_flash_v1",
     "groq_gpt_oss_chat_v1",
+    "groq_baseline_chat_v1",
     "groq_compound_chat_v1",
     "groq_qwen_vision_chat_v1"
   ],
@@ -178,6 +179,30 @@
       }
     },
     {
+      "mapping_id": "groq_baseline_chat_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "88682bfe0967593171e7d5848dca2df793e6594ea2d35372eee1e0d537a51cc9",
+      "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "groq_baseline_chat_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"groq_chat_completions_adapter_v1","adapter_version":"v1"},
+          "provider": "Groq",
+          "api_family": "Chat Completions API",
+          "candidate_ids": ["baseline_current_text_v1"],
+          "model_ids": ["openai/gpt-oss-120b"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"response_format json_schema strict true text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
       "mapping_id": "groq_compound_chat_v1",
       "mapping_version": "v1",
       "semantic_hash": "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667",
@@ -249,6 +274,6 @@
   "specification_identity": {
     "canonicalization": "UTF-8 JSON with object keys sorted lexicographically, compact separators, array order preserved, and no non-finite values",
     "semantic_hash_excluded_json_pointers": ["/specification_identity/semantic_hash"],
-    "semantic_hash": "ba246ab6e9ecdcd7bee09b40364508e880596c97bbffd856052f0c4b64b01766"
+    "semantic_hash": "2e2e3183a2ab21b811e404a9f03578f1aaea8b9075867af5587b03ccd28b9df3"
   }
 }

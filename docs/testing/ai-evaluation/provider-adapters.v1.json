@@ -237,7 +237,7 @@
     {
       "adapter_id": "groq_chat_completions_adapter_v1",
       "adapter_version": "v1",
-      "semantic_hash": "6fe6a87605ad3729762d092c9917cc38875a516e2c10d8722fbd27e243c3b0f5",
+      "semantic_hash": "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a",
       "official_evidence_refs": [
         "groq_chat_response_2026_08_31"
       ],
@@ -245,7 +245,8 @@
         "provider": "Groq",
         "api_family": "Chat Completions API",
         "role_mapping_ids": [
-          "groq_gpt_oss_chat_v1"
+          "groq_gpt_oss_chat_v1",
+          "groq_baseline_chat_v1"
         ],
         "model_ids": [
           "openai/gpt-oss-120b"
@@ -474,6 +475,12 @@
       "workload_stage": "visual_inspection",
       "adapter_id": "groq_vision_chat_completions_adapter_v1",
       "eligible": true
+    },
+    {
+      "candidate_id": "baseline_current_text_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "groq_chat_completions_adapter_v1",
+      "eligible": true
     }
   ],
   "test_vectors": [
@@ -535,6 +542,6 @@
     "semantic_hash_excluded_json_pointers": [
       "/specification_identity/semantic_hash"
     ],
-    "semantic_hash": "7d8fe70e6f2f74d9223233c9174443e4d9849be690fcd382a45ab17e385f2bf7"
+    "semantic_hash": "d5c98a4645c15beed550679c7c1dc1e63342dbb4142ccfe5bc905759514dc61f"
   }
 }

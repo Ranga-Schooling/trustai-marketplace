@@ -39,7 +39,7 @@ _ADAPTER_ORDER = (
     "groq_vision_chat_completions_adapter_v1",
 )
 _EXPECTED_ARTIFACT_HASH = (
-    "7d8fe70e6f2f74d9223233c9174443e4d9849be690fcd382a45ab17e385f2bf7"
+    "d5c98a4645c15beed550679c7c1dc1e63342dbb4142ccfe5bc905759514dc61f"
 )
 _EXPECTED_ADAPTER_HASHES = {
     "openai_responses_adapter_v1": (
@@ -49,7 +49,7 @@ _EXPECTED_ADAPTER_HASHES = {
         "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5"
     ),
     "groq_chat_completions_adapter_v1": (
-        "6fe6a87605ad3729762d092c9917cc38875a516e2c10d8722fbd27e243c3b0f5"
+        "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a"
     ),
     "groq_compound_chat_completions_adapter_v1": (
         "3ff807e50f87f60a7d031dadb2bcf96dcedfa3942dad3b9b634dd64d5f8b530a"
@@ -63,6 +63,7 @@ _EXPECTED_MAPPING_ADAPTERS = {
     "openai_responses_terra_v1": "openai_responses_adapter_v1",
     "gemini_interactions_flash_v1": "gemini_interactions_adapter_v1",
     "groq_gpt_oss_chat_v1": "groq_chat_completions_adapter_v1",
+    "groq_baseline_chat_v1": "groq_chat_completions_adapter_v1",
     "groq_compound_chat_v1": "groq_compound_chat_completions_adapter_v1",
     "groq_qwen_vision_chat_v1": "groq_vision_chat_completions_adapter_v1",
 }
@@ -129,6 +130,10 @@ _EXPECTED_TOPOLOGIES = {
     ),
     ("groq_split_v1", "visual_inspection"): (
         "groq_vision_chat_completions_adapter_v1",
+        True,
+    ),
+    ("baseline_current_text_v1", "text_analysis"): (
+        "groq_chat_completions_adapter_v1",
         True,
     ),
 }

@@ -35,7 +35,7 @@ SEARCH_PATH = ARTIFACT_DIRECTORY / "search-authority.v2.json"
 PROMPT_PATH = ARTIFACT_DIRECTORY / "prompt-templates.v1.json"
 SPEC_PATH = ARTIFACT_DIRECTORY / "normalization-parser.v1.json"
 EXPECTED_ARTIFACT_HASH = (
-    "7d8fe70e6f2f74d9223233c9174443e4d9849be690fcd382a45ab17e385f2bf7"
+    "d5c98a4645c15beed550679c7c1dc1e63342dbb4142ccfe5bc905759514dc61f"
 )
 EXPECTED_ADAPTER_HASHES = {
     "openai_responses_adapter_v1": (
@@ -45,7 +45,7 @@ EXPECTED_ADAPTER_HASHES = {
         "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5"
     ),
     "groq_chat_completions_adapter_v1": (
-        "6fe6a87605ad3729762d092c9917cc38875a516e2c10d8722fbd27e243c3b0f5"
+        "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a"
     ),
     "groq_compound_chat_completions_adapter_v1": (
         "3ff807e50f87f60a7d031dadb2bcf96dcedfa3942dad3b9b634dd64d5f8b530a"
@@ -152,6 +152,12 @@ SELECTIONS = {
         "qwen/qwen3.8-27b",
         "Chat Completions API with vision content",
         "single_call_visual",
+    ),
+    ("baseline_current_text_v1", "text_analysis"): (
+        "Groq",
+        "openai/gpt-oss-120b",
+        "Chat Completions API",
+        "single_call_text",
     ),
 }
 
@@ -287,7 +293,7 @@ def test_artifact_and_every_adapter_identity_are_frozen():
     assert adapter_set.independently_authorizes_execution is False
 
 
-def test_all_six_role_mappings_bind_to_exact_frozen_adapter():
+def test_all_seven_role_mappings_bind_to_exact_frozen_adapter():
     adapter_set, mapping_set = _bound()
 
     for mapping in mapping_set.mappings:
@@ -313,7 +319,7 @@ def test_exact_candidate_stage_topology_matrix_is_complete():
         assert assessment.provider_attempt_created is False
         assert assessment.provider_call_incremented is False
 
-    assert len(observed) == 16
+    assert len(observed) == 17
     assert {key for key, value in observed.items() if not value} == {
         ("openai_unified_premium_v1", "search_retrieval"),
         ("openai_unified_balanced_v1", "search_retrieval"),

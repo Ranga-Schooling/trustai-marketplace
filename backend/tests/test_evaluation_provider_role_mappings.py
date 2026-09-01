@@ -30,7 +30,7 @@ SEARCH_AUTHORITY_PATH = ARTIFACT_DIRECTORY / "search-authority.v2.json"
 PROMPT_PATH = ARTIFACT_DIRECTORY / "prompt-templates.v1.json"
 SPEC_PATH = ARTIFACT_DIRECTORY / "normalization-parser.v1.json"
 EXPECTED_ARTIFACT_HASH = (
-    "ba246ab6e9ecdcd7bee09b40364508e880596c97bbffd856052f0c4b64b01766"
+    "2e2e3183a2ab21b811e404a9f03578f1aaea8b9075867af5587b03ccd28b9df3"
 )
 EXPECTED_MAPPING_HASHES = {
     "openai_responses_sol_v1": (
@@ -44,6 +44,9 @@ EXPECTED_MAPPING_HASHES = {
     ),
     "groq_gpt_oss_chat_v1": (
         "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6"
+    ),
+    "groq_baseline_chat_v1": (
+        "88682bfe0967593171e7d5848dca2df793e6594ea2d35372eee1e0d537a51cc9"
     ),
     "groq_compound_chat_v1": (
         "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667"
@@ -197,6 +200,15 @@ SELECTIONS = (
         "single_call_visual",
         "groq_qwen_vision_chat_v1",
     ),
+    (
+        "baseline_current_text_v1",
+        "Groq",
+        "openai/gpt-oss-120b",
+        "Chat Completions API",
+        "text_analysis",
+        "single_call_text",
+        "groq_baseline_chat_v1",
+    ),
 )
 
 
@@ -329,6 +341,19 @@ def test_selection_fails_closed_for_every_mismatched_dimension(index, replacemen
             api_family=values[3],
             workload_stage=values[4],
             topology_id=values[5],
+        )
+
+
+def test_current_baseline_mapping_is_text_only():
+    with pytest.raises(ConcreteProviderRoleMappingError, match="mapping_selection"):
+        select_provider_role_mapping(
+            _bound_set(),
+            candidate_id="baseline_current_text_v1",
+            provider="Groq",
+            model_id="openai/gpt-oss-120b",
+            api_family="Chat Completions API",
+            workload_stage="search_synthesis",
+            topology_id="two_call_search_synthesis",
         )
 
 
