@@ -40,11 +40,17 @@ from app.services.evaluation_data_handling import (
     derive_restricted_trace_reference,
     project_provider_data,
 )
+from app.services.evaluation_live_cost import (
+    LiveCostBindingError,
+    calculate_live_success_cost,
+)
 from app.services.evaluation_pilot_budget import (
     PilotBudgetError,
     PilotBudgetLedger,
+    assert_no_pending_cost_reconciliation,
     commit_provider_attempt_cost,
     empty_pilot_budget_ledger,
+    mark_attempt_pending_reconciliation,
     reserve_provider_attempt,
     verify_pilot_budget_control,
 )
@@ -166,6 +172,7 @@ _RETRY_POLICY_HASH = (
     "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b"
 )
 _TRANSPORT_SECRET_TOKEN = object()
+_LIVE_GATE_TOKEN = object()
 _ATTEMPT_POLICY_IDENTITY = (
     "failure_taxonomy_v1",
     "v1",
@@ -206,6 +213,14 @@ def _canonical(value: Any) -> bytes:
 
 def _hash(value: Any) -> str:
     return hashlib.sha256(_canonical(value)).hexdigest()
+
+
+def _is_sha256(value: Any) -> bool:
+    return (
+        type(value) is str
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 def _json_copy(value: Any) -> Any:
@@ -329,6 +344,24 @@ class LiveGateBinding:
     valid_on_date: str
     credential_references: tuple[CredentialReference, ...]
     binding_mode: str
+    repository_harness_commit_sha: str | None = None
+    same_day_certification_hash: str | None = None
+    pilot_authorization_hash: str | None = None
+    authorized_call_ids: tuple[str, ...] = ()
+    authorization_scope: str | None = None
+    binding_integrity_hash: str = ""
+    _construction_token: object | None = field(
+        default=None,
+        repr=False,
+        compare=False,
+    )
+
+    def __post_init__(self) -> None:
+        if (
+            self._construction_token is not _LIVE_GATE_TOKEN
+            or self.binding_integrity_hash != _live_gate_integrity_hash(self)
+        ):
+            raise _fail("live_gate_factory_required")
 
     @classmethod
     def synthetic_for_tests(
@@ -342,7 +375,7 @@ class LiveGateBinding:
         valid_on_date: str,
         credential_references: tuple[CredentialReference, ...],
     ) -> LiveGateBinding:
-        return cls(
+        values = dict(
             evaluation_id=evaluation_id,
             experiment_version=experiment_version,
             common_preflight_status="ready",
@@ -356,6 +389,98 @@ class LiveGateBinding:
             credential_references=credential_references,
             binding_mode="synthetic_provider_free",
         )
+        return cls(
+            **values,
+            binding_integrity_hash=_live_gate_values_integrity_hash(values),
+            _construction_token=_LIVE_GATE_TOKEN,
+        )
+
+    @classmethod
+    def _verified_live(
+        cls,
+        *,
+        evaluation_id: str,
+        experiment_version: str,
+        request_configuration_set_hash: str,
+        budget_control_hash: str,
+        region_binding_hash: str,
+        valid_on_date: str,
+        credential_references: tuple[CredentialReference, ...],
+        repository_harness_commit_sha: str,
+        same_day_certification_hash: str,
+        pilot_authorization_hash: str,
+        authorized_call_ids: tuple[str, ...],
+        authorization_scope: str,
+    ) -> LiveGateBinding:
+        """Construct a live binding only after external-record validation."""
+        values = dict(
+            evaluation_id=evaluation_id,
+            experiment_version=experiment_version,
+            common_preflight_status="ready",
+            same_day_certification_status="certified_current",
+            credential_authorization_status="externally_confirmed_for_live_pilot",
+            explicit_pilot_authorization_status="approved_pilot_only",
+            request_configuration_set_hash=request_configuration_set_hash,
+            budget_control_hash=budget_control_hash,
+            region_binding_hash=region_binding_hash,
+            valid_on_date=valid_on_date,
+            credential_references=credential_references,
+            binding_mode="live_pilot",
+            repository_harness_commit_sha=repository_harness_commit_sha,
+            same_day_certification_hash=same_day_certification_hash,
+            pilot_authorization_hash=pilot_authorization_hash,
+            authorized_call_ids=authorized_call_ids,
+            authorization_scope=authorization_scope,
+        )
+        return cls(
+            **values,
+            binding_integrity_hash=_live_gate_values_integrity_hash(values),
+            _construction_token=_LIVE_GATE_TOKEN,
+        )
+
+
+def _live_gate_values_integrity_hash(values: Mapping[str, Any]) -> str:
+    canonical_values = dict(values)
+    canonical_values.setdefault("repository_harness_commit_sha", None)
+    canonical_values.setdefault("same_day_certification_hash", None)
+    canonical_values.setdefault("pilot_authorization_hash", None)
+    canonical_values.setdefault("authorized_call_ids", ())
+    canonical_values.setdefault("authorization_scope", None)
+    canonical_values["credential_references"] = [
+        {
+            "provider": reference.provider,
+            "environment_variable_name": reference.environment_variable_name,
+            "readiness_state": reference.readiness_state,
+        }
+        for reference in values["credential_references"]
+    ]
+    return _hash(canonical_values)
+
+
+def _live_gate_integrity_hash(gate: LiveGateBinding) -> str:
+    return _live_gate_values_integrity_hash(
+        {
+            "evaluation_id": gate.evaluation_id,
+            "experiment_version": gate.experiment_version,
+            "common_preflight_status": gate.common_preflight_status,
+            "same_day_certification_status": gate.same_day_certification_status,
+            "credential_authorization_status": gate.credential_authorization_status,
+            "explicit_pilot_authorization_status": (
+                gate.explicit_pilot_authorization_status
+            ),
+            "request_configuration_set_hash": gate.request_configuration_set_hash,
+            "budget_control_hash": gate.budget_control_hash,
+            "region_binding_hash": gate.region_binding_hash,
+            "valid_on_date": gate.valid_on_date,
+            "credential_references": gate.credential_references,
+            "binding_mode": gate.binding_mode,
+            "repository_harness_commit_sha": gate.repository_harness_commit_sha,
+            "same_day_certification_hash": gate.same_day_certification_hash,
+            "pilot_authorization_hash": gate.pilot_authorization_hash,
+            "authorized_call_ids": gate.authorized_call_ids,
+            "authorization_scope": gate.authorization_scope,
+        }
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -474,9 +599,10 @@ class NativeProviderRequest:
 @dataclass(frozen=True, slots=True)
 class TransportResponse:
     status_code: int
-    response_bytes: bytes
+    response_bytes: bytes = field(repr=False)
     elapsed_seconds: float
     failure_signal: str | None = None
+    safe_response_metadata: tuple[tuple[str, str], ...] = ()
 
 
 class PilotTransport(Protocol):
@@ -614,6 +740,8 @@ class PilotAttemptOutcome:
     accepted: bool
     safe_failure_code: str | None
     retry_reason: str | None
+    billing_state: str = "exact_actual_cost_committed"
+    pending_cost_reference: str | None = None
     synthetic_provider_attempts: int = 1
     real_provider_calls: int = 0
 
@@ -630,6 +758,8 @@ class PilotAttemptOutcome:
             "accepted": self.accepted,
             "safe_failure_code": self.safe_failure_code,
             "retry_reason": self.retry_reason,
+            "billing_state": self.billing_state,
+            "pending_cost_reference": self.pending_cost_reference,
             "synthetic_provider_attempts": self.synthetic_provider_attempts,
             "real_provider_calls": self.real_provider_calls,
         }
@@ -803,6 +933,13 @@ class ProviderFreePilotRunner:
             "winner_selected": False,
         }
 
+    def build_native_request(self, call: PlannedProviderCall) -> NativeProviderRequest:
+        """Build an authorized frozen request snapshot without credentials/network."""
+        authoritative = self._authoritative_call(call.call_id)
+        if call != authoritative:
+            raise _fail("pre_attempt_identity")
+        return self._build_native_request(call)
+
     def request_payload_snapshots(self) -> dict[str, dict[str, Any]]:
         keys = (
             "openai_text",
@@ -905,7 +1042,15 @@ class ProviderFreePilotRunner:
         ps1_evidence: Ps1AssemblyResult | None = None,
         search_tool_data: SearchToolProjections | None = None,
     ) -> PilotAttemptOutcome:
-        self._validate_live_gate(gate, synthetic_today=synthetic_today)
+        try:
+            assert_no_pending_cost_reconciliation(budget_ledger)
+        except PilotBudgetError as exc:
+            raise _fail(str(exc)) from exc
+        self._validate_live_gate(
+            gate,
+            synthetic_today=synthetic_today,
+            call_id=call.call_id,
+        )
         authoritative = self._authoritative_call(call.call_id)
         if call != authoritative:
             raise _fail("pre_attempt_identity")
@@ -939,6 +1084,21 @@ class ProviderFreePilotRunner:
         del credential
 
         mapped = _map_transport_result(response, deadline)
+        require_live_cost = gate.binding_mode == "live_pilot"
+        estimated_cost = None
+        if require_live_cost:
+            try:
+                estimated_cost = calculate_live_success_cost(
+                    provider=call.provider,
+                    model=call.model,
+                    workload_stage=call.workload_stage,
+                    response_bytes=response.response_bytes,
+                ).as_dict()
+            except LiveCostBindingError:
+                # Invocation occurred, so incomplete usage creates a pending
+                # billing state rather than an invented zero-dollar cost.
+                estimated_cost = None
+
         if mapped is not None:
             failure_code, transient_reason = mapped
             outcome = self._failure_outcome(
@@ -950,6 +1110,8 @@ class ProviderFreePilotRunner:
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
                 transient_retry_reason=transient_reason,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
             return outcome
 
@@ -961,6 +1123,8 @@ class ProviderFreePilotRunner:
                 retry_reason=retry_reason,
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
         except CanonicalSchemaValidationError:
             return self._failure_outcome(
@@ -971,6 +1135,8 @@ class ProviderFreePilotRunner:
                 failure_code="failed_canonical_validation",
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
         except (ProviderAdapterResponseError, TransportCaptureStateError):
             return self._failure_outcome(
@@ -981,6 +1147,8 @@ class ProviderFreePilotRunner:
                 failure_code="failed_transport_extraction",
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
         except UrlDiscoveryError:
             return self._failure_outcome(
@@ -991,6 +1159,8 @@ class ProviderFreePilotRunner:
                 failure_code="failed_transport_extraction",
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
         except (DuplicateJsonKeyError, StrictJsonPayloadError):
             return self._failure_outcome(
@@ -1001,6 +1171,8 @@ class ProviderFreePilotRunner:
                 failure_code="failed_strict_parse",
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
         except DeterministicValidationError as exc:
             failure = {
@@ -1016,6 +1188,8 @@ class ProviderFreePilotRunner:
                 failure_code=failure,
                 budget_ledger=reserved,
                 attempt_id=attempt_id,
+                require_live_cost=require_live_cost,
+                estimated_cost=estimated_cost,
             )
 
     def execute_logical_run(
@@ -1037,6 +1211,12 @@ class ProviderFreePilotRunner:
         ps1_evidence = None
         search_tool_data = None
         for call in logical_run.calls:
+            reservation_for_call = (
+                conservative_reservation_usd[call.call_id]
+                if isinstance(conservative_reservation_usd, Mapping)
+                and call.call_id in conservative_reservation_usd
+                else conservative_reservation_usd
+            )
             attempt_number = 1
             retry_reason = None
             while True:
@@ -1046,7 +1226,7 @@ class ProviderFreePilotRunner:
                     credential_resolver=credential_resolver,
                     transport=transport,
                     budget_ledger=ledger,
-                    conservative_reservation_usd=conservative_reservation_usd,
+                    conservative_reservation_usd=reservation_for_call,
                     synthetic_today=synthetic_today,
                     attempt_number=attempt_number,
                     retry_reason=retry_reason,
@@ -1055,6 +1235,13 @@ class ProviderFreePilotRunner:
                 )
                 outcomes.append(outcome)
                 ledger = outcome.budget_ledger
+                if ledger.unresolved_pending_attempts:
+                    return LogicalRunOutcome(
+                        logical_run,
+                        tuple(outcomes),
+                        ledger,
+                        False,
+                    )
                 if outcome.accepted:
                     if call.workload_stage == "provider_native_url_discovery":
                         ps1_evidence, search_tool_data = self._synthetic_ps1_material(call)
@@ -1090,6 +1277,7 @@ class ProviderFreePilotRunner:
         failed = 0
         physical: list[PilotAttemptOutcome] = []
         pf1_count = 0
+        blocked = 0
         for logical_run in self.plan.logical_runs:
             if logical_run.provider_free_no_call:
                 self.execute_pf1()
@@ -1113,17 +1301,26 @@ class ProviderFreePilotRunner:
                 failed += 1
             for attempt in result.attempts:
                 bundle = bundle.append_attempt(attempt.record)
+            if ledger.unresolved_pending_attempts:
+                blocked = len(self.plan.logical_runs) - completed - failed
+                break
         serialized_records = _canonical([record.as_dict() for record in bundle.attempts])
         privacy_passed = not any(
             marker in serialized_records
             for marker in (b"synthetic-secret", b"Authorization", b"Bearer ")
         )
         return SyntheticPilotSummary(
-            status=("synthetic_pilot_complete" if failed == 0 else "synthetic_pilot_failed"),
+            status=(
+                "blocked_pending_cost_reconciliation"
+                if ledger.unresolved_pending_attempts
+                else "synthetic_pilot_complete"
+                if failed == 0
+                else "synthetic_pilot_failed"
+            ),
             logical_runs=len(self.plan.logical_runs),
             completed_logical_runs=completed,
             failed_logical_runs=failed,
-            blocked_logical_runs=0,
+            blocked_logical_runs=blocked,
             synthetic_physical_attempts=len(physical),
             real_provider_calls=0,
             pilot_calls_completed=0,
@@ -1157,8 +1354,12 @@ class ProviderFreePilotRunner:
             network_calls=0,
             real_credentials_used=False,
             winner_selected=False,
-            execution_state="blocked_pre_execution",
-            synthetic_mode=True,
+            execution_state=(
+                "blocked_pending_cost_reconciliation"
+                if ledger.unresolved_pending_attempts
+                else "blocked_pre_execution"
+            ),
+            synthetic_mode=gate.binding_mode == "synthetic_provider_free",
         )
 
     def _fixture(self, fixture_id: str) -> dict[str, Any]:
@@ -1180,7 +1381,12 @@ class ProviderFreePilotRunner:
         gate: LiveGateBinding,
     ) -> CredentialReference:
         matches = tuple(item for item in gate.credential_references if item.provider == provider)
-        if len(matches) != 1:
+        expected_readiness = (
+            "externally_confirmed_for_live_pilot"
+            if gate.binding_mode == "live_pilot"
+            else "externally_confirmed_for_synthetic_test"
+        )
+        if len(matches) != 1 or matches[0].readiness_state != expected_readiness:
             raise _fail("live_gate:credential_reference")
         return matches[0]
 
@@ -1195,22 +1401,72 @@ class ProviderFreePilotRunner:
             raise _fail("budget_reservation")
         return value
 
-    def _validate_live_gate(self, gate: LiveGateBinding, *, synthetic_today: str) -> None:
+    def _validate_live_gate(
+        self,
+        gate: LiveGateBinding,
+        *,
+        synthetic_today: str,
+        call_id: str,
+    ) -> None:
         expected_references = self.credential_references
-        if (
+        common_invalid = (
             not isinstance(gate, LiveGateBinding)
-            or gate.binding_mode != "synthetic_provider_free"
             or gate.evaluation_id != self.evaluation_id
             or gate.experiment_version != self.experiment_version
             or gate.common_preflight_status != "ready"
-            or gate.same_day_certification_status != "synthetic_certified_for_tests"
-            or gate.credential_authorization_status != "synthetic_authorized_for_tests"
-            or gate.explicit_pilot_authorization_status != "synthetic_authorized_for_tests"
             or gate.request_configuration_set_hash != self.request_configuration_set_hash
             or gate.budget_control_hash != self.budget_control_hash
             or gate.region_binding_hash != self.region_binding_hash
             or gate.valid_on_date != synthetic_today
-            or gate.credential_references != expected_references
+        )
+        if common_invalid:
+            raise _fail("live_gate")
+        if gate.binding_mode == "synthetic_provider_free":
+            if (
+                gate.same_day_certification_status != "synthetic_certified_for_tests"
+                or gate.credential_authorization_status != "synthetic_authorized_for_tests"
+                or gate.explicit_pilot_authorization_status != "synthetic_authorized_for_tests"
+                or gate.credential_references != expected_references
+                or gate.repository_harness_commit_sha is not None
+                or gate.same_day_certification_hash is not None
+                or gate.pilot_authorization_hash is not None
+                or gate.authorized_call_ids
+                or gate.authorization_scope is not None
+            ):
+                raise _fail("live_gate")
+            return
+        if gate.binding_mode != "live_pilot":
+            raise _fail("live_gate")
+        credential_inventory = tuple(
+            (item.provider, item.environment_variable_name)
+            for item in gate.credential_references
+        )
+        expected_inventory = tuple(
+            (item.provider, item.environment_variable_name)
+            for item in expected_references
+        )
+        if (
+            gate.same_day_certification_status != "certified_current"
+            or gate.credential_authorization_status
+            != "externally_confirmed_for_live_pilot"
+            or gate.explicit_pilot_authorization_status != "approved_pilot_only"
+            or gate.repository_harness_commit_sha != self.repository_harness_commit_sha
+            or not _is_sha256(gate.same_day_certification_hash)
+            or not _is_sha256(gate.pilot_authorization_hash)
+            or credential_inventory != expected_inventory
+            or gate.authorization_scope
+            not in {"first_attempt_only", "full_authorized_pilot"}
+            or call_id not in gate.authorized_call_ids
+            or len(set(gate.authorized_call_ids)) != len(gate.authorized_call_ids)
+            or (
+                gate.authorization_scope == "first_attempt_only"
+                and len(gate.authorized_call_ids) != 1
+            )
+            or (
+                gate.authorization_scope == "full_authorized_pilot"
+                and gate.authorized_call_ids
+                != tuple(item.call_id for item in self.plan.provider_calls)
+            )
         ):
             raise _fail("live_gate")
 
@@ -1422,7 +1678,8 @@ class ProviderFreePilotRunner:
                 content.append(
                     {
                         "type": "image",
-                        "inline_data": {"mime_type": mime_type, "data": data_url},
+                        "data": b64encode(image_bytes).decode("ascii"),
+                        "mime_type": mime_type,
                     }
                 )
             payload = {
@@ -1430,8 +1687,9 @@ class ProviderFreePilotRunner:
                 "system_instruction": instruction,
                 "input": [{"role": "user", "content": content}],
                 "response_format": {
+                    "type": "text",
                     "mime_type": "application/json",
-                    "json_schema": schema,
+                    "schema": schema,
                 },
                 "generation_config": {
                     "max_output_tokens": configuration.maximum_output_tokens,
@@ -1559,6 +1817,8 @@ class ProviderFreePilotRunner:
         retry_reason: str | None,
         budget_ledger: PilotBudgetLedger,
         attempt_id: str,
+        require_live_cost: bool,
+        estimated_cost: Mapping[str, Any] | None,
     ) -> PilotAttemptOutcome:
         call = request.call
         if call.workload_stage == "provider_native_url_discovery":
@@ -1609,6 +1869,12 @@ class ProviderFreePilotRunner:
                 ps1_evidence=evidence,
                 search_tool_data=search_tool_data,
                 adapted=None,
+                estimated_cost=estimated_cost,
+                billing_note=(
+                    "pending_cost_reconciliation"
+                    if require_live_cost and estimated_cost is None
+                    else None
+                ),
             )
         else:
             capture = _capture(response.response_bytes)
@@ -1662,13 +1928,39 @@ class ProviderFreePilotRunner:
                 ps1_evidence=request.ps1_evidence,
                 search_tool_data=request.search_tool_data,
                 adapted=adapted,
+                estimated_cost=estimated_cost,
+                billing_note=(
+                    "pending_cost_reconciliation"
+                    if require_live_cost and estimated_cost is None
+                    else None
+                ),
             )
-        committed = commit_provider_attempt_cost(
-            budget_ledger,
-            attempt_id=attempt_id,
-            actual_cost_usd="0.00",
-            outcome="succeeded",
-        )
+        if require_live_cost and estimated_cost is None:
+            committed = mark_attempt_pending_reconciliation(
+                budget_ledger,
+                attempt_id=attempt_id,
+                provider=call.provider,
+                candidate_id=call.candidate_id,
+                model=call.model,
+                outcome="succeeded",
+            )
+            billing_state = "pending_cost_reconciliation"
+            pending_cost_reference = (
+                committed.unresolved_pending_attempts[0].pending_state_reference
+            )
+        else:
+            committed = commit_provider_attempt_cost(
+                budget_ledger,
+                attempt_id=attempt_id,
+                actual_cost_usd=(
+                    estimated_cost["total_usd"]
+                    if estimated_cost is not None
+                    else "0.00"
+                ),
+                outcome="succeeded",
+            )
+            billing_state = "exact_actual_cost_committed"
+            pending_cost_reference = None
         return PilotAttemptOutcome(
             call=call,
             record=record,
@@ -1676,6 +1968,8 @@ class ProviderFreePilotRunner:
             accepted=True,
             safe_failure_code=None,
             retry_reason=None,
+            billing_state=billing_state,
+            pending_cost_reference=pending_cost_reference,
         )
 
     def _failure_outcome(
@@ -1688,6 +1982,8 @@ class ProviderFreePilotRunner:
         failure_code: str,
         budget_ledger: PilotBudgetLedger,
         attempt_id: str,
+        require_live_cost: bool,
+        estimated_cost: Mapping[str, Any] | None,
         transient_retry_reason: str | None = None,
     ) -> PilotAttemptOutcome:
         branch = _branch_for_call(request.call)
@@ -1733,17 +2029,44 @@ class ProviderFreePilotRunner:
             search_tool_data=search_tool_data,
             adapted=adapted,
             normalization_actions=normalization_actions,
+            estimated_cost=estimated_cost,
+            billing_note=(
+                "pending_cost_reconciliation"
+                if require_live_cost and estimated_cost is None
+                else None
+            ),
         )
         transient = failure_code in {
             "provider_connection_error",
             "provider_timeout",
         } or response.failure_signal in {"rate_limit", "service_unavailable"}
-        committed = commit_provider_attempt_cost(
-            budget_ledger,
-            attempt_id=attempt_id,
-            actual_cost_usd="0.00",
-            outcome="failed_retryable" if transient else "failed_nonretryable",
-        )
+        budget_outcome = "failed_retryable" if transient else "failed_nonretryable"
+        if require_live_cost and estimated_cost is None:
+            committed = mark_attempt_pending_reconciliation(
+                budget_ledger,
+                attempt_id=attempt_id,
+                provider=request.call.provider,
+                candidate_id=request.call.candidate_id,
+                model=request.call.model,
+                outcome=budget_outcome,
+            )
+            billing_state = "pending_cost_reconciliation"
+            pending_cost_reference = (
+                committed.unresolved_pending_attempts[0].pending_state_reference
+            )
+        else:
+            committed = commit_provider_attempt_cost(
+                budget_ledger,
+                attempt_id=attempt_id,
+                actual_cost_usd=(
+                    estimated_cost["total_usd"]
+                    if estimated_cost is not None
+                    else "0.00"
+                ),
+                outcome=budget_outcome,
+            )
+            billing_state = "exact_actual_cost_committed"
+            pending_cost_reference = None
         return PilotAttemptOutcome(
             call=request.call,
             record=record,
@@ -1751,6 +2074,8 @@ class ProviderFreePilotRunner:
             accepted=False,
             safe_failure_code=failure_code,
             retry_reason=transient_retry_reason,
+            billing_state=billing_state,
+            pending_cost_reference=pending_cost_reference,
         )
 
     def _build_record(
@@ -1766,6 +2091,8 @@ class ProviderFreePilotRunner:
         search_tool_data: SearchToolProjections | None,
         adapted: AdaptedProviderResponse | None,
         normalization_actions: tuple[NormalizationActionRecord, ...] = (),
+        estimated_cost: Mapping[str, Any] | None = None,
+        billing_note: str | None = None,
     ) -> PilotAttemptRecord:
         call = request.call
         provider_data = project_provider_data(
@@ -1812,6 +2139,8 @@ class ProviderFreePilotRunner:
             attempt_number=attempt_number,
             retry_reason=retry_reason,
             search_tool_data=search_tool_data,
+            estimated_cost=estimated_cost,
+            billing_note=billing_note,
         )
         return build_pilot_attempt_record(
             attempt_key=key,
@@ -2055,6 +2384,8 @@ class ProviderFreePilotRunner:
         attempt_number: int,
         retry_reason: str | None,
         search_tool_data: SearchToolProjections | None,
+        estimated_cost: Mapping[str, Any] | None,
+        billing_note: str | None,
     ) -> dict[str, Any]:
         call = request.call
         metadata = provider_data.ordinary.safe_transport_metadata.as_dict()
@@ -2128,10 +2459,12 @@ class ProviderFreePilotRunner:
                 "reasoning_usage_if_exposed": metadata.get("reasoning_usage_if_exposed"),
                 "image_usage_if_exposed": metadata.get("image_usage_if_exposed"),
                 "rate_limit_and_service_metadata_if_exposed": None,
-                "estimated_cost": None,
+                "estimated_cost": estimated_cost,
                 "retry_count": attempt_number - 1,
                 "safe_failure_code": state.failure_category,
-                "notes_and_anomalies": [],
+                "notes_and_anomalies": (
+                    [billing_note] if billing_note is not None else []
+                ),
             }
         )
         if search_tool_data is not None:
@@ -2889,6 +3222,8 @@ def _map_transport_result(
         raise _fail("transport_response")
     if response.failure_signal == "connection":
         return "provider_connection_error", "transient_provider_connection_error"
+    if response.failure_signal == "timeout":
+        return "provider_timeout", "provider_attempt_timeout"
     if deadline.expired(response.elapsed_seconds):
         return "provider_timeout", "provider_attempt_timeout"
     if response.failure_signal == "rate_limit":

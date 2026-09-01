@@ -128,7 +128,7 @@ def test_preflight_binds_exact_cost_envelope_without_fabricating_a_total():
         "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942"
     )
     assert result.budget_control_hash == (
-        "2a6d8fdfdd39efcf8ddc027734988a557d222885f736ddc60d8162dd059b7b23"
+        "7e4065dd69809f581ca475a3a9da8d4669b5961274da0c43574b844f3c12f824"
     )
     assert result.known_two_attempt_cost_subtotal_usd == "2.73434880"
     assert result.nominal_total_cost_usd is None

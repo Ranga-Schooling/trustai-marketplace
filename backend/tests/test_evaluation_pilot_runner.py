@@ -9,14 +9,20 @@ from pathlib import Path
 
 import pytest
 
-from app.services.evaluation_pilot_budget import empty_pilot_budget_ledger
+from app.services.evaluation_pilot_budget import (
+    empty_pilot_budget_ledger,
+    reconcile_pending_attempt_cost,
+)
 from app.services.evaluation_pilot_runner import (
     CREDENTIAL_VARIABLE_BY_PROVIDER,
     PILOT_RUNNER_STATUS,
+    CredentialReference,
     LiveGateBinding,
     PilotRunnerError,
     SyntheticCredentialResolver,
     SyntheticPilotTransport,
+    TransportResponse,
+    _synthetic_provider_envelope,
     build_provider_free_pilot_runner,
 )
 
@@ -53,6 +59,65 @@ def _resolver():
             "GROQ_API_KEY": CANARY,
         }
     )
+
+
+def _live_gate(runner):
+    return LiveGateBinding._verified_live(
+        evaluation_id=runner.evaluation_id,
+        experiment_version=runner.experiment_version,
+        request_configuration_set_hash=runner.request_configuration_set_hash,
+        budget_control_hash=runner.budget_control_hash,
+        region_binding_hash=runner.region_binding_hash,
+        valid_on_date="2026-09-01",
+        credential_references=tuple(
+            CredentialReference(
+                provider,
+                variable,
+                "externally_confirmed_for_live_pilot",
+            )
+            for provider, variable in CREDENTIAL_VARIABLE_BY_PROVIDER.items()
+        ),
+        repository_harness_commit_sha=runner.repository_harness_commit_sha,
+        same_day_certification_hash="a" * 64,
+        pilot_authorization_hash="b" * 64,
+        authorized_call_ids=tuple(call.call_id for call in runner.plan.provider_calls),
+        authorization_scope="full_authorized_pilot",
+    )
+
+
+class _UsageCompletingTransport:
+    def __init__(self, **synthetic_options):
+        self.inner = SyntheticPilotTransport(**synthetic_options)
+
+    @property
+    def invocation_count(self):
+        return self.inner.invocation_count
+
+    def invoke(self, request, credential, deadline):
+        response = self.inner.invoke(request, credential, deadline)
+        if response.status_code != 200 or not response.response_bytes:
+            return response
+        value = json.loads(response.response_bytes.decode("utf-8"))
+        if request.call.provider == "OpenAI":
+            value["usage"]["input_tokens_details"] = {
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+            }
+        elif request.call.provider == "Google Gemini":
+            value["usage"]["total_cached_tokens"] = 0
+        elif request.call.model == "openai/gpt-oss-120b":
+            value["usage"]["prompt_tokens_details"] = {"cached_tokens": 0}
+        return TransportResponse(
+            status_code=response.status_code,
+            response_bytes=json.dumps(
+                value,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8"),
+            elapsed_seconds=response.elapsed_seconds,
+            failure_signal=response.failure_signal,
+            safe_response_metadata=response.safe_response_metadata,
+        )
 
 
 def test_plan_is_derived_from_frozen_eligible_matrix_and_pf1_stays_no_call(runner):
@@ -206,20 +271,11 @@ def test_frozen_models_not_application_defaults_are_selected(runner):
 def test_missing_forged_or_stale_live_gate_blocks_before_credential_and_transport(
     runner, mutation
 ):
-    gate = replace(_gate(runner), **mutation)
     resolver = _resolver()
     transport = SyntheticPilotTransport()
 
-    with pytest.raises(PilotRunnerError, match="live_gate"):
-        runner.execute_one(
-            runner.plan.provider_calls[0],
-            gate=gate,
-            credential_resolver=resolver,
-            transport=transport,
-            budget_ledger=empty_pilot_budget_ledger(),
-            conservative_reservation_usd="0.01",
-            synthetic_today="2026-08-31",
-        )
+    with pytest.raises(PilotRunnerError, match="live_gate_factory_required"):
+        replace(_gate(runner), **mutation)
 
     assert resolver.resolution_count == 0
     assert transport.invocation_count == 0
@@ -444,6 +500,212 @@ def test_closed_transport_failure_mapping_and_retry_scope(
     assert result.attempts[0].safe_failure_code == expected_failure
     assert len(result.attempts) == (2 if retryable else 1)
     assert transport.invocation_count == (2 if retryable else 1)
+
+
+@pytest.mark.parametrize(
+    ("signal", "failure_code"),
+    (
+        ("connection", "provider_connection_error"),
+        ("timeout", "provider_timeout"),
+        ("rate_limit", "http_provider_error"),
+        ("service_unavailable", "http_provider_error"),
+        ("http_failure", "http_provider_error"),
+    ),
+)
+def test_live_invocation_without_authoritative_usage_is_pending_not_zero_and_no_retry(
+    runner, signal, failure_code
+):
+    call = runner.plan.provider_calls[0]
+    transport = SyntheticPilotTransport(failure_once={call.call_id: signal})
+    result = runner.execute_logical_run(
+        runner.logical_run_for_call(call.call_id),
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=transport,
+        budget_ledger=empty_pilot_budget_ledger(),
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+
+    assert result.accepted is False
+    assert len(result.attempts) == 1
+    assert transport.invocation_count == 1
+    attempt = result.attempts[0]
+    assert attempt.safe_failure_code == failure_code
+    assert attempt.billing_state == "pending_cost_reconciliation"
+    assert attempt.budget_ledger.committed_cost_usd == Decimal("0.00")
+    assert attempt.budget_ledger.pending_encumbered_cost_usd == Decimal("0.50")
+    assert attempt.budget_ledger.provider_calls_completed == 1
+    assert attempt.budget_ledger.pending_attempts[0].actual_cost_usd is None
+    envelope = attempt.record.as_dict()["pilot_envelope"]
+    assert envelope["estimated_cost"] is None
+    assert envelope["notes_and_anomalies"] == ["pending_cost_reconciliation"]
+    assert attempt.record.as_dict()["normalization_audit"]["terminal_outcome"] == (
+        failure_code
+    )
+
+
+@pytest.mark.parametrize(
+    ("failure_once", "semantic_overrides", "expected_failure"),
+    (
+        ({"SIGNAL": "schema_failure"}, None, "failed_canonical_validation"),
+        (None, {"recommendation": "avoid"}, "failed_cross_field_validation"),
+    ),
+)
+def test_live_exact_usage_survives_later_schema_or_semantic_failure(
+    runner, failure_once, semantic_overrides, expected_failure
+):
+    call = runner.plan.provider_calls[0]
+    options = {}
+    if failure_once:
+        options["failure_once"] = {call.call_id: failure_once["SIGNAL"]}
+    if semantic_overrides:
+        options["semantic_overrides"] = {call.call_id: semantic_overrides}
+    transport = _UsageCompletingTransport(**options)
+
+    outcome = runner.execute_one(
+        call,
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=transport,
+        budget_ledger=empty_pilot_budget_ledger(),
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+
+    assert outcome.accepted is False
+    assert outcome.safe_failure_code == expected_failure
+    assert outcome.billing_state == "exact_actual_cost_committed"
+    assert outcome.budget_ledger.pending_attempts == ()
+    assert outcome.budget_ledger.committed_cost_usd > Decimal("0.00")
+    exact = outcome.record.as_dict()["pilot_envelope"]["estimated_cost"]
+    assert exact is not None
+    assert Decimal(exact["total_usd"]) == outcome.budget_ledger.committed_cost_usd
+
+
+def test_pending_cost_blocks_another_candidate_before_credential_or_transport(runner):
+    first = runner.plan.provider_calls[0]
+    failed = runner.execute_one(
+        first,
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=SyntheticPilotTransport(
+            failure_once={first.call_id: "connection"}
+        ),
+        budget_ledger=empty_pilot_budget_ledger(),
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+    other = next(
+        call for call in runner.plan.provider_calls
+        if call.candidate_id != first.candidate_id
+    )
+    resolver = _resolver()
+    transport = SyntheticPilotTransport()
+
+    with pytest.raises(PilotRunnerError, match="pending_cost_reconciliation"):
+        runner.execute_one(
+            other,
+            gate=_live_gate(runner),
+            credential_resolver=resolver,
+            transport=transport,
+            budget_ledger=failed.budget_ledger,
+            conservative_reservation_usd="0.01",
+            synthetic_today="2026-09-01",
+        )
+
+    assert resolver.resolution_count == 0
+    assert transport.invocation_count == 0
+
+
+def test_authoritative_reconciliation_can_unblock_existing_retry_policy(runner):
+    call = runner.plan.provider_calls[0]
+    first = runner.execute_one(
+        call,
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=SyntheticPilotTransport(
+            failure_once={call.call_id: "connection"}
+        ),
+        budget_ledger=empty_pilot_budget_ledger(),
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+    pending_attempt_id = first.budget_ledger.unresolved_pending_attempt_ids[0]
+    reconciled = reconcile_pending_attempt_cost(
+        first.budget_ledger,
+        reconciliation_id="reconciliation-0001",
+        attempt_id=pending_attempt_id,
+        actual_cost_usd="0.01",
+        authoritative_evidence_type="provider_billing_record",
+        authoritative_evidence_reference="c" * 64,
+        reconciled_at="2026-09-01T20:00:00Z",
+    )
+
+    retry = runner.execute_one(
+        call,
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=_UsageCompletingTransport(),
+        budget_ledger=reconciled,
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+        attempt_number=2,
+        retry_reason=first.retry_reason,
+    )
+
+    assert retry.accepted is True
+    assert retry.billing_state == "exact_actual_cost_committed"
+    assert retry.budget_ledger.unresolved_pending_attempt_ids == ()
+    assert retry.budget_ledger.provider_calls_completed == 2
+    assert retry.budget_ledger.committed_cost_usd > Decimal("0.01")
+
+
+def test_full_live_mock_stops_globally_after_first_pending_cost(runner):
+    first = runner.plan.provider_calls[0]
+    transport = SyntheticPilotTransport(
+        failure_once={first.call_id: "connection"}
+    )
+
+    summary = runner.run_complete_synthetic_pilot(
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=transport,
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+
+    assert summary.status == "blocked_pending_cost_reconciliation"
+    assert summary.completed_logical_runs == 0
+    assert summary.failed_logical_runs == 1
+    assert summary.blocked_logical_runs == 20
+    assert summary.synthetic_physical_attempts == 1
+    assert transport.invocation_count == 1
+    assert summary.budget_ledger.pending_encumbered_cost_usd == Decimal("0.50")
+    assert summary.budget_ledger.provider_calls_completed == 1
+
+
+def test_pending_safe_projection_contains_only_safe_reference_not_diagnostics(runner):
+    call = runner.plan.provider_calls[0]
+    outcome = runner.execute_one(
+        call,
+        gate=_live_gate(runner),
+        credential_resolver=_resolver(),
+        transport=SyntheticPilotTransport(
+            failure_once={call.call_id: "service_unavailable"}
+        ),
+        budget_ledger=empty_pilot_budget_ledger(),
+        conservative_reservation_usd="0.50",
+        synthetic_today="2026-09-01",
+    )
+    exposed = json.dumps(outcome.safe_projection(), sort_keys=True)
+
+    assert outcome.billing_state == "pending_cost_reconciliation"
+    assert len(outcome.pending_cost_reference) == 64
+    assert outcome.pending_cost_reference in exposed
+    assert "provider diagnostic prose" not in exposed
+    assert "raw_response" not in exposed
+    assert CANARY not in exposed
 
 
 def test_text_refusal_and_malformed_output_are_safe_nonaccepted_records(runner):
