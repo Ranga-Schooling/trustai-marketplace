@@ -108,27 +108,44 @@ def run_cli(
             else Path(repository_root) / ".capstone-live-validation"
         )
         if options.command == "dry-run":
-            _emit(validator.dry_run(options.case_id))
+            _emit(
+                validator.dry_run(
+                    options.case_id,
+                    operational_root=state_root,
+                    transport=ConcreteLivePilotTransport(sender_factory()),
+                )
+            )
             return 0
         if options.command == "authorization":
             if not options.confirm_explicit_user_authorization:
                 raise CapstoneLiveValidationError(
                     "explicit_user_authorization_confirmation_required"
                 )
+            case = validator.case(options.case_id)
+            validator.build_request(case.case_id)
+            validator.validate_predecessor_state(state_root)
+            validator.validate_case_availability(case.case_id, state_root)
+            runtime_identity = ConcreteLivePilotTransport(
+                sender_factory()
+            ).validate_runtime()
             _emit(
                 validator.build_authorization_document(
                     case_id=options.case_id,
+                    runtime_identity=runtime_identity,
                     authorized_at_utc=options.authorized_at_utc,
                 )
             )
             return 0
         if options.command == "preflight":
             authorization = load_strict_contract_json(options.authorization)
-            binding = validator.validate_authorization(authorization)
+            binding, runtime_identity, transport_projection = (
+                validator.validate_offline_preflight(
+                    authorization_document=authorization,
+                    operational_root=state_root,
+                    transport=ConcreteLivePilotTransport(sender_factory()),
+                )
+            )
             case = validator.case(binding.case_id)
-            validator.build_request(case.case_id)
-            validator.validate_case_availability(case.case_id, state_root)
-            ConcreteLivePilotTransport(sender_factory()).validate_runtime()
             _emit(
                 {
                     "status": "ready_for_one_explicitly_confirmed_live_call",
@@ -136,10 +153,32 @@ def run_cli(
                     "validation_case_id": binding.case_id,
                     "authorization_hash": binding.semantic_hash,
                     "request_hash": case.request_hash,
+                    "candidate_id": case.candidate_id,
+                    "provider": case.provider,
+                    "model": case.model,
+                    "fixture_id": case.fixture_id,
+                    "workload_stage": case.workload_stage,
+                    "request_configuration_id": case.request_configuration_id,
+                    "request_configuration_hash": (
+                        case.request_configuration_hash
+                    ),
+                    "transport_projection": transport_projection,
+                    "predecessor_validation_case_id": case.predecessor_case_id,
+                    "predecessor_result_record_hash": (
+                        case.predecessor_result_record_hash
+                    ),
+                    "predecessor_unresolved_exposure_usd": (
+                        validator.contract.predecessor_unresolved_exposure_usd
+                    ),
+                    "runtime_identity": runtime_identity,
+                    "runtime_identity_hash": binding.runtime_identity_hash,
                     "maximum_provider_calls": binding.maximum_provider_calls,
                     "retry_count": binding.retry_count,
                     "conservative_reservation_usd": (
                         case.conservative_reservation_usd
+                    ),
+                    "cumulative_worst_case_validation_exposure_usd": (
+                        case.cumulative_exposure_usd
                     ),
                     "validation_spend_remaining_after_reservation_usd": (
                         case.remaining_after_reservation_usd

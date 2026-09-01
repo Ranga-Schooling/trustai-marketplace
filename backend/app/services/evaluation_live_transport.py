@@ -11,6 +11,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import json
 import os
+from pathlib import Path
+import platform
+import re
+import sys
 from time import monotonic
 from typing import Any, Protocol
 
@@ -38,6 +42,7 @@ _API_FAMILY_BY_PROVIDER = {
     "Groq": None,
 }
 _REDACTED_HEADER_NAMES = frozenset({"authorization", "x-goog-api-key"})
+_HTTPX_VERSION = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?(?:[-+].*)?\Z")
 
 
 class LiveTransportError(ValueError):
@@ -126,9 +131,21 @@ class HttpxSender:
 
     __slots__ = ()
 
-    def validate_runtime(self) -> None:
-        """Fail offline when the configured HTTP client is unavailable."""
-        _load_httpx()
+    def validate_runtime(self) -> dict[str, str]:
+        """Return a safe, hashable identity for the dependency-complete runtime."""
+        httpx = _load_httpx()
+        version = getattr(httpx, "__version__", None)
+        match = _HTTPX_VERSION.fullmatch(version) if type(version) is str else None
+        if match is None or (int(match.group(1)), int(match.group(2))) < (0, 27):
+            raise _fail("http_client_unavailable")
+        return {
+            "python_executable": str(Path(sys.executable).absolute()),
+            "python_implementation": platform.python_implementation(),
+            "python_version": platform.python_version(),
+            "http_client_package": "httpx",
+            "http_client_version": version,
+            "http_client_requirement": "httpx>=0.27",
+        }
 
     def send(self, request: HttpRequest) -> HttpResponse:
         if not isinstance(request, HttpRequest):
@@ -239,11 +256,31 @@ class ConcreteLivePilotTransport:
     def invocation_count(self) -> int:
         return self._invocation_count
 
-    def validate_runtime(self) -> None:
+    def validate_runtime(self) -> dict[str, str] | None:
         """Validate local sender dependencies without credentials or I/O."""
         validator = getattr(self._sender, "validate_runtime", None)
         if validator is not None:
-            validator()
+            return validator()
+        return None
+
+    def offline_request_projection(
+        self,
+        request: NativeProviderRequest,
+    ) -> dict[str, Any]:
+        """Prove the inert endpoint/timeout/retry boundary without credentials."""
+        if not isinstance(request, NativeProviderRequest):
+            raise _fail("transport_request")
+        _validate_native_payload(request)
+        endpoint = _ENDPOINT_BY_PROVIDER.get(request.call.provider)
+        if endpoint is None:
+            raise _fail("transport_provider")
+        return {
+            "method": "POST",
+            "url": endpoint,
+            "timeout_seconds": 120,
+            "redirects_allowed": False,
+            "automatic_retry_count": 0,
+        }
 
     def invoke(
         self,

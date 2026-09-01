@@ -77,6 +77,49 @@ class SequenceSender:
         return self.responses.pop(0)
 
 
+def test_httpx_runtime_identity_is_safe_dependency_proof():
+    identity = HttpxSender().validate_runtime()
+
+    assert set(identity) == {
+        "python_executable",
+        "python_implementation",
+        "python_version",
+        "http_client_package",
+        "http_client_version",
+        "http_client_requirement",
+    }
+    assert Path(identity["python_executable"]).is_absolute()
+    assert identity["python_implementation"] == "CPython"
+    assert identity["http_client_package"] == "httpx"
+    assert identity["http_client_requirement"] == "httpx>=0.27"
+    assert identity["http_client_version"]
+    assert "key" not in json.dumps(identity).lower()
+
+
+def test_live_transport_offline_projection_freezes_endpoint_without_credentials(
+    runner,
+):
+    request = runner.build_native_request(
+        _call(
+            runner,
+            provider="OpenAI",
+            stage="text_analysis",
+            candidate="openai_unified_balanced_v1",
+        )
+    )
+    projection = ConcreteLivePilotTransport(
+        RecordingSender()
+    ).offline_request_projection(request)
+
+    assert projection == {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "timeout_seconds": 120,
+        "redirects_allowed": False,
+        "automatic_retry_count": 0,
+    }
+
+
 def test_httpx_sender_measures_elapsed_without_reading_open_response(monkeypatch):
     class FakeResponse:
         status_code = 200

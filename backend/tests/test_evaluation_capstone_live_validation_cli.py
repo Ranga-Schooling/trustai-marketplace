@@ -13,6 +13,10 @@ from app.services.evaluation_capstone_live_validation import (
 from app.services.evaluation_capstone_live_validation_cli import run_cli
 from app.services.evaluation_live_transport import HttpResponse
 from app.services.evaluation_pilot_runner import _synthetic_provider_envelope
+from tests.test_evaluation_capstone_live_validation import (
+    RUNTIME_IDENTITY,
+    _seed_v1_state,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,7 +26,7 @@ HEAD = subprocess.run(
     capture_output=True,
     text=True,
 ).stdout.strip()
-CASE_ID = "capval-openai-terra-pt1-v1"
+CASE_ID = "capval-openai-terra-pt1-v2"
 CANARY = "capstone-cli-canary-bd44a29c"
 
 
@@ -39,6 +43,9 @@ class _Sender:
             {"content-type": "application/json"},
             0.25,
         )
+
+    def validate_runtime(self):
+        return dict(RUNTIME_IDENTITY)
 
 
 def _response_bytes():
@@ -57,8 +64,13 @@ def _response_bytes():
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
-def test_status_and_dry_run_are_offline_and_do_not_read_credentials(capsys):
+def test_status_and_dry_run_are_offline_and_do_not_read_credentials(
+    capsys,
+    tmp_path,
+):
     reads = []
+    state_root = _seed_v1_state(tmp_path / "state")
+    sender = _Sender(b"{}")
 
     assert run_cli(
         [],
@@ -67,18 +79,23 @@ def test_status_and_dry_run_are_offline_and_do_not_read_credentials(capsys):
         require_clean_repository=False,
     ) == 0
     status = json.loads(capsys.readouterr().out)
-    assert status["status"] == "CAPSTONE_LIVE_VALIDATION_READY_AWAITING_USER"
+    assert status["status"] == "CAPSTONE_LIVE_VALIDATION_V2_READY_AWAITING_USER"
 
     assert run_cli(
         ["dry-run", "--repository-head", HEAD, "--case-id", CASE_ID],
         repository_root=ROOT,
+        operational_root=state_root,
         environment_getter=lambda name: reads.append(name),
+        sender_factory=lambda: sender,
         require_clean_repository=False,
     ) == 0
     dry_run = json.loads(capsys.readouterr().out)
     assert dry_run["status"] == "offline_dry_run_passed"
     assert dry_run["provider_calls"] == 0
     assert dry_run["credentials_accessed"] == 0
+    assert dry_run["cumulative_worst_case_validation_exposure_usd"] == (
+        "0.10339400"
+    )
     assert reads == []
 
 
@@ -125,6 +142,7 @@ def test_missing_http_client_blocks_preflight_and_execute_before_state_or_creden
         json.dumps(
             validator.build_authorization_document(
                 case_id=CASE_ID,
+                runtime_identity=RUNTIME_IDENTITY,
                 authorized_at_utc="2026-09-01T21:00:00Z",
             )
         ),
@@ -133,6 +151,32 @@ def test_missing_http_client_blocks_preflight_and_execute_before_state_or_creden
     monkeypatch.setitem(sys.modules, "httpx", None)
     reads = []
     state_root = tmp_path / "state"
+    _seed_v1_state(state_root)
+
+    for arguments in (
+        ["dry-run", "--repository-head", HEAD, "--case-id", CASE_ID],
+        [
+            "authorization",
+            "--repository-head",
+            HEAD,
+            "--case-id",
+            CASE_ID,
+            "--authorized-at-utc",
+            "2026-09-01T21:00:00Z",
+            "--confirm-explicit-user-authorization",
+        ],
+    ):
+        assert run_cli(
+            arguments,
+            repository_root=ROOT,
+            operational_root=state_root,
+            environment_getter=lambda name: reads.append(name) or CANARY,
+            require_clean_repository=False,
+        ) == 2
+        assert json.loads(capsys.readouterr().out) == {
+            "reason": "http_client_unavailable",
+            "status": "blocked",
+        }
 
     assert run_cli(
         [
@@ -172,7 +216,7 @@ def test_missing_http_client_blocks_preflight_and_execute_before_state_or_creden
         "status": "blocked",
     }
     assert reads == []
-    assert state_root.exists() is False
+    assert not (state_root / "capstone-live-validation-v2").exists()
 
 
 def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, tmp_path):
@@ -180,6 +224,7 @@ def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, t
     state_root = tmp_path / "state"
     sender = _Sender(_response_bytes())
     reads = []
+    _seed_v1_state(state_root)
 
     assert run_cli(
         [
@@ -193,6 +238,8 @@ def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, t
             "--confirm-explicit-user-authorization",
         ],
         repository_root=ROOT,
+        operational_root=state_root,
+        sender_factory=lambda: sender,
         require_clean_repository=False,
     ) == 0
     authorization = json.loads(capsys.readouterr().out)
@@ -207,12 +254,27 @@ def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, t
             str(authorization_path),
         ],
         repository_root=ROOT,
+        operational_root=state_root,
+        sender_factory=lambda: sender,
         require_clean_repository=False,
     ) == 0
     preflight = json.loads(capsys.readouterr().out)
     assert preflight["status"] == "ready_for_one_explicitly_confirmed_live_call"
     assert preflight["credentials_accessed"] == 0
     assert preflight["provider_calls"] == 0
+    assert preflight["transport_projection"] == {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "timeout_seconds": 120,
+        "redirects_allowed": False,
+        "automatic_retry_count": 0,
+    }
+    assert preflight["cumulative_worst_case_validation_exposure_usd"] == (
+        "0.10339400"
+    )
+    assert preflight["validation_spend_remaining_after_reservation_usd"] == (
+        "0.89660600"
+    )
 
     assert run_cli(
         [

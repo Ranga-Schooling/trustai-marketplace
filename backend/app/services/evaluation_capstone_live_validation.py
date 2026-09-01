@@ -74,12 +74,16 @@ from app.services.normalization_parser import (
 )
 
 
-CAPSTONE_LIVE_VALIDATION_STATUS = "CAPSTONE_LIVE_VALIDATION_READY_AWAITING_USER"
-_CONTRACT_FILE = "capstone-live-validation.v1.json"
-_CONTRACT_HASH = "389c8e4c693fc9bcff353f9704c104f8ec64ba98de05c3a6d9c0cd7e6eec7564"
+CAPSTONE_LIVE_VALIDATION_STATUS = (
+    "CAPSTONE_LIVE_VALIDATION_V2_READY_AWAITING_USER"
+)
+_CONTRACT_FILE = "capstone-live-validation.v2.json"
+_CONTRACT_HASH = "48831c6dfafcdd00ab7e8a525d448574526ffefbfbf9c6d1bf9c105299af13be"
 _EXECUTION_CLASS = "capstone_live_validation"
-_CASE_ID = "capval-openai-terra-pt1-v1"
-_STATE_DIRECTORY = "capstone-live-validation-v1"
+_CASE_ID = "capval-openai-terra-pt1-v2"
+_PREDECESSOR_CASE_ID = "capval-openai-terra-pt1-v1"
+_PREDECESSOR_STATE_DIRECTORY = "capstone-live-validation-v1"
+_STATE_DIRECTORY = "capstone-live-validation-v2"
 _RESERVATION_FILE = "reservation.json"
 _RESULT_FILE = "result.json"
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -93,6 +97,11 @@ _AUTHORIZATION_KEYS = {
     "repository_head",
     "contract_hash",
     "validation_case_id",
+    "predecessor_validation_case_id",
+    "predecessor_contract_hash",
+    "predecessor_reservation_record_hash",
+    "predecessor_result_record_hash",
+    "predecessor_unresolved_exposure_usd",
     "source_call_id",
     "candidate_id",
     "provider",
@@ -102,11 +111,16 @@ _AUTHORIZATION_KEYS = {
     "request_configuration_id",
     "request_configuration_hash",
     "request_hash",
+    "transport_binding_id",
+    "transport_implementation_sha256",
+    "runtime_identity",
+    "runtime_identity_hash",
     "maximum_provider_calls",
     "retry_count",
     "validation_spend_ceiling_usd",
     "conservative_reservation_usd",
     "validation_spend_committed_before_usd",
+    "cumulative_worst_case_validation_exposure_usd",
     "validation_spend_remaining_after_reservation_usd",
     "credential_readiness",
     "provider_control_confirmation",
@@ -117,6 +131,14 @@ _AUTHORIZATION_KEYS = {
     "winner_selection_authorized",
     "production_deployment_authorized",
     "semantic_hash",
+}
+_RUNTIME_IDENTITY_KEYS = {
+    "python_executable",
+    "python_implementation",
+    "python_version",
+    "http_client_package",
+    "http_client_version",
+    "http_client_requirement",
 }
 
 
@@ -238,14 +260,61 @@ def _require_clean_repository(repository_root: Path) -> None:
         raise _fail("repository_not_clean")
 
 
+def _file_sha256(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise _fail("transport_binding") from exc
+
+
+def _validate_runtime_identity(value: Any) -> dict[str, str]:
+    if (
+        type(value) is not dict
+        or set(value) != _RUNTIME_IDENTITY_KEYS
+        or any(type(item) is not str or not item for item in value.values())
+        or value.get("http_client_package") != "httpx"
+        or value.get("http_client_requirement") != "httpx>=0.27"
+        or not Path(value.get("python_executable", "")).is_absolute()
+    ):
+        raise _fail("runtime_identity")
+    return dict(value)
+
+
+def _runtime_identity(transport: ConcreteLivePilotTransport) -> dict[str, str]:
+    if not isinstance(transport, ConcreteLivePilotTransport):
+        raise _fail("live_transport")
+    return _validate_runtime_identity(transport.validate_runtime())
+
+
+def _load_immutable_state_record(path: Path, expected_hash: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise _fail("predecessor_state_unavailable")
+    if (path.stat().st_mode & 0o777) != 0o600:
+        raise _fail("predecessor_state_permissions")
+    try:
+        record = load_strict_contract_json(path)
+    except (OSError, TypeError, ValueError) as exc:
+        raise _fail("predecessor_state_unavailable") from exc
+    if (
+        type(record) is not dict
+        or record.get("record_hash") != expected_hash
+        or _semantic_hash(record, "record_hash") != expected_hash
+    ):
+        raise _fail("predecessor_state_hash")
+    return record
+
+
 @dataclass(frozen=True, slots=True)
 class CapstoneValidationCase:
     case_id: str
+    predecessor_case_id: str
+    predecessor_result_record_hash: str
     source_call_id: str
     candidate_id: str
     provider: str
     model: str
     api_family: str
+    endpoint: str
     fixture_id: str
     workload_stage: str
     request_configuration_id: str
@@ -258,7 +327,9 @@ class CapstoneValidationCase:
     adapter_id: str
     input_tokens: int
     conservative_reservation_usd: str
+    cumulative_exposure_usd: str
     remaining_after_reservation_usd: str
+    transport_binding_id: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,6 +340,19 @@ class CapstoneValidationContract:
     total_spend_ceiling_usd: str
     maximum_lifetime_provider_calls: int
     cases: tuple[CapstoneValidationCase, ...]
+    predecessor_repository_head: str
+    predecessor_contract_hash: str
+    predecessor_authorization_hash: str
+    predecessor_reservation_record_hash: str
+    predecessor_result_record_hash: str
+    predecessor_request_hash: str
+    predecessor_unresolved_exposure_usd: str
+    transport_binding_id: str
+    transport_implementation_sha256: str
+    transport_requirements_sha256: str
+    transport_reviewed_base_head: str
+    prior_unresolved_exposure_usd: str
+    cumulative_exposure_usd: str
     strict_pilot_authorization_api_allowed: bool
     strict_pilot_ledger_interaction_allowed: bool
     strict_pilot_record_creation_allowed: bool
@@ -281,6 +365,7 @@ class CapstoneValidationAuthorization:
     execution_class: str
     repository_head: str
     case_id: str
+    runtime_identity_hash: str
     maximum_provider_calls: int
     retry_count: int
     strict_pilot_execution_authorized: bool
@@ -309,8 +394,8 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         type(identity) is not dict
         or identity.get("semantic_hash") != _CONTRACT_HASH
         or _artifact_hash(raw) != _CONTRACT_HASH
-        or raw.get("artifact_id") != "capstone_live_validation_v1"
-        or raw.get("artifact_version") != "v1"
+        or raw.get("artifact_id") != "capstone_live_validation_v2"
+        or raw.get("artifact_version") != "v2"
         or raw.get("status") != "ready_awaiting_explicit_user_authorization"
         or raw.get("execution_class") != _EXECUTION_CLASS
         or raw.get("provider_neutral_frozen_primitives_reused") is not True
@@ -319,6 +404,8 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
     separation = raw.get("strict_separation")
     execution = raw.get("execution_policy")
     spend = raw.get("spend_guard")
+    predecessor = raw.get("predecessor_binding")
+    transport_binding = raw.get("transport_binding")
     boundary = raw.get("execution_boundary")
     cases = raw.get("cases")
     if (
@@ -333,6 +420,7 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         or execution.get("explicit_live_confirmation_flag") != "--confirm-live"
         or execution.get("reservation_marker_must_precede_provider_invocation") is not True
         or execution.get("existing_reservation_marker_blocks_execution") is not True
+        or execution.get("predecessor_state_validation_required") is not True
         or type(spend) is not dict
         or spend.get("currency") != "USD"
         or spend.get("arithmetic") != "exact_decimal"
@@ -350,14 +438,135 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         raise _fail("contract_boundary")
     ceiling = spend.get("total_validation_spend_ceiling_usd")
     ceiling_value = _money(ceiling, code="contract_ceiling")
+    prior_exposure = _money(
+        spend.get("prior_v1_unresolved_exposure_usd"),
+        code="predecessor_exposure",
+    )
+    contract_reservation = _money(
+        spend.get("v2_conservative_reservation_usd"),
+        code="case_reservation",
+    )
+    cumulative = _money(
+        spend.get("cumulative_worst_case_validation_exposure_usd"),
+        code="cumulative_exposure",
+    )
+    remaining = _money(
+        spend.get("remaining_after_v2_reservation_usd"),
+        code="case_remaining",
+    )
+    if (
+        spend.get("strict_pilot_budget_is_not_a_source_or_sink") is not True
+        or spend.get("unknown_provider_billing_must_not_be_reconciled_to_zero")
+        is not True
+        or spend.get("predecessor_exposure_release_allowed") is not False
+        or spend.get("conservative_reservations_remain_the_capstone_exposure_bound")
+        is not True
+        or prior_exposure != Decimal("0.05169700")
+        or contract_reservation != Decimal("0.05169700")
+        or cumulative != prior_exposure + contract_reservation
+        or remaining != ceiling_value - cumulative
+        or cumulative > ceiling_value
+    ):
+        raise _fail("spend_guard")
+    if (
+        type(predecessor) is not dict
+        or predecessor.get("validation_case_id") != _PREDECESSOR_CASE_ID
+        or predecessor.get("repository_head")
+        != "b5f191655e071bb98b74568dc02def32a14f5138"
+        or predecessor.get("contract_hash")
+        != "389c8e4c693fc9bcff353f9704c104f8ec64ba98de05c3a6d9c0cd7e6eec7564"
+        or predecessor.get("authorization_hash")
+        != "ed5dd5718b4a60fd208240bf6ea54b9870fa52264bc118b4ba7faf1bc781f051"
+        or predecessor.get("reservation_record_hash")
+        != "a9d604c30f16ecd4525d533955f9701ea15ed78c35cb7fff703c3e3761cd1bab"
+        or predecessor.get("result_record_hash")
+        != "554fdf1685a4b766698d9af255fd7921e3500a7390915957831eab440582d24e"
+        or predecessor.get("request_hash")
+        != "97f8752bb33994a00018a15ff62d79419069397b223cc5f60770def973ebc266"
+        or predecessor.get("result_status") != "stopped"
+        or predecessor.get("safe_failure_classification") != "connection"
+        or predecessor.get("cost_observation_status") != "not_determinable"
+        or predecessor.get("observed_validation_cost_usd") is not None
+        or _money(
+            predecessor.get("unresolved_exposure_usd"),
+            code="predecessor_exposure",
+        )
+        != prior_exposure
+        or predecessor.get("live_state_directory")
+        != ".capstone-live-validation/capstone-live-validation-v1"
+    ):
+        raise _fail("predecessor_binding")
+    transport_path = repository_root / "backend/app/services/evaluation_live_transport.py"
+    requirements_path = repository_root / "backend/requirements.txt"
+    if (
+        type(transport_binding) is not dict
+        or transport_binding.get("binding_id")
+        != "capstone_openai_httpx_transport_after_f420af3_v1"
+        or transport_binding.get("reviewed_base_repository_head")
+        != "f420af3eea0694feb5b0290d1383c2340af43a8f"
+        or transport_binding.get("required_correction_commits")
+        != [
+            "e39967fb3afbbb44f96029b03efbfb19b4f91a12",
+            "f420af3eea0694feb5b0290d1383c2340af43a8f",
+        ]
+        or transport_binding.get("implementation_path")
+        != "backend/app/services/evaluation_live_transport.py"
+        or transport_binding.get("requirements_path") != "backend/requirements.txt"
+        or transport_binding.get("http_client_package") != "httpx"
+        or transport_binding.get("http_client_requirement") != "httpx>=0.27"
+        or transport_binding.get("same_runtime_identity_required") is not True
+        or transport_binding.get("redirects_allowed") is not False
+        or transport_binding.get("automatic_retry_count") != 0
+        or any(
+            transport_binding.get(field) is not True
+            for field in (
+                "dependency_preflight_required_for_dry_run",
+                "dependency_preflight_required_for_authorization",
+                "dependency_preflight_required_for_preflight",
+                "dependency_preflight_required_for_execution",
+            )
+        )
+        or _file_sha256(transport_path)
+        != transport_binding.get("implementation_sha256")
+        or _file_sha256(requirements_path)
+        != transport_binding.get("requirements_sha256")
+    ):
+        raise _fail("transport_binding")
+    _git_output(
+        repository_root,
+        "merge-base",
+        "--is-ancestor",
+        transport_binding["reviewed_base_repository_head"],
+        "HEAD",
+    )
+    for correction_commit in transport_binding["required_correction_commits"]:
+        _git_output(
+            repository_root,
+            "merge-base",
+            "--is-ancestor",
+            correction_commit,
+            "HEAD",
+        )
+    predecessor_contract = load_strict_contract_json(
+        repository_root
+        / "docs/testing/ai-evaluation/capstone-live-validation.v1.json"
+    )
+    if (
+        _artifact_hash(predecessor_contract) != predecessor["contract_hash"]
+        or predecessor_contract.get("artifact_id") != "capstone_live_validation_v1"
+    ):
+        raise _fail("predecessor_contract")
     item = cases[0]
     expected_fields = {
         "validation_case_id",
+        "predecessor_validation_case_id",
+        "predecessor_result_record_hash",
         "source_call_id",
         "candidate_id",
         "provider",
         "model",
         "api_family",
+        "endpoint",
         "fixture_id",
         "workload_stage",
         "request_configuration_id",
@@ -370,7 +579,9 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         "adapter_id",
         "observed_input_tokens",
         "conservative_reservation_usd",
+        "cumulative_worst_case_validation_exposure_usd",
         "remaining_after_reservation_usd",
+        "transport_binding_id",
         "live_eligible",
     }
     if type(item) is not dict or set(item) != expected_fields:
@@ -379,26 +590,38 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         item["conservative_reservation_usd"],
         code="case_reservation",
     )
-    remaining = _money(
+    case_remaining = _money(
         item["remaining_after_reservation_usd"],
         code="case_remaining",
     )
     if (
         item["validation_case_id"] != _CASE_ID
+        or item["predecessor_validation_case_id"] != _PREDECESSOR_CASE_ID
+        or item["predecessor_result_record_hash"]
+        != predecessor["result_record_hash"]
         or item["source_call_id"] != "call-0003"
         or item["candidate_id"] != "openai_unified_balanced_v1"
         or item["provider"] != "OpenAI"
         or item["model"] != "gpt-5.6-terra"
         or item["api_family"] != "Responses API"
+        or item["endpoint"] != "https://api.openai.com/v1/responses"
         or item["fixture_id"] != "PT1"
         or item["workload_stage"] != "text_analysis"
         or item["observed_input_tokens"] != 1018
         or item["live_eligible"] is not True
         or calculate_call_0003_reservation(item["observed_input_tokens"])
         != reservation
+        or reservation != contract_reservation
         or reservation <= 0
         or reservation > ceiling_value
-        or remaining != ceiling_value - reservation
+        or _money(
+            item["cumulative_worst_case_validation_exposure_usd"],
+            code="cumulative_exposure",
+        )
+        != cumulative
+        or case_remaining != remaining
+        or item["transport_binding_id"] != transport_binding["binding_id"]
+        or item["request_hash"] != predecessor["request_hash"]
         or _SHA256.fullmatch(item["request_configuration_hash"]) is None
         or _SHA256.fullmatch(item["request_hash"]) is None
         or _SHA256.fullmatch(item["schema_hash"]) is None
@@ -406,11 +629,14 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         raise _fail("case_contract")
     case = CapstoneValidationCase(
         case_id=item["validation_case_id"],
+        predecessor_case_id=item["predecessor_validation_case_id"],
+        predecessor_result_record_hash=item["predecessor_result_record_hash"],
         source_call_id=item["source_call_id"],
         candidate_id=item["candidate_id"],
         provider=item["provider"],
         model=item["model"],
         api_family=item["api_family"],
+        endpoint=item["endpoint"],
         fixture_id=item["fixture_id"],
         workload_stage=item["workload_stage"],
         request_configuration_id=item["request_configuration_id"],
@@ -423,7 +649,11 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         adapter_id=item["adapter_id"],
         input_tokens=item["observed_input_tokens"],
         conservative_reservation_usd=item["conservative_reservation_usd"],
+        cumulative_exposure_usd=item[
+            "cumulative_worst_case_validation_exposure_usd"
+        ],
         remaining_after_reservation_usd=item["remaining_after_reservation_usd"],
+        transport_binding_id=item["transport_binding_id"],
     )
     return CapstoneValidationContract(
         artifact_id=raw["artifact_id"],
@@ -432,6 +662,31 @@ def _load_contract(repository_root: Path) -> CapstoneValidationContract:
         total_spend_ceiling_usd=ceiling,
         maximum_lifetime_provider_calls=execution["maximum_lifetime_provider_calls"],
         cases=(case,),
+        predecessor_repository_head=predecessor["repository_head"],
+        predecessor_contract_hash=predecessor["contract_hash"],
+        predecessor_authorization_hash=predecessor["authorization_hash"],
+        predecessor_reservation_record_hash=predecessor[
+            "reservation_record_hash"
+        ],
+        predecessor_result_record_hash=predecessor["result_record_hash"],
+        predecessor_request_hash=predecessor["request_hash"],
+        predecessor_unresolved_exposure_usd=predecessor[
+            "unresolved_exposure_usd"
+        ],
+        transport_binding_id=transport_binding["binding_id"],
+        transport_implementation_sha256=transport_binding[
+            "implementation_sha256"
+        ],
+        transport_requirements_sha256=transport_binding["requirements_sha256"],
+        transport_reviewed_base_head=transport_binding[
+            "reviewed_base_repository_head"
+        ],
+        prior_unresolved_exposure_usd=spend[
+            "prior_v1_unresolved_exposure_usd"
+        ],
+        cumulative_exposure_usd=spend[
+            "cumulative_worst_case_validation_exposure_usd"
+        ],
         strict_pilot_authorization_api_allowed=separation[
             "strict_pilot_authorization_api_allowed"
         ],
@@ -526,11 +781,24 @@ class CapstoneLiveValidation:
             raise _fail("frozen_request_identity")
         return request
 
-    def dry_run(self, case_id: str) -> dict[str, Any]:
+    def dry_run(
+        self,
+        case_id: str,
+        *,
+        operational_root: str | Path,
+        transport: ConcreteLivePilotTransport,
+    ) -> dict[str, Any]:
         case = self.case(case_id)
         request = self.build_request(case_id)
+        runtime_identity = _runtime_identity(transport)
+        transport_projection = transport.offline_request_projection(request)
+        if transport_projection["url"] != case.endpoint:
+            raise _fail("transport_endpoint")
+        predecessor = self.validate_predecessor_state(operational_root)
+        self.validate_case_availability(case_id, operational_root)
         pending = self._authorization_values(
             case,
+            runtime_identity=runtime_identity,
             authorized_at_utc="2000-01-01T00:00:00Z",
             status="pending_explicit_human_authorization",
         )
@@ -549,10 +817,26 @@ class CapstoneLiveValidation:
             "request_configuration_hash": case.request_configuration_hash,
             "request_hash": request.payload_hash,
             "request_body_bytes": len(request.payload_json),
+            "transport_projection": transport_projection,
+            "predecessor_validation_case_id": predecessor[
+                "validation_case_id"
+            ],
+            "predecessor_result_record_hash": predecessor[
+                "result_record_hash"
+            ],
+            "predecessor_unresolved_exposure_usd": (
+                self.contract.predecessor_unresolved_exposure_usd
+            ),
+            "transport_binding_id": self.contract.transport_binding_id,
+            "runtime_identity": runtime_identity,
+            "runtime_identity_hash": _hash(runtime_identity),
             "schema_binding": "validated",
             "authorization_shape": "validated_pending_human_authorization",
             "spend_reservation": "validated",
             "conservative_reservation_usd": case.conservative_reservation_usd,
+            "cumulative_worst_case_validation_exposure_usd": (
+                case.cumulative_exposure_usd
+            ),
             "validation_spend_ceiling_usd": self.contract.total_spend_ceiling_usd,
             "validation_spend_remaining_after_reservation_usd": (
                 case.remaining_after_reservation_usd
@@ -565,17 +849,30 @@ class CapstoneLiveValidation:
         self,
         case: CapstoneValidationCase,
         *,
+        runtime_identity: Mapping[str, Any],
         authorized_at_utc: str,
         status: str,
     ) -> dict[str, Any]:
+        runtime = _validate_runtime_identity(runtime_identity)
         return {
-            "authorization_id": f"human-{case.case_id}-authorization-v1",
-            "authorization_version": "v1",
+            "authorization_id": f"human-{case.case_id}-authorization-v2",
+            "authorization_version": "v2",
             "status": status,
             "execution_class": _EXECUTION_CLASS,
             "repository_head": self.repository_head,
             "contract_hash": self.contract.semantic_hash,
             "validation_case_id": case.case_id,
+            "predecessor_validation_case_id": case.predecessor_case_id,
+            "predecessor_contract_hash": self.contract.predecessor_contract_hash,
+            "predecessor_reservation_record_hash": (
+                self.contract.predecessor_reservation_record_hash
+            ),
+            "predecessor_result_record_hash": (
+                self.contract.predecessor_result_record_hash
+            ),
+            "predecessor_unresolved_exposure_usd": (
+                self.contract.predecessor_unresolved_exposure_usd
+            ),
             "source_call_id": case.source_call_id,
             "candidate_id": case.candidate_id,
             "provider": case.provider,
@@ -585,11 +882,22 @@ class CapstoneLiveValidation:
             "request_configuration_id": case.request_configuration_id,
             "request_configuration_hash": case.request_configuration_hash,
             "request_hash": case.request_hash,
+            "transport_binding_id": self.contract.transport_binding_id,
+            "transport_implementation_sha256": (
+                self.contract.transport_implementation_sha256
+            ),
+            "runtime_identity": runtime,
+            "runtime_identity_hash": _hash(runtime),
             "maximum_provider_calls": 1,
             "retry_count": 0,
             "validation_spend_ceiling_usd": self.contract.total_spend_ceiling_usd,
             "conservative_reservation_usd": case.conservative_reservation_usd,
-            "validation_spend_committed_before_usd": "0.00000000",
+            "validation_spend_committed_before_usd": (
+                self.contract.prior_unresolved_exposure_usd
+            ),
+            "cumulative_worst_case_validation_exposure_usd": (
+                case.cumulative_exposure_usd
+            ),
             "validation_spend_remaining_after_reservation_usd": (
                 case.remaining_after_reservation_usd
             ),
@@ -618,12 +926,14 @@ class CapstoneLiveValidation:
         self,
         *,
         case_id: str,
+        runtime_identity: Mapping[str, Any],
         authorized_at_utc: str,
     ) -> dict[str, Any]:
         """Build the exact record only after an external human authorization."""
         _timestamp(authorized_at_utc, code="authorization_timestamp")
         document = self._authorization_values(
             self.case(case_id),
+            runtime_identity=runtime_identity,
             authorized_at_utc=authorized_at_utc,
             status="approved",
         )
@@ -645,8 +955,17 @@ class CapstoneLiveValidation:
         ):
             raise _fail("authorization_hash")
         case = self.case(document.get("validation_case_id"))
+        runtime_identity = _validate_runtime_identity(document.get("runtime_identity"))
+        runtime_identity_hash = document.get("runtime_identity_hash")
+        if (
+            type(runtime_identity_hash) is not str
+            or _SHA256.fullmatch(runtime_identity_hash) is None
+            or _hash(runtime_identity) != runtime_identity_hash
+        ):
+            raise _fail("runtime_identity_hash")
         expected = self._authorization_values(
             case,
+            runtime_identity=runtime_identity,
             authorized_at_utc=_timestamp(
                 document.get("authorized_at_utc"),
                 code="authorization_timestamp",
@@ -661,6 +980,7 @@ class CapstoneLiveValidation:
             execution_class=document["execution_class"],
             repository_head=document["repository_head"],
             case_id=case.case_id,
+            runtime_identity_hash=runtime_identity_hash,
             maximum_provider_calls=document["maximum_provider_calls"],
             retry_count=document["retry_count"],
             strict_pilot_execution_authorized=document[
@@ -676,6 +996,91 @@ class CapstoneLiveValidation:
     def _state_paths(self, operational_root: str | Path) -> tuple[Path, Path, Path]:
         root = Path(operational_root).resolve() / _STATE_DIRECTORY
         return root, root / _RESERVATION_FILE, root / _RESULT_FILE
+
+    def validate_predecessor_state(
+        self,
+        operational_root: str | Path,
+    ) -> dict[str, Any]:
+        root = Path(operational_root).resolve() / _PREDECESSOR_STATE_DIRECTORY
+        reservation = _load_immutable_state_record(
+            root / _RESERVATION_FILE,
+            self.contract.predecessor_reservation_record_hash,
+        )
+        result = _load_immutable_state_record(
+            root / _RESULT_FILE,
+            self.contract.predecessor_result_record_hash,
+        )
+        if (
+            reservation.get("record_type")
+            != "capstone_live_validation_reservation"
+            or reservation.get("record_version") != "v1"
+            or reservation.get("validation_case_id") != _PREDECESSOR_CASE_ID
+            or reservation.get("repository_head")
+            != self.contract.predecessor_repository_head
+            or reservation.get("contract_hash")
+            != self.contract.predecessor_contract_hash
+            or reservation.get("authorization_hash")
+            != self.contract.predecessor_authorization_hash
+            or reservation.get("request_hash")
+            != self.contract.predecessor_request_hash
+            or reservation.get("conservative_reservation_usd")
+            != self.contract.predecessor_unresolved_exposure_usd
+            or result.get("record_type") != "capstone_live_validation_result"
+            or result.get("record_version") != "v1"
+            or result.get("validation_case_id") != _PREDECESSOR_CASE_ID
+            or result.get("repository_head")
+            != self.contract.predecessor_repository_head
+            or result.get("contract_hash")
+            != self.contract.predecessor_contract_hash
+            or result.get("authorization_hash")
+            != self.contract.predecessor_authorization_hash
+            or result.get("request_hash")
+            != self.contract.predecessor_request_hash
+            or result.get("result_status") != "stopped"
+            or result.get("safe_failure_classification") != "connection"
+            or result.get("cost_observation_status") != "not_determinable"
+            or result.get("observed_validation_cost_usd") is not None
+            or result.get("conservative_reservation_usd")
+            != self.contract.predecessor_unresolved_exposure_usd
+            or result.get("physical_provider_attempts") != 1
+            or result.get("retry_count") != 0
+            or result.get("strict_pilot_record") is not False
+            or result.get("scored_record") is not False
+        ):
+            raise _fail("predecessor_state_binding")
+        return {
+            "validation_case_id": _PREDECESSOR_CASE_ID,
+            "reservation_record_hash": reservation["record_hash"],
+            "result_record_hash": result["record_hash"],
+            "unresolved_exposure_usd": (
+                self.contract.predecessor_unresolved_exposure_usd
+            ),
+            "state": "consumed_preserved_unresolved",
+        }
+
+    def validate_offline_preflight(
+        self,
+        *,
+        authorization_document: Mapping[str, Any],
+        operational_root: str | Path,
+        transport: ConcreteLivePilotTransport,
+    ) -> tuple[
+        CapstoneValidationAuthorization,
+        dict[str, str],
+        dict[str, Any],
+    ]:
+        authorization = self.validate_authorization(authorization_document)
+        case = self.case(authorization.case_id)
+        request = self.build_request(case.case_id)
+        self.validate_predecessor_state(operational_root)
+        self.validate_case_availability(case.case_id, operational_root)
+        runtime = _runtime_identity(transport)
+        transport_projection = transport.offline_request_projection(request)
+        if transport_projection["url"] != case.endpoint:
+            raise _fail("transport_endpoint")
+        if _hash(runtime) != authorization.runtime_identity_hash:
+            raise _fail("runtime_identity_mismatch")
+        return authorization, runtime, transport_projection
 
     def validate_case_availability(
         self,
@@ -710,11 +1115,14 @@ class CapstoneLiveValidation:
             raise _fail("credential_resolver")
         if not isinstance(transport, ConcreteLivePilotTransport):
             raise _fail("live_transport")
-        transport.validate_runtime()
+        runtime = _runtime_identity(transport)
+        if _hash(runtime) != authorization.runtime_identity_hash:
+            raise _fail("runtime_identity_mismatch")
         if _repository_head(self.repository_root) != self.repository_head:
             raise _fail("repository_head_mismatch")
         if self._require_clean_repository_on_execute:
             _require_clean_repository(self.repository_root)
+        self.validate_predecessor_state(operational_root)
         self.validate_case_availability(case.case_id, operational_root)
         state_root, reservation_path, result_path = self._state_paths(operational_root)
         if getattr(transport, "invocation_count", None) != 0:
@@ -728,14 +1136,28 @@ class CapstoneLiveValidation:
         started_at = _now(clock)
         reservation = {
             "record_type": "capstone_live_validation_reservation",
-            "record_version": "v1",
+            "record_version": "v2",
             "execution_class": _EXECUTION_CLASS,
             "validation_case_id": case.case_id,
+            "predecessor_validation_case_id": case.predecessor_case_id,
+            "predecessor_reservation_record_hash": (
+                self.contract.predecessor_reservation_record_hash
+            ),
+            "predecessor_result_record_hash": (
+                self.contract.predecessor_result_record_hash
+            ),
+            "predecessor_unresolved_exposure_usd": (
+                self.contract.predecessor_unresolved_exposure_usd
+            ),
             "repository_head": self.repository_head,
             "contract_hash": self.contract.semantic_hash,
             "authorization_hash": authorization.semantic_hash,
+            "runtime_identity_hash": authorization.runtime_identity_hash,
             "request_hash": request.payload_hash,
             "conservative_reservation_usd": case.conservative_reservation_usd,
+            "cumulative_worst_case_validation_exposure_usd": (
+                case.cumulative_exposure_usd
+            ),
             "validation_spend_ceiling_usd": self.contract.total_spend_ceiling_usd,
             "validation_spend_remaining_after_reservation_usd": (
                 case.remaining_after_reservation_usd
@@ -781,14 +1203,25 @@ class CapstoneLiveValidation:
         )
         base: dict[str, Any] = {
             "record_type": "capstone_live_validation_result",
-            "record_version": "v1",
+            "record_version": "v2",
             "execution_class": _EXECUTION_CLASS,
             "validation_id": f"{case.case_id}-attempt-1",
             "validation_case_id": case.case_id,
+            "predecessor_validation_case_id": case.predecessor_case_id,
+            "predecessor_reservation_record_hash": (
+                self.contract.predecessor_reservation_record_hash
+            ),
+            "predecessor_result_record_hash": (
+                self.contract.predecessor_result_record_hash
+            ),
+            "predecessor_unresolved_exposure_usd": (
+                self.contract.predecessor_unresolved_exposure_usd
+            ),
             "source_call_id": case.source_call_id,
             "repository_head": self.repository_head,
             "contract_hash": self.contract.semantic_hash,
             "authorization_hash": authorization.semantic_hash,
+            "runtime_identity_hash": authorization.runtime_identity_hash,
             "candidate_id": case.candidate_id,
             "provider": case.provider,
             "model": case.model,
@@ -800,6 +1233,7 @@ class CapstoneLiveValidation:
             "started_at": started_at,
             "completed_at": completed_at,
             "http_status": response.status_code,
+            "provider_response_received": response.status_code != 0,
             "result_status": "stopped",
             "safe_finish_reason": None,
             "latency_seconds": format(Decimal(str(response.elapsed_seconds)), "f"),
@@ -816,6 +1250,9 @@ class CapstoneLiveValidation:
             "observed_validation_cost_usd": None,
             "cost_observation_status": "not_determinable",
             "conservative_reservation_usd": case.conservative_reservation_usd,
+            "cumulative_worst_case_validation_exposure_usd": (
+                case.cumulative_exposure_usd
+            ),
             "validation_spend_ceiling_usd": self.contract.total_spend_ceiling_usd,
             "validation_spend_remaining_usd": case.remaining_after_reservation_usd,
             "physical_provider_attempts": 1,
@@ -928,7 +1365,16 @@ class CapstoneLiveValidation:
         case = self.case(result.get("validation_case_id"))
         if (
             result.get("record_type") != "capstone_live_validation_result"
+            or result.get("record_version") != "v2"
             or result.get("execution_class") != _EXECUTION_CLASS
+            or result.get("predecessor_validation_case_id")
+            != case.predecessor_case_id
+            or result.get("predecessor_reservation_record_hash")
+            != self.contract.predecessor_reservation_record_hash
+            or result.get("predecessor_result_record_hash")
+            != self.contract.predecessor_result_record_hash
+            or result.get("predecessor_unresolved_exposure_usd")
+            != self.contract.predecessor_unresolved_exposure_usd
             or result.get("repository_head") != self.repository_head
             or result.get("contract_hash") != self.contract.semantic_hash
             or result.get("source_call_id") != case.source_call_id
@@ -944,6 +1390,8 @@ class CapstoneLiveValidation:
             or result.get("request_hash") != case.request_hash
             or result.get("conservative_reservation_usd")
             != case.conservative_reservation_usd
+            or result.get("cumulative_worst_case_validation_exposure_usd")
+            != case.cumulative_exposure_usd
             or result.get("validation_spend_ceiling_usd")
             != self.contract.total_spend_ceiling_usd
             or result.get("validation_spend_remaining_usd")
@@ -954,6 +1402,11 @@ class CapstoneLiveValidation:
             or result.get("scored_record") is not False
             or result.get("winner_selection") is not False
             or result.get("production_deployment") is not False
+            or type(result.get("provider_response_received")) is not bool
+            or result.get("provider_response_received")
+            is not (result.get("http_status") != 0)
+            or type(result.get("runtime_identity_hash")) is not str
+            or _SHA256.fullmatch(result["runtime_identity_hash"]) is None
         ):
             raise _fail("result_binding")
         return {
@@ -962,8 +1415,15 @@ class CapstoneLiveValidation:
             "provider": result["provider"],
             "model": result["model"],
             "fixture_id": result["fixture_id"],
+            "predecessor_validation_case_id": result[
+                "predecessor_validation_case_id"
+            ],
+            "predecessor_result_record_hash": result[
+                "predecessor_result_record_hash"
+            ],
             "result_status": result["result_status"],
             "safe_finish_reason": result["safe_finish_reason"],
+            "provider_response_received": result["provider_response_received"],
             "latency_seconds": result["latency_seconds"],
             "provider_usage": result["provider_usage"],
             "estimated_validation_cost": result["estimated_validation_cost"],
@@ -972,6 +1432,9 @@ class CapstoneLiveValidation:
             ],
             "validation_spend_remaining_usd": result[
                 "validation_spend_remaining_usd"
+            ],
+            "cumulative_worst_case_validation_exposure_usd": result[
+                "cumulative_worst_case_validation_exposure_usd"
             ],
             "parser_result": result["parser_result"],
             "schema_result": result["schema_result"],
