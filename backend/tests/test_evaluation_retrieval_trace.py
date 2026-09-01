@@ -14,6 +14,7 @@ from app.services.evaluation_contract_identity import load_strict_normalization_
 from app.services.evaluation_retrieval_trace import (
     RetrievalCanonicalValidationError,
     RetrievalEvidenceObservation,
+    RetrievalAllocationPlan,
     PublicSafeDeduplicationKey,
     TRACE_POSITION_FIELDS,
     RetrievalSourceObservation,
@@ -531,6 +532,14 @@ def test_public_safe_key_cannot_be_constructed_through_the_normal_api():
         match="failed_url_security_validation",
     ):
         PublicSafeDeduplicationKey("https://catalog.public.example/product/widget")
+
+
+def test_allocation_plan_cannot_bypass_the_validating_allocator():
+    with pytest.raises(
+        RetrievalTraceValidationError,
+        match="failed_trace_validation",
+    ):
+        RetrievalAllocationPlan((), ())
 
 
 def test_validated_deduplication_key_is_immutable_and_hash_stable():

@@ -52,6 +52,12 @@ from app.services.evaluation_retry_policy import (
     RetryPolicyError,
     validate_retry_linkage,
 )
+from app.services.evaluation_search_tool_record import (
+    RestrictedSearchToolProjection,
+    SearchToolRecordError,
+    SearchToolProjections,
+    verify_safe_search_tool_record_contract,
+)
 from app.services.url_security import validate_url_security
 
 
@@ -88,6 +94,13 @@ _PROMPT_CONTRACT = (
 )
 _SCHEMA_CONTRACT = (
     _ROOT / "docs" / "testing" / "ai-evaluation" / "output-schemas.v1.json"
+)
+_SAFE_SEARCH_TOOL_CONTRACT = (
+    _ROOT
+    / "docs"
+    / "testing"
+    / "ai-evaluation"
+    / "safe-search-tool-record.v1.json"
 )
 _LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _GIT_SHA = re.compile(r"[0-9a-f]{40}\Z")
@@ -486,6 +499,10 @@ class PilotAttemptRecord:
     key: PilotAttemptKey
     ordinary_json: bytes = field(repr=False)
     restricted_provider_data: RestrictedProviderDataProjection = field(repr=False)
+    restricted_search_tool_data: RestrictedSearchToolProjection | None = field(
+        default=None,
+        repr=False,
+    )
     _token: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -596,7 +613,8 @@ def verify_result_record_contract(
         parser = load_strict_normalization_spec(_NORMALIZATION_CONTRACT)
         rubric = load_strict_contract_json(_RUBRIC_CONTRACT)
         parser_identity = verify_normalization_parser_artifact(parser)
-    except ContractIdentityError as exc:
+        verify_safe_search_tool_record_contract(_SAFE_SEARCH_TOOL_CONTRACT)
+    except (ContractIdentityError, SearchToolRecordError) as exc:
         raise _fail("result_record_contract_source") from exc
 
     if set(artifact) != _RESULT_RECORD_ARTIFACT_KEYS or (
@@ -624,6 +642,10 @@ def verify_result_record_contract(
         raise _fail("rubric_field_partition")
     if tuple(artifact["attempt_key"]["fields_in_order"]) != _ATTEMPT_KEY_FIELDS:
         raise _fail("attempt_key_inventory")
+    if artifact.get("source_contracts", {}).get("safe_search_tool_record") != (
+        "safe-search-tool-record.v1.json"
+    ):
+        raise _fail("safe_search_tool_contract_source")
     if artifact["execution_boundary"] != {
         "execution_state": "blocked_pre_execution",
         "provider_calls_allowed": False,
@@ -1046,6 +1068,7 @@ def _validate_pilot_envelope(
     state: AttemptState,
     foundation: PrivacySafeAttemptRecordFoundation,
     contract: ResultRecordContract,
+    search_tool_data: SearchToolProjections | None,
 ) -> None:
     if (
         type(envelope) is not dict
@@ -1159,12 +1182,8 @@ def _validate_pilot_envelope(
             raise _fail("retry_count_linkage")
         if envelope["retry_reason"] not in SAFE_RETRY_REASONS:
             raise _fail("retry_reason")
-    for pending_field in (
-        "rate_limit_and_service_metadata_if_exposed",
-        "search_and_tool_calls",
-    ):
-        if envelope[pending_field] is not None:
-            raise _fail(f"{pending_field}_contract_pending")
+    if envelope["rate_limit_and_service_metadata_if_exposed"] is not None:
+        raise _fail("rate_limit_and_service_metadata_if_exposed_contract_pending")
     if envelope["estimated_cost"] is not None:
         try:
             cost = verify_estimated_cost_record(envelope["estimated_cost"])
@@ -1173,8 +1192,11 @@ def _validate_pilot_envelope(
         if cost.provider != key.provider or cost.model != key.model:
             raise _fail("estimated_cost_attempt_binding")
     if key.workload != "grounded_product_price_research":
+        if search_tool_data is not None:
+            raise _fail("search_tool_data_not_applicable")
         for field_name in (
             "search_query_list",
+            "search_and_tool_calls",
             "source_urls",
             "source_retrieval_timestamps",
             "claim_to_source_mapping",
@@ -1182,14 +1204,34 @@ def _validate_pilot_envelope(
             if envelope[field_name] not in (None, []):
                 raise _fail(f"{field_name}_not_applicable")
     else:
-        for field_name in (
-            "search_query_list",
-            "source_urls",
-            "source_retrieval_timestamps",
-            "claim_to_source_mapping",
-        ):
-            if envelope[field_name] is not None:
-                raise _fail(f"{field_name}_safe_record_pending")
+        if not isinstance(search_tool_data, SearchToolProjections):
+            raise _fail("safe_search_tool_data_required")
+        ordinary_search = search_tool_data.ordinary.as_dict()
+        expected_aliases = {
+            "search_and_tool_calls": ordinary_search,
+            "search_query_list": [
+                operation["query_id"]
+                for operation in ordinary_search["operations"]
+                if operation["query_id"] is not None
+            ],
+            "source_urls": [
+                source["public_safe_canonical_url"]
+                for source in ordinary_search["sources"]
+            ],
+            "source_retrieval_timestamps": [
+                {
+                    "source_id": source["source_id"],
+                    "retrieved_at": source["retrieved_at"],
+                }
+                for source in ordinary_search["sources"]
+            ],
+            "claim_to_source_mapping": ordinary_search[
+                "claim_evidence_source_links"
+            ],
+        }
+        for field_name, expected in expected_aliases.items():
+            if envelope[field_name] != expected:
+                raise _fail(f"safe_search_tool_alias:{field_name}")
     if key.workload == "visual_inspection":
         if type(envelope["visual_asset_hashes"]) is not list:
             raise _fail("visual_asset_hashes")
@@ -1211,6 +1253,7 @@ def build_pilot_attempt_record(
     normalization_audit: dict[str, Any],
     pilot_envelope: dict[str, Any],
     provider_attempt_started: bool,
+    search_tool_data: SearchToolProjections | None = None,
     contract_path: str | Path = _DEFAULT_CONTRACT,
 ) -> PilotAttemptRecord:
     """Build one immutable pilot attempt without granting execution authority."""
@@ -1231,6 +1274,7 @@ def build_pilot_attempt_record(
         attempt_state,
         foundation,
         contract,
+        search_tool_data,
     )
     record = {
         "record_type": "pilot_physical_attempt_v1",
@@ -1249,5 +1293,8 @@ def build_pilot_attempt_record(
         key=attempt_key,
         ordinary_json=_canonical_bytes(record),
         restricted_provider_data=foundation.restricted_provider_data,
+        restricted_search_tool_data=(
+            search_tool_data.restricted if search_tool_data is not None else None
+        ),
         _token=_PILOT_RECORD_TOKEN,
     )

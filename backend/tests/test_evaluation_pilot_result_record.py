@@ -26,6 +26,7 @@ from app.services.evaluation_data_handling import (
     POLICY_HASH as DATA_POLICY_HASH,
     POLICY_ID as DATA_POLICY_ID,
     POLICY_VERSION as DATA_POLICY_VERSION,
+    derive_restricted_trace_reference,
     project_provider_data,
 )
 from app.services.evaluation_pricing import (
@@ -39,6 +40,15 @@ from app.services.evaluation_result_record import (
     ResultRecordFoundationError,
     build_pilot_attempt_record,
     verify_result_record_contract,
+)
+from app.services.evaluation_retrieval_trace import (
+    RetrievalSourceObservation,
+    allocate_retrieval_observations,
+    validate_trace_position_inventory,
+)
+from app.services.evaluation_search_tool_record import (
+    RawSearchToolOperation,
+    build_search_tool_projections,
 )
 
 
@@ -58,7 +68,7 @@ RAW_HASH = hashlib.sha256(RAW).hexdigest()
 FINAL_HASH = "b" * 64
 
 
-def _state():
+def _state(*, workload_branch="text_final"):
     events = [
         StageEvent(
             event_ordinal=index,
@@ -80,7 +90,7 @@ def _state():
         )
     )
     return derive_attempt_state(
-        workload_branch="text_final",
+        workload_branch=workload_branch,
         normalized_presemantic_state="ordinary_semantic_path",
         ledger=AttemptStageEventLedger(tuple(events)),
         normalization_actions=(),
@@ -266,10 +276,22 @@ def _audit(state=None):
                 if HIGHEST_COMPLETED_STAGES.index(state.highest_completed_stage) >= 4
                 else None
             ),
-            "provider_trace_hash_if_applicable": None,
-            "retrieval_trace_hash_if_applicable": None,
-            "canonical_evidence_bundle_hash_if_applicable": None,
-            "final_semantic_payload_hash_if_applicable": state.accepted_artifact_hash,
+            "provider_trace_hash_if_applicable": (
+                "1" * 64 if state.workload_branch == "search_retrieval" else None
+            ),
+            "retrieval_trace_hash_if_applicable": (
+                "2" * 64 if state.workload_branch == "search_retrieval" else None
+            ),
+            "canonical_evidence_bundle_hash_if_applicable": (
+                state.accepted_artifact_hash
+                if state.workload_branch == "search_retrieval"
+                else None
+            ),
+            "final_semantic_payload_hash_if_applicable": (
+                None
+                if state.workload_branch == "search_retrieval"
+                else state.accepted_artifact_hash
+            ),
         }
     )
     binding_fields = (
@@ -306,7 +328,20 @@ def _audit(state=None):
         **dict(prompt_identity.child_hashes),
         **dict(schema_identity.child_hashes),
     }
-    for binding_id in ("text_system_v1", "text_input_v1", "text_output_schema_v1"):
+    binding_ids = {
+        "text_final": ("text_system_v1", "text_input_v1", "text_output_schema_v1"),
+        "search_retrieval": (
+            "search_retrieval_v1",
+            "retrieval_evidence_bundle_v1",
+        ),
+        "search_synthesis_final": ("search_synthesis_v1", "search_output_schema_v1"),
+        "visual_final": (
+            "visual_system_v1",
+            "visual_context_v1",
+            "visual_output_schema_v1",
+        ),
+    }[state.workload_branch]
+    for binding_id in binding_ids:
         values["applied_policy_bindings"].append(
             {
                 "policy_id": binding_id,
@@ -322,15 +357,17 @@ def _key(
     attempt_number: int = 1,
     provider: str = "synthetic-provider",
     model: str = "synthetic-model",
+    fixture_id: str = "PT1",
+    workload: str = "text_risk_analysis",
 ):
     return PilotAttemptKey(
         evaluation_id="capstone-evaluation-v1",
-        fixture_id="PT1",
+        fixture_id=fixture_id,
         candidate_id="synthetic-candidate-v1",
         provider=provider,
         model=model,
         component_topology="unified",
-        workload="text_risk_analysis",
+        workload=workload,
         run_number=1,
         attempt_number=attempt_number,
     )
@@ -342,6 +379,9 @@ def _envelope(
     attempt_number: int = 1,
     provider: str = "synthetic-provider",
     model: str = "synthetic-model",
+    fixture_id: str = "PT1",
+    workload: str = "text_risk_analysis",
+    search_tool_data=None,
 ):
     state = state or _state()
     audit = _audit(state)
@@ -361,7 +401,7 @@ def _envelope(
             "repository_harness_commit_sha": "b230881287a48fe83e722bd7b1c2c841de08f372",
             "harness_version": "v1",
             "fixture_manifest_version": "v1",
-            "fixture_id": "PT1",
+            "fixture_id": fixture_id,
             "fixture_version": "v1",
             "rubric_version": "v1",
             "scoring_rule_version": "v1",
@@ -374,7 +414,7 @@ def _envelope(
             "api_endpoint": "synthetic-endpoint-v1",
             "api_version": "v1",
             "component_topology": "unified",
-            "workload": "text_risk_analysis",
+            "workload": workload,
             "prompt_template_version": "v1",
             "prompt_hash": "8" * 64,
             "output_schema_version": "v1",
@@ -420,7 +460,66 @@ def _envelope(
             "notes_and_anomalies": [],
         }
     )
+    if search_tool_data is not None:
+        safe = search_tool_data.ordinary.as_dict()
+        values.update(
+            {
+                "search_query_list": [
+                    item["query_id"]
+                    for item in safe["operations"]
+                    if item["query_id"] is not None
+                ],
+                "search_and_tool_calls": safe,
+                "source_urls": [
+                    item["public_safe_canonical_url"] for item in safe["sources"]
+                ],
+                "source_retrieval_timestamps": [
+                    {
+                        "source_id": item["source_id"],
+                        "retrieved_at": item["retrieved_at"],
+                    }
+                    for item in safe["sources"]
+                ],
+                "claim_to_source_mapping": safe["claim_evidence_source_links"],
+            }
+        )
     return values
+
+
+def _search_tool_data():
+    inventory = validate_trace_position_inventory(
+        retrieval_attempt_ordinals=[1],
+        tool_call_ordinals_by_attempt={1: [1]},
+        result_ordinals_by_tool_call={(1, 1): [1]},
+        evidence_ordinals_by_result={(1, 1, 1): []},
+    )
+    plan = allocate_retrieval_observations(
+        inventory,
+        (
+            RetrievalSourceObservation(1, 1, 1, False, None, None, None),
+        ),
+        (),
+    )
+    operation = RawSearchToolOperation(
+        retrieval_attempt_ordinal=1,
+        tool_call_ordinal=1,
+        operation_type="search",
+        raw_search_query="synthetic pilot product query",
+        raw_tool_arguments={"query": "synthetic pilot product query"},
+        outcome="completed",
+        safe_failure_code=None,
+        started_at="2026-08-31T20:00:00.000Z",
+        completed_at="2026-08-31T20:00:00.250Z",
+        latency_ms=250,
+        restricted_trace_reference=derive_restricted_trace_reference(b"q" * 16),
+        restricted_url_traces=(),
+    )
+    return build_search_tool_projections(
+        operations=(operation,),
+        trace_inventory=inventory,
+        allocation_plan=plan,
+        claim_evidence_links=(),
+    )
 
 
 def _record(*, attempt_number: int = 1):
@@ -496,6 +595,102 @@ def test_complete_pilot_attempt_is_immutable_hashed_and_privacy_safe():
     assert record.as_dict()["attempt_key"]["fixture_id"] == "PT1"
     with pytest.raises(FrozenInstanceError):
         record.ordinary_json = b"mutated"
+
+
+def test_grounded_search_attempt_binds_exact_safe_projection_and_restricted_inputs():
+    state = _state(workload_branch="search_retrieval")
+    search_tool_data = _search_tool_data()
+    key = _key(
+        fixture_id="PS1",
+        workload="grounded_product_price_research",
+    )
+    envelope = _envelope(
+        state,
+        fixture_id="PS1",
+        workload="grounded_product_price_research",
+        search_tool_data=search_tool_data,
+    )
+
+    record = build_pilot_attempt_record(
+        attempt_key=key,
+        attempt_state=state,
+        provider_data=_provider_data(),
+        normalization_audit=_audit(state),
+        pilot_envelope=envelope,
+        provider_attempt_started=True,
+        search_tool_data=search_tool_data,
+    )
+    exposed = record.as_dict()["pilot_envelope"]
+    serialized = json.dumps(record.as_dict(), sort_keys=True)
+
+    assert exposed["search_query_list"] == ["qry-0001-0001"]
+    assert exposed["search_and_tool_calls"] == search_tool_data.ordinary.as_dict()
+    assert exposed["source_urls"] == []
+    assert exposed["source_retrieval_timestamps"] == []
+    assert exposed["claim_to_source_mapping"] == []
+    assert "synthetic pilot product query" not in serialized
+    assert record.restricted_search_tool_data is not None
+    assert record.restricted_search_tool_data.as_dict()["operations"][0][
+        "raw_search_query"
+    ] == "synthetic pilot product query"
+    assert "synthetic pilot product query" not in repr(record)
+
+
+def test_grounded_search_attempt_rejects_missing_or_tampered_safe_projection():
+    state = _state(workload_branch="search_retrieval")
+    search_tool_data = _search_tool_data()
+    key = _key(
+        fixture_id="PS1",
+        workload="grounded_product_price_research",
+    )
+    envelope = _envelope(
+        state,
+        fixture_id="PS1",
+        workload="grounded_product_price_research",
+        search_tool_data=search_tool_data,
+    )
+
+    with pytest.raises(ResultRecordFoundationError, match="safe_search_tool_data"):
+        build_pilot_attempt_record(
+            attempt_key=key,
+            attempt_state=state,
+            provider_data=_provider_data(),
+            normalization_audit=_audit(state),
+            pilot_envelope=envelope,
+            provider_attempt_started=True,
+        )
+
+    tampered = deepcopy(envelope)
+    tampered["search_query_list"] = ["literal query must not be accepted"]
+    with pytest.raises(
+        ResultRecordFoundationError,
+        match="safe_search_tool_alias:search_query_list",
+    ):
+        build_pilot_attempt_record(
+            attempt_key=key,
+            attempt_state=state,
+            provider_data=_provider_data(),
+            normalization_audit=_audit(state),
+            pilot_envelope=tampered,
+            provider_attempt_started=True,
+            search_tool_data=search_tool_data,
+        )
+
+
+def test_non_search_attempt_rejects_search_tool_projection():
+    with pytest.raises(
+        ResultRecordFoundationError,
+        match="search_tool_data_not_applicable",
+    ):
+        build_pilot_attempt_record(
+            attempt_key=_key(),
+            attempt_state=_state(),
+            provider_data=_provider_data(),
+            normalization_audit=_audit(),
+            pilot_envelope=_envelope(),
+            provider_attempt_started=True,
+            search_tool_data=_search_tool_data(),
+        )
 
 
 def test_preflight_failure_never_creates_a_fake_attempt_or_increments_bundle():

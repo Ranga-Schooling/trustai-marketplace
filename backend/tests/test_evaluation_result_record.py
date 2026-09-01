@@ -211,7 +211,7 @@ def test_accepted_attempt_builds_only_the_already_owned_ordinary_foundation():
             "policy_id": "provider_data_handling_review_v1",
             "policy_version": "v1",
             "policy_hash": (
-                "9f58a7d84698f0d77ea1af58eee72c3b512e1204a760409eb08520cda7529d52"
+                "e3c909e117177208eac123986318d5ba448479ef4d68d226c00d656b7e3e47a5"
             ),
         },
     }

@@ -83,7 +83,8 @@
       "a frozen downstream contract that explicitly permits canonical public representation"
     ],
     "frozen_downstream_public_representation_contracts": [
-      "retrieval_evidence_bundle_v1"
+      "retrieval_evidence_bundle_v1",
+      "safe_search_tool_record_v1"
     ],
     "sensitive_or_indeterminate_url_forbidden_surfaces": [
       "ordinary results",
@@ -209,7 +210,7 @@
       "provider_request_id": "excluded until an exact provider-specific non-secret verifier is frozen",
       "rate_limit_and_service_metadata_if_exposed": "excluded because the existing composite field is not a closed non-secret structure",
       "estimated_cost": "excluded until pricing and cost-record contracts are frozen",
-      "search_and_tool_calls": "excluded from this safe transport projection until exact tool outcome metadata is frozen"
+      "search_and_tool_calls": "owned by safe_search_tool_record_v1 as a separate exact ordinary/restricted projection; never accepted as arbitrary safe transport metadata"
     }
   },
   "explicitly_forbidden_ordinary_metadata": [
@@ -305,7 +306,9 @@
       "raw provider responses",
       "restricted exact URL traces",
       "restricted transport metadata",
-      "restricted linkage material"
+      "restricted linkage material",
+      "raw search queries",
+      "raw tool arguments"
     ],
     "delete_as_one_lifecycle_group": true,
     "partial_deletion_allowed": false,
@@ -369,6 +372,12 @@
       "public_safe_classification_required_for_public_representation": true,
       "sensitive_or_indeterminate_exact_url_remains_restricted": true
     },
+    "safe_search_tool_record_v1": {
+      "status": "compatible",
+      "raw_search_query_and_tool_arguments_remain_restricted_local_only": true,
+      "public_safe_url_capability_required_for_ordinary_disclosure": true,
+      "restricted_lifecycle_and_region_binding_preserved": true
+    },
     "rubric_v1": {
       "status": "compatible",
       "safe_field_names_derived_from_result_record_fields": true,
@@ -419,7 +428,7 @@
     },
     "derived_hash_cache": {
       "authoritative": false,
-      "policy_semantic_hash": "9f58a7d84698f0d77ea1af58eee72c3b512e1204a760409eb08520cda7529d52"
+      "policy_semantic_hash": "e3c909e117177208eac123986318d5ba448479ef4d68d226c00d656b7e3e47a5"
     }
   },
   "final_invariants": [

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -166,9 +166,10 @@ _TRACE_INVENTORY_TOKEN = object()
 class ValidatedTracePositionInventory:
     """Exact complete atomic-result/evidence positions for one mapped trace."""
 
+    tool_positions: frozenset[tuple[int, int]]
     source_positions: frozenset[tuple[int, int, int]]
     evidence_positions: frozenset[tuple[int, int, int, int]]
-    _token: object | None = None
+    _token: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if self._token is not _TRACE_INVENTORY_TOKEN:
@@ -205,6 +206,14 @@ class RetrievalAllocationPlan:
 
     sources: tuple[AllocatedCanonicalSource, ...]
     evidence: tuple[AllocatedCanonicalEvidence, ...]
+    _token: object | None = None
+
+    def __post_init__(self) -> None:
+        if self._token is not _ALLOCATION_PLAN_TOKEN:
+            raise _trace_failure()
+
+
+_ALLOCATION_PLAN_TOKEN = object()
 
 
 def _trace_failure() -> RetrievalTraceValidationError:
@@ -616,6 +625,7 @@ def validate_trace_position_inventory(
             for evidence_ordinal in evidence_ordinals
         )
     return ValidatedTracePositionInventory(
+        tool_positions=frozenset(tool_positions),
         source_positions=frozenset(source_positions),
         evidence_positions=frozenset(evidence_positions),
         _token=_TRACE_INVENTORY_TOKEN,
@@ -794,4 +804,5 @@ def allocate_retrieval_observations(
     return RetrievalAllocationPlan(
         sources=tuple(allocated_sources),
         evidence=tuple(allocated_evidence),
+        _token=_ALLOCATION_PLAN_TOKEN,
     )

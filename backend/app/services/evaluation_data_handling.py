@@ -25,7 +25,7 @@ from app.services.url_security import validate_url_security
 
 POLICY_ID = "provider_data_handling_review_v1"
 POLICY_VERSION = "v1"
-POLICY_HASH = "9f58a7d84698f0d77ea1af58eee72c3b512e1204a760409eb08520cda7529d52"
+POLICY_HASH = "e3c909e117177208eac123986318d5ba448479ef4d68d226c00d656b7e3e47a5"
 
 _LOWER_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 _SAFE_IDENTIFIER = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+\-]{0,127}\Z")
@@ -67,7 +67,9 @@ _LATENCY_FIELDS = frozenset(
         "visual_latency_ms",
     }
 )
-_PUBLIC_URL_DOWNSTREAM_CONTRACTS = frozenset({"retrieval_evidence_bundle_v1"})
+_PUBLIC_URL_DOWNSTREAM_CONTRACTS = frozenset(
+    {"retrieval_evidence_bundle_v1", "safe_search_tool_record_v1"}
+)
 _STATUS_KINDS = frozenset({"http_status", "terminal_outcome"})
 _URL_CLASSIFIER_INPUT_KEYS = frozenset(
     {
@@ -115,6 +117,8 @@ _LIFECYCLE_MEMBERS = frozenset(
         "exact_url_traces",
         "restricted_transport_metadata",
         "restricted_linkage_material",
+        "raw_search_queries",
+        "raw_tool_arguments",
     }
 )
 _DATA_HANDLING_ARTIFACT_REQUIRED_KEYS = frozenset(

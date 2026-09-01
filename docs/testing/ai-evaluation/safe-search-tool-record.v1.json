@@ -1,0 +1,281 @@
+{
+  "artifact_id": "safe_search_tool_record_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Pilot-minimal provider-neutral observation contract for retrieval operations. It preserves deterministic operation and provenance linkage in ordinary records while retaining raw search queries, raw tool arguments, and exact URL traces only as restricted local evaluation evidence. It is not production telemetry and does not define provider adapters, scoring, or execution authorization.",
+  "provider_neutral": true,
+  "authority": {
+    "governance_decision": "approved",
+    "raw_search_query": "restricted_evaluation_evidence_local_only",
+    "raw_tool_arguments": "restricted_evaluation_evidence_local_only",
+    "ordinary_projection": "safe_application_owned_identifiers_order_counts_outcomes_timing_public_safe_urls_and_provenance_only",
+    "not_authoritative_for": [
+      "provider adapter mappings",
+      "provider request configuration",
+      "provider-native metadata",
+      "search quality grading",
+      "pricing schedules",
+      "execution authorization"
+    ]
+  },
+  "source_contracts": {
+    "result_record": "result-record.v1.json#/pilot_envelope_fields",
+    "privacy": "provider-data-handling-review.v1.json",
+    "trace_order_and_provenance": "normalization-parser.v1.json#/retrieval_trace_ordering_policy",
+    "source_identity": "normalization-parser.v1.json#/source_id_policy",
+    "evidence_identity": "normalization-parser.v1.json#/evidence_id_policy",
+    "retrieval_time": "normalization-parser.v1.json#/retrieved_at_policy",
+    "url_security": "url-security-policy.v1.json",
+    "resource_limits": "normalization-parser.v1.json#/resource_limit_policy",
+    "terminal_failures": "normalization-parser.v1.json terminal_outcomes",
+    "retention_and_region": "provider-data-handling-review.v1.json#/retention_policy and #/regional_binding",
+    "execution_authority": "experiment.v1.json#/execution_gate"
+  },
+  "ordinary_projection": {
+    "exact_fields": [
+      "contract",
+      "operations",
+      "sources",
+      "evidence",
+      "claim_evidence_source_links"
+    ],
+    "operation_exact_fields": [
+      "operation_id",
+      "phase_id",
+      "retrieval_attempt_ordinal",
+      "tool_call_ordinal",
+      "operation_type",
+      "query_id",
+      "outcome",
+      "safe_failure_code",
+      "result_count",
+      "source_count",
+      "evidence_count",
+      "started_at",
+      "completed_at",
+      "latency_ms",
+      "restricted_trace_reference",
+      "url_security_results"
+    ],
+    "source_exact_fields": [
+      "source_id",
+      "public_safe_canonical_url",
+      "retrieved_at",
+      "retrieval_observations",
+      "restricted_trace_reference",
+      "url_security_policy_id",
+      "url_security_policy_version",
+      "url_security_policy_hash"
+    ],
+    "evidence_exact_fields": [
+      "evidence_id",
+      "source_id",
+      "retrieval_observation"
+    ],
+    "source_observation_exact_fields": [
+      "retrieval_attempt_ordinal",
+      "tool_call_ordinal",
+      "result_ordinal"
+    ],
+    "claim_link_exact_fields": [
+      "claim_id",
+      "evidence_id",
+      "source_id",
+      "retrieval_observation"
+    ],
+    "retrieval_observation_exact_fields": [
+      "retrieval_attempt_ordinal",
+      "tool_call_ordinal",
+      "result_ordinal",
+      "evidence_observation_ordinal"
+    ],
+    "unknown_field_result": "failed_closed",
+    "provider_prose_allowed": false,
+    "provider_native_metadata_allowed": false,
+    "raw_search_query_allowed": false,
+    "raw_tool_arguments_allowed": false,
+    "restricted_exact_url_allowed": false,
+    "restricted_url_specific_unkeyed_hash_allowed": false
+  },
+  "restricted_projection": {
+    "exact_fields": [
+      "contract",
+      "operations"
+    ],
+    "operation_exact_fields": [
+      "operation_id",
+      "restricted_trace_reference",
+      "raw_search_query",
+      "raw_tool_arguments",
+      "exact_url_traces"
+    ],
+    "data_class": "restricted_evaluation_evidence",
+    "storage_scope": "local_only",
+    "actual_credentials_allowed": false,
+    "raw_provider_or_tool_error_prose_captured_here": false,
+    "ordinary_projection_is_not_a_substitute": true
+  },
+  "operation_contract": {
+    "phase_id": "search_retrieval",
+    "operation_types": [
+      "search",
+      "query",
+      "page_fetch",
+      "page_visit",
+      "grounded_retrieval"
+    ],
+    "outcomes": [
+      "completed",
+      "failed"
+    ],
+    "safe_failure_code_vocabulary": "normalization-parser.v1.json terminal_outcomes excluding accepted",
+    "completed_requires_safe_failure_code": null,
+    "failed_requires_one_safe_failure_code": true,
+    "provider_or_tool_error_prose_allowed": false,
+    "timestamps": "UTC RFC3339 with exactly millisecond precision and Z suffix",
+    "latency_ms": "non-negative integer exactly equal to completed_at minus started_at in milliseconds",
+    "result_count": "count of complete trace source-observation positions for the operation including failed observations",
+    "source_count": "count of canonical source IDs having at least one successful observation in the operation",
+    "evidence_count": "count of canonical evidence IDs whose observation belongs to the operation"
+  },
+  "query_identity": {
+    "mechanism": "application_owned_position_derived_occurrence_id",
+    "format": "qry-{retrieval_attempt_ordinal_minimum_width_4}-{tool_call_ordinal_minimum_width_4}",
+    "nullable_only_when": "literal query text was not exposed for the operation",
+    "same_literal_query_cross_operation_deduplication": false,
+    "raw_query_encoded": false,
+    "raw_query_hashed": false,
+    "unkeyed_query_hash_allowed": false,
+    "restricted_linkage": "operation restricted_trace_reference"
+  },
+  "tool_identity": {
+    "mechanism": "application_owned_position_derived_operation_id",
+    "format": "op-{retrieval_attempt_ordinal_minimum_width_4}-{tool_call_ordinal_minimum_width_4}",
+    "provider_native_tool_id_authoritative": false,
+    "raw_arguments_encoded": false,
+    "raw_arguments_hashed_into_ordinary_record": false
+  },
+  "ordering": {
+    "authoritative_positions": [
+      "retrieval_attempt_ordinal",
+      "tool_call_ordinal"
+    ],
+    "operation_order": "strict lexicographic ascending order over authoritative positions",
+    "positions_must_be_positive_unique_and_contiguous_under_normalization-parser.v1.json": true,
+    "caller_sequence_must_already_match_authoritative_order": true,
+    "dictionary_traversal_authoritative": false,
+    "sorting_by_payload_provider_id_url_content_or_timestamp_allowed": false
+  },
+  "provenance_linkage": {
+    "source_id_authority": "normalization-parser.v1.json source_id_policy_v1",
+    "evidence_id_authority": "normalization-parser.v1.json evidence_id_policy_v1",
+    "source_order": "canonical allocation-plan order",
+    "evidence_order": "canonical allocation-plan order",
+    "claim_id_owner": "model-owned final search semantics after canonical validation",
+    "claim_link_input": "claim_id plus existing evidence_id only",
+    "source_id_and_retrieval_observation_are_recomputed_from_existing_evidence_id": true,
+    "unknown_or_mismatched_id_result": "failed_closed",
+    "link_chain": "claim_id to evidence_id to source_id to exact retrieval observation positions"
+  },
+  "url_policy": {
+    "ordinary_exact_url_requires": [
+      "public_safe classification under url_security_policy_v1",
+      "validated PublicSafeDeduplicationKey capability",
+      "exact match to canonical allocated source URL and restricted trace reference"
+    ],
+    "safe_url_rewriting_allowed": false,
+    "sensitive_indeterminate_rejected_or_restricted_exact_url_in_ordinary_allowed": false,
+    "restricted_url_specific_unkeyed_hash_allowed": false,
+    "safe_classifier_result_allowed_in_ordinary_operation": true,
+    "mixed_public_safe_and_non_public_safe_completed_operation_result": "failed_closed_under_existing_whole_attempt_url_security_rule"
+  },
+  "privacy": {
+    "raw_search_query_classification": "restricted_evaluation_evidence_local_only",
+    "raw_tool_arguments_classification": "restricted_evaluation_evidence_local_only",
+    "raw_search_query_in_ordinary_allowed": false,
+    "raw_tool_arguments_in_ordinary_allowed": false,
+    "arbitrary_headers_allowed": false,
+    "arbitrary_provider_metadata_allowed": false,
+    "provider_or_tool_diagnostic_prose_allowed": false,
+    "credential_material_allowed_in_ordinary": false,
+    "credential_material_allowed_in_restricted": false,
+    "credential_detection": {
+      "field_name_result": "reject projection",
+      "string_marker_result": "reject projection",
+      "field_name_normalization": "ASCII lowercase then remove hyphen underscore period and ASCII whitespace",
+      "forbidden_normalized_field_names": [
+        "authorization",
+        "proxyauthorization",
+        "cookie",
+        "setcookie",
+        "apikey",
+        "accesstoken",
+        "refreshtoken",
+        "idtoken",
+        "clientsecret",
+        "password",
+        "passwd",
+        "secret",
+        "sessionid",
+        "sessiontoken",
+        "privatekey"
+      ],
+      "forbidden_string_markers": [
+        "authorization followed by colon or equals and a non-whitespace value",
+        "bearer followed by a non-whitespace value",
+        "api key, access token, refresh token, id token, client secret, password, passwd, session token, or private key followed by colon or equals and a non-whitespace value",
+        "PEM private-key begin marker"
+      ],
+      "absence_of_marker_authorizes_ordinary_disclosure": false
+    },
+    "deep_copy_required": true,
+    "ordinary_and_restricted_mutable_aliasing_allowed": false,
+    "restricted_repr_str_or_error_disclosure_allowed": false
+  },
+  "retention_and_region": {
+    "restricted_lifecycle_policy": "provider-data-handling-review.v1.json restricted lifecycle group",
+    "restricted_retention_days_after_final_model_selection_decision": 30,
+    "independent_longer_retention_allowed": false,
+    "region_policy": "provider-data-handling-review.v1.json regional_binding",
+    "unresolved_region_blocks_live_pilot": true,
+    "synthetic_local_implementation_and_tests_allowed_while_region_unresolved": true
+  },
+  "validation": {
+    "validator_id": "safe_search_tool_record_validator_v1",
+    "validator_version": "v1",
+    "exact_field_sets_required": true,
+    "resource_limit_binding": "normalization_parser_resource_limits_v1",
+    "maximum_each_array_length": "maximum_array_elements",
+    "maximum_combined_nested_elements": "maximum_total_array_elements",
+    "unknown_field_result": "failed_closed",
+    "semantic_repair_allowed": false,
+    "raw_error_echo_allowed": false,
+    "provider_calls_required": false
+  },
+  "result_record_compatibility": {
+    "workload": "grounded_product_price_research",
+    "search_and_tool_calls": "the exact ordinary projection defined by this contract",
+    "search_query_list": "query_id values in operation order excluding null",
+    "source_urls": "public_safe_canonical_url values in canonical source order",
+    "source_retrieval_timestamps": "source_id and retrieved_at pairs in canonical source order",
+    "claim_to_source_mapping": "claim_evidence_source_links in supplied link order after deterministic evidence/source recomputation",
+    "non_search_workload_values": null,
+    "restricted_projection_serialized_into_ordinary_result": false
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "canonicalization": "UTF-8 JSON, object keys sorted lexicographically, compact separators, array order preserved, no non-finite values",
+    "semantic_hash_excluded_json_pointers": [
+      "/specification_identity/semantic_hash"
+    ],
+    "semantic_hash": "a1b6325f6619c7fb3067f7add52adb6f53a9806ff1b9e72432c7cf528e4f35cb"
+  }
+}

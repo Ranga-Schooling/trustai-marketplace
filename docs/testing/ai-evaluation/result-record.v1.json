@@ -10,6 +10,7 @@
     "privacy": "provider-data-handling-review.v1.json",
     "pricing": "pricing-snapshot.v1.json",
     "pilot_fixtures": "pilot-fixtures.v1.json",
+    "safe_search_tool_record": "safe-search-tool-record.v1.json",
     "execution_authority": "experiment.v1.json#/execution_gate"
   },
   "record_model": {
@@ -226,7 +227,7 @@
     "scored_only_field_in_pilot_result": "fail_closed",
     "provider_request_id_runtime_state": "null_until_provider_specific_non_secret_verifier_is_frozen",
     "rate_limit_metadata_runtime_state": "null_until_closed_non_secret_structure_is_frozen",
-    "search_and_tool_calls_runtime_state": "null_until_safe_search_tool_record_v1_is_frozen",
+    "search_and_tool_calls_runtime_state": "exact safe_search_tool_record_v1 ordinary projection for grounded_product_price_research; null for other workloads",
     "estimated_cost_runtime_state": "null_until_an_attempt_has_a_bound_complete_pricing_schedule_and_exact_chargeable_usage; otherwise an exact recomputable estimated_cost record from pricing_snapshot_v1"
   },
   "privacy": {
@@ -234,6 +235,7 @@
     "restricted_projection_retained_by_capability_not_serialized_into_ordinary_record": true,
     "public_safe_urls_only_in_ordinary_record": true,
     "restricted_exact_urls_in_ordinary_record": false,
+    "raw_search_query_or_tool_arguments_in_ordinary_record": false,
     "provider_prose_in_safe_failure_fields": false,
     "credentials_in_any_result_record": false,
     "restricted_retention_days": 30
@@ -267,6 +269,6 @@
     "semantic_hash_excluded_json_pointers": [
       "/specification_identity/semantic_hash"
     ],
-    "semantic_hash": "9af97c3e4792e098abd9711b3abf1ba3224319ad10e068cd3bc3c64b019949e4"
+    "semantic_hash": "2dd0ccdc09ce7e3944843bb0e189deacd7750641be8d64a4325778801e9f33d1"
   }
 }

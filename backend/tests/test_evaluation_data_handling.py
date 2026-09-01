@@ -140,6 +140,17 @@ def test_policy_artifact_freezes_governance_boundary_and_identity():
     assert artifact["retention_policy"]["clock_starts_at"] == (
         "final_model_selection_decision_at"
     )
+    assert artifact["deletion_lifecycle"]["members"] == [
+        "raw provider responses",
+        "restricted exact URL traces",
+        "restricted transport metadata",
+        "restricted linkage material",
+        "raw search queries",
+        "raw tool arguments",
+    ]
+    assert artifact["exact_url_policy"][
+        "frozen_downstream_public_representation_contracts"
+    ] == ["retrieval_evidence_bundle_v1", "safe_search_tool_record_v1"]
     assert artifact["execution_boundary"] == {
         "authoritative_execution_gate": "experiment.v1.json execution_gate",
         "execution_state": "blocked_pre_execution",
@@ -357,6 +368,12 @@ def test_public_safe_url_requires_frozen_downstream_permission():
         key.safe_canonical_url,
     )
 
+    search_record_disclosure = authorize_public_safe_url(
+        key,
+        downstream_contract_id="safe_search_tool_record_v1",
+    )
+    assert search_record_disclosure.canonical_url == key.safe_canonical_url
+
 
 def test_restricted_url_hash_cannot_enter_ordinary_projection():
     with pytest.raises(DataHandlingPolicyError, match="restricted_url_hash"):
@@ -464,6 +481,8 @@ def test_restricted_lifecycle_group_rejects_partial_deletion():
                 "exact_url_traces": "retained",
                 "restricted_transport_metadata": "deleted",
                 "restricted_linkage_material": "deleted",
+                "raw_search_queries": "deleted",
+                "raw_tool_arguments": "deleted",
             },
         )
 
