@@ -19,9 +19,11 @@ from app.services.evaluation_contract_identity import (
 from app.services.evaluation_data_handling import verify_provider_data_handling_artifact
 from app.services.evaluation_pilot_visual_assets import verify_pilot_visual_assets
 from app.services.evaluation_pricing import verify_pricing_snapshot
+from app.services.evaluation_ps1 import verify_ps1_contracts
 from app.services.evaluation_provider_adapters import bind_provider_adapters
 from app.services.evaluation_provider_role_mappings import bind_provider_role_mappings
 from app.services.evaluation_request_configurations import bind_pilot_request_configurations
+from app.services.evaluation_region_binding import verify_pilot_region_binding
 from app.services.evaluation_resource_limits import assess_resource_limit_policy
 from app.services.evaluation_result_record import verify_result_record_contract
 from app.services.evaluation_retry_policy import load_retry_policy
@@ -40,25 +42,24 @@ _VISUAL_CONTEXT_HASH = (
 )
 _ELIGIBLE_STAGE_MATRIX = (
     ("openai_unified_premium_v1", "text_analysis", 2),
+    ("openai_unified_premium_v1", "search_retrieval", 1),
     ("openai_unified_premium_v1", "search_synthesis", 1),
     ("openai_unified_premium_v1", "visual_inspection", 2),
     ("openai_unified_balanced_v1", "text_analysis", 2),
+    ("openai_unified_balanced_v1", "search_retrieval", 1),
     ("openai_unified_balanced_v1", "search_synthesis", 1),
     ("openai_unified_balanced_v1", "visual_inspection", 2),
     ("gemini_unified_v1", "text_analysis", 2),
+    ("gemini_unified_v1", "search_retrieval", 1),
     ("gemini_unified_v1", "search_synthesis", 1),
     ("gemini_unified_v1", "visual_inspection", 2),
     ("groq_split_v1", "text_analysis", 2),
+    ("groq_split_v1", "search_retrieval", 1),
     ("groq_split_v1", "search_synthesis", 1),
     ("groq_split_v1", "visual_inspection", 2),
     ("baseline_current_text_v1", "text_analysis", 2),
 )
-_INELIGIBLE_RETRIEVAL = (
-    ("openai_unified_premium_v1", "search_retrieval"),
-    ("openai_unified_balanced_v1", "search_retrieval"),
-    ("gemini_unified_v1", "search_retrieval"),
-    ("groq_split_v1", "search_retrieval"),
-)
+_INELIGIBLE_RETRIEVAL: tuple[tuple[str, str], ...] = ()
 _RESOLVED_COMPONENTS = (
     "frozen_methodology_and_fixtures",
     "prompt_and_output_contracts",
@@ -71,20 +72,15 @@ _RESOLVED_COMPONENTS = (
     "pilot_visual_assets_truth_and_context",
     "immutable_result_record_with_request_configuration_binding",
     "dated_official_pricing_schedules",
+    "ps1_discovery_refetch_classification_extraction_and_support",
+    "approved_us_operation_and_restricted_local_storage_binding",
 )
 _DECISION_PACKAGES = (
-    "ps1_trace_conforming_retrieval_architecture",
-    "execution_and_restricted_storage_region",
     "pilot_budget_ceiling",
     "credential_authorization_handling_and_scope",
     "explicit_pilot_authorization",
 )
-_PS1_BLOCKERS = (
-    "source_classification_policy_v1",
-    "url_security_operational_origin_rule_registry_v1",
-    "retrieval_objective_support_policy_v1_and_PS1_objective_manifest",
-    "deterministic_trace_backed_evidence_extractor_and_matcher_v1",
-)
+_PS1_BLOCKERS: tuple[str, ...] = ()
 _PS1_REUSE = (
     "bounded_ssrf_safe_fetch_transport",
     "strict_url_security_and_redirect_auth_classification",
@@ -112,7 +108,12 @@ class ProviderNeutralPilotPreflight:
     maximum_physical_attempts_after_ps1_resolution: int
     same_day_lifecycle_recheck_required: bool = True
     ps1_built_in_search_evidence_eligible: bool = False
+    ps1_trace_backed_application_evidence_ready: bool = True
     ps1_security_contract_weakened: bool = False
+    operation_country_code: str = "US"
+    provider_service_mode: str = "standard_global"
+    restricted_storage_country_code: str = "US"
+    cross_region_replication_allowed: bool = False
     provider_calls_allowed: bool = False
     pilot_calls_allowed: bool = False
     scored_calls_allowed: bool = False
@@ -168,6 +169,10 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
         _ARTIFACTS / "safe-search-tool-record.v1.json"
     )
     verify_result_record_contract(_ARTIFACTS / "result-record.v1.json")
+    ps1 = verify_ps1_contracts()
+    if ps1.provider_calls_allowed:
+        raise PilotPreflightError("ps1_execution_boundary")
+    region = verify_pilot_region_binding()
     pricing = verify_pricing_snapshot(_ARTIFACTS / "pricing-snapshot.v1.json")
     if pricing.observed_on != "2026-08-31":
         raise PilotPreflightError("pricing_observation_date")
@@ -175,16 +180,16 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
     non_search = sum(
         fixture_count
         for _, stage, fixture_count in _ELIGIBLE_STAGE_MATRIX
-        if stage != "search_synthesis"
+        if stage not in {"search_retrieval", "search_synthesis"}
     )
-    synthesis = sum(
+    search = sum(
         fixture_count
         for _, stage, fixture_count in _ELIGIBLE_STAGE_MATRIX
-        if stage == "search_synthesis"
+        if stage in {"search_retrieval", "search_synthesis"}
     )
-    planned = non_search + synthesis + len(_INELIGIBLE_RETRIEVAL)
+    planned = non_search + search
     return ProviderNeutralPilotPreflight(
-        status="provider_neutral_ready_awaiting_decisions",
+        status="provider_neutral_ready_awaiting_budget_credentials_and_authorization",
         resolved_components=_RESOLVED_COMPONENTS,
         remaining_decision_packages=_DECISION_PACKAGES,
         eligible_stage_matrix=_ELIGIBLE_STAGE_MATRIX,
@@ -194,4 +199,8 @@ def assess_provider_neutral_pilot_preflight() -> ProviderNeutralPilotPreflight:
         provider_calls_in_currently_configured_non_search_scope=non_search,
         planned_provider_calls_after_ps1_resolution=planned,
         maximum_physical_attempts_after_ps1_resolution=planned * 2,
+        operation_country_code=region.operation_country_code,
+        provider_service_mode=region.provider_service_mode,
+        restricted_storage_country_code=region.restricted_storage_country_code,
+        cross_region_replication_allowed=region.cross_region_replication_allowed,
     )

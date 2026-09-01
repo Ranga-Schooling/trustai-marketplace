@@ -15,7 +15,9 @@ from app.services.evaluation_pilot_preflight import (
 def test_preflight_reports_exact_resolved_scope_and_remaining_decisions():
     result = assess_provider_neutral_pilot_preflight()
 
-    assert result.status == "provider_neutral_ready_awaiting_decisions"
+    assert result.status == (
+        "provider_neutral_ready_awaiting_budget_credentials_and_authorization"
+    )
     assert result.resolved_components == (
         "frozen_methodology_and_fixtures",
         "prompt_and_output_contracts",
@@ -28,10 +30,10 @@ def test_preflight_reports_exact_resolved_scope_and_remaining_decisions():
         "pilot_visual_assets_truth_and_context",
         "immutable_result_record_with_request_configuration_binding",
         "dated_official_pricing_schedules",
+        "ps1_discovery_refetch_classification_extraction_and_support",
+        "approved_us_operation_and_restricted_local_storage_binding",
     )
     assert result.remaining_decision_packages == (
-        "ps1_trace_conforming_retrieval_architecture",
-        "execution_and_restricted_storage_region",
         "pilot_budget_ceiling",
         "credential_authorization_handling_and_scope",
         "explicit_pilot_authorization",
@@ -50,25 +52,24 @@ def test_preflight_stage_matrix_and_call_counts_are_exact():
 
     assert result.eligible_stage_matrix == (
         ("openai_unified_premium_v1", "text_analysis", 2),
+        ("openai_unified_premium_v1", "search_retrieval", 1),
         ("openai_unified_premium_v1", "search_synthesis", 1),
         ("openai_unified_premium_v1", "visual_inspection", 2),
         ("openai_unified_balanced_v1", "text_analysis", 2),
+        ("openai_unified_balanced_v1", "search_retrieval", 1),
         ("openai_unified_balanced_v1", "search_synthesis", 1),
         ("openai_unified_balanced_v1", "visual_inspection", 2),
         ("gemini_unified_v1", "text_analysis", 2),
+        ("gemini_unified_v1", "search_retrieval", 1),
         ("gemini_unified_v1", "search_synthesis", 1),
         ("gemini_unified_v1", "visual_inspection", 2),
         ("groq_split_v1", "text_analysis", 2),
+        ("groq_split_v1", "search_retrieval", 1),
         ("groq_split_v1", "search_synthesis", 1),
         ("groq_split_v1", "visual_inspection", 2),
         ("baseline_current_text_v1", "text_analysis", 2),
     )
-    assert result.ineligible_stage_matrix == (
-        ("openai_unified_premium_v1", "search_retrieval"),
-        ("openai_unified_balanced_v1", "search_retrieval"),
-        ("gemini_unified_v1", "search_retrieval"),
-        ("groq_split_v1", "search_retrieval"),
-    )
+    assert result.ineligible_stage_matrix == ()
     assert result.provider_calls_in_currently_configured_non_search_scope == 18
     assert result.planned_provider_calls_after_ps1_resolution == 26
     assert result.maximum_physical_attempts_after_ps1_resolution == 52
@@ -77,12 +78,7 @@ def test_preflight_stage_matrix_and_call_counts_are_exact():
 def test_ps1_blockers_preserve_the_frozen_security_and_evidence_boundaries():
     result = assess_provider_neutral_pilot_preflight()
 
-    assert result.ps1_provider_free_blockers == (
-        "source_classification_policy_v1",
-        "url_security_operational_origin_rule_registry_v1",
-        "retrieval_objective_support_policy_v1_and_PS1_objective_manifest",
-        "deterministic_trace_backed_evidence_extractor_and_matcher_v1",
-    )
+    assert result.ps1_provider_free_blockers == ()
     assert result.ps1_reusable_primitives == (
         "bounded_ssrf_safe_fetch_transport",
         "strict_url_security_and_redirect_auth_classification",
@@ -91,7 +87,17 @@ def test_ps1_blockers_preserve_the_frozen_security_and_evidence_boundaries():
         "safe_search_tool_result_record",
     )
     assert result.ps1_built_in_search_evidence_eligible is False
+    assert result.ps1_trace_backed_application_evidence_ready is True
     assert result.ps1_security_contract_weakened is False
+
+
+def test_preflight_binds_the_approved_region_without_claiming_provider_residency():
+    result = assess_provider_neutral_pilot_preflight()
+
+    assert result.operation_country_code == "US"
+    assert result.provider_service_mode == "standard_global"
+    assert result.restricted_storage_country_code == "US"
+    assert result.cross_region_replication_allowed is False
 
 
 def test_preflight_is_immutable_and_never_authorizes_execution():
