@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 import json
 from dataclasses import replace
 from pathlib import Path
+import sys
+from types import SimpleNamespace
 
 import pytest
 
 from app.services.evaluation_pilot_runner import (
     LiveGateBinding,
+    PilotRunnerError,
     SyntheticCredentialResolver,
     _synthetic_provider_envelope,
     build_provider_free_pilot_runner,
@@ -19,9 +23,12 @@ from app.services.evaluation_retry_policy import AttemptDeadline
 from app.services.evaluation_live_transport import (
     ConcreteLivePilotTransport,
     HttpConnectionFailure,
+    HttpRequest,
     HttpResponse,
+    HttpxSender,
     HttpTimeoutFailure,
     LazyEnvironmentCredentialResolver,
+    LiveTransportError,
 )
 
 
@@ -68,6 +75,142 @@ class SequenceSender:
     def send(self, request):
         self.requests.append(request)
         return self.responses.pop(0)
+
+
+def test_httpx_sender_measures_elapsed_without_reading_open_response(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        def __init__(self):
+            self.closed = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            self.closed = True
+
+        def iter_bytes(self):
+            yield b'{"ok":true}'
+
+        @property
+        def elapsed(self):
+            if not self.closed:
+                raise RuntimeError("elapsed read before response close")
+            return timedelta(seconds=0.25)
+
+    response = FakeResponse()
+
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def stream(self, *_args, **_kwargs):
+            return response
+
+    class FakeTimeoutException(Exception):
+        pass
+
+    class FakeTransportError(Exception):
+        pass
+
+    monkeypatch.setitem(
+        sys.modules,
+        "httpx",
+        SimpleNamespace(
+            Client=FakeClient,
+            Timeout=lambda seconds: seconds,
+            TimeoutException=FakeTimeoutException,
+            TransportError=FakeTransportError,
+        ),
+    )
+    ticks = iter((10.0, 10.25))
+    monkeypatch.setattr(
+        "app.services.evaluation_live_transport.monotonic",
+        lambda: next(ticks),
+    )
+
+    result = HttpxSender().send(
+        HttpRequest(
+            method="POST",
+            url="https://api.openai.com/v1/responses",
+            headers=(("content-type", "application/json"),),
+            body=b"{}",
+            timeout_seconds=120,
+        )
+    )
+
+    assert response.closed is True
+    assert result.status_code == 200
+    assert result.body_chunks == (b'{"ok":true}',)
+    assert result.elapsed_seconds == 0.25
+
+
+@pytest.mark.parametrize(
+    ("failure_kind", "expected_exception"),
+    (
+        ("dns", HttpConnectionFailure),
+        ("tls", HttpConnectionFailure),
+        ("refused", HttpConnectionFailure),
+        ("timeout", HttpTimeoutFailure),
+    ),
+)
+def test_httpx_sender_maps_transport_failures_without_network(
+    monkeypatch,
+    failure_kind,
+    expected_exception,
+):
+    import httpx
+
+    failure = (
+        httpx.ReadTimeout("timeout")
+        if failure_kind == "timeout"
+        else httpx.ConnectError(failure_kind)
+    )
+
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def stream(self, *_args, **_kwargs):
+            raise failure
+
+    monkeypatch.setattr(httpx, "Client", FakeClient)
+
+    with pytest.raises(expected_exception):
+        HttpxSender().send(
+            HttpRequest(
+                method="POST",
+                url="https://api.openai.com/v1/responses",
+                headers=(("content-type", "application/json"),),
+                body=b"{}",
+                timeout_seconds=120,
+            )
+        )
+
+
+def test_malformed_provider_url_is_rejected_before_http_sender():
+    with pytest.raises(LiveTransportError, match="http_request"):
+        HttpRequest(
+            method="POST",
+            url="http://localhost:8000/v1/responses",
+            headers=(("content-type", "application/json"),),
+            body=b"{}",
+            timeout_seconds=120,
+        )
 
 
 def _synthetic_gate(runner):
@@ -161,6 +304,15 @@ def test_live_environment_resolver_is_lazy_and_redacted(runner):
     assert CANARY not in repr(resolver)
 
 
+def test_missing_live_credential_fails_before_sender(runner):
+    resolver = LazyEnvironmentCredentialResolver(lambda _name: "")
+
+    with pytest.raises(PilotRunnerError, match="credential_unavailable"):
+        resolver.resolve(runner.credential_references[0])
+
+    assert resolver.requested_environment_variable_names == ("OPENAI_API_KEY",)
+
+
 def test_gemini_request_uses_current_documented_interactions_shapes(runner):
     text = runner.build_native_request(
         _call(runner, provider="Google Gemini", stage="text_analysis")
@@ -232,7 +384,14 @@ def test_unexpected_sender_exception_after_invocation_maps_to_safe_connection_lo
 
 @pytest.mark.parametrize(
     ("status", "expected"),
-    ((429, "rate_limit"), (500, "service_unavailable"), (503, "service_unavailable"), (400, "http_failure")),
+    (
+        (401, "http_failure"),
+        (403, "http_failure"),
+        (404, "http_failure"),
+        (429, "rate_limit"),
+        (500, "service_unavailable"),
+        (503, "service_unavailable"),
+    ),
 )
 def test_transport_maps_http_failures_without_provider_prose(runner, status, expected):
     call = _call(runner, provider="Groq", stage="text_analysis")

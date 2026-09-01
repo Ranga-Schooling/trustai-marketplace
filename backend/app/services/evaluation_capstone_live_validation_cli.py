@@ -22,6 +22,7 @@ from app.services.evaluation_live_transport import (
     ConcreteLivePilotTransport,
     HttpxSender,
     LazyEnvironmentCredentialResolver,
+    LiveTransportError,
 )
 
 
@@ -126,6 +127,7 @@ def run_cli(
             binding = validator.validate_authorization(authorization)
             case = validator.case(binding.case_id)
             validator.build_request(case.case_id)
+            ConcreteLivePilotTransport(sender_factory()).validate_runtime()
             _emit(
                 {
                     "status": "ready_for_one_explicitly_confirmed_live_call",
@@ -177,7 +179,7 @@ def run_cli(
             }
         )
         return 0 if record["result_status"] == "accepted" else 3
-    except CapstoneLiveValidationError as exc:
+    except (CapstoneLiveValidationError, LiveTransportError) as exc:
         _emit({"status": "blocked", "reason": str(exc)})
         return 2
     except (OSError, TypeError, ValueError):

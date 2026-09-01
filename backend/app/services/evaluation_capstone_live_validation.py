@@ -697,6 +697,7 @@ class CapstoneLiveValidation:
             raise _fail("credential_resolver")
         if not isinstance(transport, ConcreteLivePilotTransport):
             raise _fail("live_transport")
+        transport.validate_runtime()
         if _repository_head(self.repository_root) != self.repository_head:
             raise _fail("repository_head_mismatch")
         if self._require_clean_repository_on_execute:

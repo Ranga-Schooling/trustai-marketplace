@@ -11,6 +11,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 import json
 import os
+from time import monotonic
 from typing import Any, Protocol
 
 from app.services.evaluation_pilot_runner import (
@@ -125,13 +126,19 @@ class HttpxSender:
 
     __slots__ = ()
 
+    def validate_runtime(self) -> None:
+        """Fail offline when the configured HTTP client is unavailable."""
+        _load_httpx()
+
     def send(self, request: HttpRequest) -> HttpResponse:
         if not isinstance(request, HttpRequest):
             raise _fail("http_request")
-        # Import and client creation occur only at the authorized call boundary.
-        import httpx
+        # Client creation occurs only at the authorized call boundary; the
+        # dependency itself may already have been checked by offline preflight.
+        httpx = _load_httpx()
 
         accumulator = CanonicalRawResponseAccumulator("non_streaming_http")
+        started_at = monotonic()
         try:
             with httpx.Client(
                 timeout=httpx.Timeout(request.timeout_seconds),
@@ -149,12 +156,17 @@ class HttpxSender:
                     body = capture.raw_provider_response
                     if body is None:
                         raise _fail("http_body")
-                    return HttpResponse(
-                        response.status_code,
-                        (body,),
-                        {"content-type": response.headers.get("content-type", "")},
-                        response.elapsed.total_seconds(),
-                    )
+                    status_code = response.status_code
+                    content_type = response.headers.get("content-type", "")
+            elapsed_seconds = monotonic() - started_at
+            if elapsed_seconds < 0:
+                raise _fail("http_elapsed")
+            return HttpResponse(
+                status_code,
+                (body,),
+                {"content-type": content_type},
+                elapsed_seconds,
+            )
         except httpx.TimeoutException as exc:
             raise HttpTimeoutFailure("provider_attempt_timeout") from exc
         except httpx.TransportError as exc:
@@ -226,6 +238,12 @@ class ConcreteLivePilotTransport:
     @property
     def invocation_count(self) -> int:
         return self._invocation_count
+
+    def validate_runtime(self) -> None:
+        """Validate local sender dependencies without credentials or I/O."""
+        validator = getattr(self._sender, "validate_runtime", None)
+        if validator is not None:
+            validator()
 
     def invoke(
         self,
@@ -333,6 +351,17 @@ def _validate_native_payload(request: NativeProviderRequest) -> None:
     elif provider == "Groq":
         if "messages" not in payload or "store" in payload:
             raise _fail("request_payload")
+
+
+def _load_httpx():
+    try:
+        import httpx
+    except ImportError as exc:
+        raise _fail("http_client_unavailable") from exc
+    required = ("Client", "Timeout", "TimeoutException", "TransportError")
+    if any(not hasattr(httpx, name) for name in required):
+        raise _fail("http_client_unavailable")
+    return httpx
 
 
 def _header(headers: Mapping[str, str], name: str) -> str:

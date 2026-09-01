@@ -23,7 +23,10 @@ inventing tokenizer or provider-accounting semantics.
 
 ## Offline checks
 
-Run these from `backend`. They do not read credentials or make network calls:
+Run these from `backend` using the repository's configured Python environment
+with `requirements.txt` installed. They do not read credentials or make network
+calls. Preflight fails before authorization can be consumed when the required
+HTTP client runtime is unavailable.
 
 ```sh
 CAPSTONE_HEAD=$(git rev-parse HEAD)

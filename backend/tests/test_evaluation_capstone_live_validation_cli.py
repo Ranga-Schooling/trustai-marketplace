@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import subprocess
+import sys
 
 from app.services.evaluation_capstone_live_validation import (
     build_capstone_live_validation,
@@ -107,6 +108,71 @@ def test_live_command_is_blocked_without_unmistakable_confirmation(capsys, tmp_p
     }
     assert reads == []
     assert tuple(tmp_path.iterdir()) == ()
+
+
+def test_missing_http_client_blocks_preflight_and_execute_before_state_or_credentials(
+    capsys,
+    monkeypatch,
+    tmp_path,
+):
+    validator = build_capstone_live_validation(
+        repository_root=ROOT,
+        repository_head=HEAD,
+        require_clean_repository=False,
+    )
+    authorization_path = tmp_path / "authorization.json"
+    authorization_path.write_text(
+        json.dumps(
+            validator.build_authorization_document(
+                case_id=CASE_ID,
+                authorized_at_utc="2026-09-01T21:00:00Z",
+            )
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setitem(sys.modules, "httpx", None)
+    reads = []
+    state_root = tmp_path / "state"
+
+    assert run_cli(
+        [
+            "preflight",
+            "--repository-head",
+            HEAD,
+            "--authorization",
+            str(authorization_path),
+        ],
+        repository_root=ROOT,
+        operational_root=state_root,
+        require_clean_repository=False,
+    ) == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "reason": "http_client_unavailable",
+        "status": "blocked",
+    }
+
+    assert run_cli(
+        [
+            "execute",
+            "--repository-head",
+            HEAD,
+            "--case-id",
+            CASE_ID,
+            "--authorization",
+            str(authorization_path),
+            "--confirm-live",
+        ],
+        repository_root=ROOT,
+        operational_root=state_root,
+        environment_getter=lambda name: reads.append(name) or CANARY,
+        require_clean_repository=False,
+    ) == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "reason": "http_client_unavailable",
+        "status": "blocked",
+    }
+    assert reads == []
+    assert state_root.exists() is False
 
 
 def test_authorization_preflight_execute_and_inspect_are_one_call_only(capsys, tmp_path):
