@@ -549,9 +549,9 @@ button.ghost:hover { background: var(--surface-ghost-hover); }
   stroke-linecap: round;
   opacity: 0.16;
 }
-.gauge-arc-buy { stroke: var(--risk-low); stroke-dasharray: 88 142; stroke-dashoffset: 0; }
-.gauge-arc-caution { stroke: var(--risk-medium); stroke-dasharray: 52 142; stroke-dashoffset: -88; }
-.gauge-arc-avoid { stroke: var(--risk-high); stroke-dasharray: 42 142; stroke-dashoffset: -140; }
+.gauge-arc-buy { stroke: var(--risk-low); }
+.gauge-arc-caution { stroke: var(--risk-medium); }
+.gauge-arc-avoid { stroke: var(--risk-high); }
 
 .gauge-ticks line {
   stroke: var(--gauge-tick);
@@ -560,7 +560,8 @@ button.ghost:hover { background: var(--surface-ghost-hover); }
 
 .gauge-needle-group {
   transform-origin: 110px 100px;
-  transition: transform 1s ease-out;
+  transform-box: view-box;
+  transition: transform 500ms ease-out;
 }
 
 .gauge-needle {
@@ -575,6 +576,10 @@ button.ghost:hover { background: var(--surface-ghost-hover); }
   fill: var(--gauge-center);
   stroke: var(--ink-soft);
   stroke-width: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge-needle-group { transition: none; }
 }
 
 .gauge-copy {
