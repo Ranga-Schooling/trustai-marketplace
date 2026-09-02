@@ -1,3 +1,11 @@
+## [1.16.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.4...v1.16.5) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ui:** correct risk gauge geometry ([#94](https://github.com/Ranga-Schooling/trustai-marketplace/issues/94)) ([c276f6c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/c276f6c39080bb1e09a52ea5872c535e2049cd7a))
+* **ui:** improve mobile responsiveness ([#95](https://github.com/Ranga-Schooling/trustai-marketplace/issues/95)) ([a344d78](https://github.com/Ranga-Schooling/trustai-marketplace/commit/a344d781e2098bdba8b0121aff7676b31f2f0cca))
+
 ## [1.16.4](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.3...v1.16.4) (2026-08-29)
 
 
