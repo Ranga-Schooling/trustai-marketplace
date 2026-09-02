@@ -1,0 +1,117 @@
+{
+  "artifact_id": "deterministic_trace_backed_evidence_extractor_and_matcher_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Pilot-minimal deterministic PS1 evidence extraction from application-owned refetch content.",
+  "provider_neutral": true,
+  "scope": {
+    "fixture_ids": [
+      "PS1"
+    ],
+    "production_crawler": false,
+    "general_purpose_extractor": false,
+    "live_network_required_for_validation": false
+  },
+  "source_contracts": {
+    "retrieval_schema_id": "retrieval_evidence_bundle_v1",
+    "output_schema_set_hash": "125809d08e911d51b4619002f02a969b03b8da5866bfab1b8346758c0bb9a6f4",
+    "source_classification_policy_id": "source_classification_policy_v1",
+    "objective_support_policy_id": "retrieval_objective_support_policy_v1",
+    "safe_search_tool_record_hash": "a1b6325f6619c7fb3067f7add52adb6f53a9806ff1b9e72432c7cf528e4f35cb"
+  },
+  "refetch_input": {
+    "required_fields": [
+      "discovery_url_identity",
+      "retrieval_attempt_ordinal",
+      "tool_call_ordinal",
+      "result_ordinal",
+      "complete_url_classifier_input",
+      "restricted_trace_reference_capabilities",
+      "response_status",
+      "retrieved_at",
+      "display_name",
+      "decoded_body",
+      "evidence_candidates"
+    ],
+    "application_owned_bounded_refetch_required": true,
+    "successful_http_status": 200,
+    "maximum_decoded_body_bytes_source": "normalization_parser_resource_limits_v1.maximum_raw_response_bytes"
+  },
+  "evidence_candidate": {
+    "required_fields": [
+      "evidence_type",
+      "exact_excerpt"
+    ],
+    "evidence_type_owner": "retrieval_stage_untrusted_semantics",
+    "exact_excerpt_must_be_nonempty_contiguous_substring_of_decoded_body": true,
+    "normalization_before_substring_match": "none",
+    "case_folding": false,
+    "unicode_normalization": false,
+    "provider_search_snippet_allowed": false,
+    "provider_citation_allowed": false,
+    "free_form_model_summary_allowed": false
+  },
+  "evidence_type_coherence": {
+    "identity": [
+      "MX Master 3S"
+    ],
+    "price_pattern": "(?<![A-Za-z0-9_])\\$[0-9]{1,4}\\.[0-9]{2}(?![0-9])",
+    "availability_any": [
+      "Available",
+      "In stock",
+      "Unavailable",
+      "no longer available"
+    ],
+    "bundle_all": [
+      "Logi Bolt",
+      "receiver"
+    ],
+    "regional_context_any": [
+      "United States",
+      "USD"
+    ],
+    "other_schema_evidence_types": "fail_closed_for_PS1_when_no_frozen_exact_matcher_exists"
+  },
+  "ordering_and_identity": {
+    "source_order": "frozen retrieval trace lexicographic order over successful canonical observations",
+    "duplicate_source_rule": "deduplicate only by validated public-safe deduplication URL key",
+    "evidence_order": "frozen evidence observation order within canonical source",
+    "source_id_policy": "source_id_policy_v1",
+    "evidence_id_policy": "evidence_id_policy_v1",
+    "content_hash": "sha256 of exact UTF-8 excerpt bytes",
+    "bundle_hash": "sha256 of canonical compact UTF-8 JSON bundle bytes"
+  },
+  "privacy": {
+    "ordinary_exact_url_allowed_only_after_public_safe": true,
+    "sensitive_or_indeterminate_url_in_ordinary_projection": false,
+    "restricted_exact_trace_remains_capability_protected": true,
+    "raw_query_or_tool_arguments_in_ordinary_projection": false,
+    "unkeyed_restricted_url_hash_in_ordinary_projection": false,
+    "credentials_allowed": false
+  },
+  "failure_policy": {
+    "missing_refetch": "failed_trace_backed_refetch_required",
+    "non_public_url": "failed_url_security_validation",
+    "body_limit": "failed_resource_limit",
+    "excerpt_not_trace_backed": "failed_trace_backed_excerpt",
+    "evidence_type_incoherent": "failed_evidence_trace_coherence",
+    "malformed_candidate": "failed_canonical_validation",
+    "silent_repair_allowed": false
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash": "6edba168ac7b40dde16936e8492f58d71f8eefde7ee2980f465af3d629a2f2de"
+  }
+}

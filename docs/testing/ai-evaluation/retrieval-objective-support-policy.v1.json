@@ -1,0 +1,177 @@
+{
+  "artifact_id": "retrieval_objective_support_policy_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Pilot-minimal deterministic objective support policy and frozen PS1 objective manifest.",
+  "provider_neutral": true,
+  "source_contracts": {
+    "fixture_manifest": "pilot-fixtures.v1.json#PS1",
+    "output_schema_set_hash": "125809d08e911d51b4619002f02a969b03b8da5866bfab1b8346758c0bb9a6f4",
+    "source_classification_policy_id": "source_classification_policy_v1"
+  },
+  "vocabularies": {
+    "objective_type": [
+      "identity",
+      "status",
+      "specification",
+      "price",
+      "availability",
+      "condition",
+      "warranty",
+      "bundle",
+      "regional_context"
+    ],
+    "materiality": [
+      "material_required",
+      "non_material_supporting"
+    ],
+    "applicability": [
+      "applicable",
+      "not_applicable"
+    ],
+    "support": [
+      "sufficient",
+      "insufficient",
+      "conflicting",
+      "not_applicable"
+    ]
+  },
+  "ps1_objective_manifest": {
+    "fixture_id": "PS1",
+    "frozen_before_provider_execution": true,
+    "target": {
+      "product_identity": "Logitech MX Master 3S Wireless Mouse",
+      "exact_variant": "Graphite standard right-handed United States retail package with Logi Bolt receiver; non-Mac-specific edition",
+      "region": "United States",
+      "currency": "USD"
+    },
+    "objectives": [
+      {
+        "objective_id": "ps1_exact_product_variant",
+        "objective_type": "identity",
+        "materiality": "material_required",
+        "applicability": "applicable",
+        "applicability_rule_id": "ps1_always_applicable_v1",
+        "support_rule_id": "ps1_manufacturer_identity_and_bundle_v1"
+      },
+      {
+        "objective_id": "ps1_current_us_retail_offer",
+        "objective_type": "price",
+        "materiality": "material_required",
+        "applicability": "applicable",
+        "applicability_rule_id": "ps1_always_applicable_v1",
+        "support_rule_id": "ps1_established_retailer_offer_v1"
+      },
+      {
+        "objective_id": "ps1_manufacturer_retailer_distinction",
+        "objective_type": "regional_context",
+        "materiality": "non_material_supporting",
+        "applicability": "applicable",
+        "applicability_rule_id": "ps1_always_applicable_v1",
+        "support_rule_id": "ps1_distinct_source_classes_v1"
+      }
+    ]
+  },
+  "support_rules": {
+    "ps1_manufacturer_identity_and_bundle_v1": {
+      "same_source_required": true,
+      "source_type": "manufacturer",
+      "required_evidence": [
+        {
+          "evidence_type": "identity",
+          "case_sensitive_substrings_all": [
+            "MX Master 3S",
+            "Graphite",
+            "right-handed"
+          ]
+        },
+        {
+          "evidence_type": "bundle",
+          "case_sensitive_substrings_all": [
+            "Logi Bolt",
+            "receiver"
+          ]
+        }
+      ]
+    },
+    "ps1_established_retailer_offer_v1": {
+      "same_source_required": true,
+      "source_type": "established_retailer",
+      "required_evidence": [
+        {
+          "evidence_type": "identity",
+          "case_sensitive_substrings_all": [
+            "MX Master 3S",
+            "910-006556"
+          ]
+        },
+        {
+          "evidence_type": "price",
+          "price_pattern_id": "usd_two_decimal_price_v1"
+        },
+        {
+          "evidence_type": "availability",
+          "case_sensitive_substrings_any": [
+            "Available",
+            "In stock",
+            "Unavailable",
+            "no longer available"
+          ]
+        },
+        {
+          "evidence_type": "regional_context",
+          "case_sensitive_substrings_all": [
+            "United States",
+            "USD"
+          ]
+        }
+      ]
+    },
+    "ps1_distinct_source_classes_v1": {
+      "required_source_types": [
+        "manufacturer",
+        "established_retailer"
+      ],
+      "each_source_type_requires_evidence_type": "price"
+    }
+  },
+  "deterministic_patterns": {
+    "usd_two_decimal_price_v1": "(?<![A-Za-z0-9_])\\$[0-9]{1,4}\\.[0-9]{2}(?![0-9])",
+    "conflicting_variant_case_sensitive_markers": [
+      "MX Master 3S For Mac",
+      "910-006570",
+      "910-007500",
+      "Bluetooth Edition"
+    ]
+  },
+  "support_algorithm": [
+    "emit exactly one result in manifest order for every frozen objective",
+    "return not_applicable only when the pre-frozen applicability is not_applicable",
+    "return conflicting when a required source contains a frozen conflicting-variant marker in identity evidence",
+    "return sufficient only when every exact support predicate is satisfied",
+    "otherwise return insufficient",
+    "validate but never generate or replace retrieval_status"
+  ],
+  "retrieval_status_coherence": {
+    "completed": "every applicable material_required objective is sufficient",
+    "partial": "at least one material_required objective is sufficient and at least one is insufficient or conflicting",
+    "no_reliable_evidence": "zero material_required objectives are sufficient",
+    "zero_applicable_material_objectives": "topology_preflight_failure"
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash": "73a0061d1a35280eaf3714b9aeeec83499c9178b5d7452f046d14ed4785579c9"
+  }
+}

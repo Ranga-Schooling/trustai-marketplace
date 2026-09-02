@@ -1,0 +1,212 @@
+{
+  "artifact_id": "capstone_gemini_text_validation_v4",
+  "artifact_version": "v4",
+  "status": "ready_awaiting_explicit_user_authorization",
+  "purpose": "Prepare one corrected, separately authorized Gemini/PT1 V2 observation after the consumed Gemini/PT1 V1 HTTP 400, without entering strict pilot or scored execution.",
+  "execution_class": "capstone_live_validation",
+  "source_contracts": {
+    "cross_provider_validation_v3": "capstone-live-validation.v3.json@v3",
+    "experiment": "experiment.v1.json@v1",
+    "pilot_fixtures": "pilot-fixtures.v1.json@v1",
+    "prompt_templates": "prompt-templates.v1.json@v1",
+    "output_schemas": "output-schemas.v1.json@v1",
+    "normalization_parser": "normalization-parser.v1.json@v1",
+    "provider_role_mappings": "provider-role-mappings.v1.json@v1",
+    "provider_adapters": "provider-adapters.v1.json@v1",
+    "request_configurations": "request-configurations.v1.json@v1"
+  },
+  "strict_separation": {
+    "strict_pilot_authorization_api_allowed": false,
+    "strict_pilot_ledger_interaction_allowed": false,
+    "strict_pilot_record_creation_allowed": false,
+    "scored_record_creation_allowed": false,
+    "pending_cost_reconciliation_mutation_allowed": false,
+    "strict_execution_state_mutation_allowed": false,
+    "winner_state_mutation_allowed": false,
+    "result_promotion_into_pilot_or_scored_results_allowed": false
+  },
+  "predecessor_bindings": {
+    "v3_contract_hash": "fa141065f8fe374d4b43409cefb2fec58e66f3f949d733ea4bf9cdc254635617",
+    "terra_v1_reservation_record_hash": "a9d604c30f16ecd4525d533955f9701ea15ed78c35cb7fff703c3e3761cd1bab",
+    "terra_v1_result_record_hash": "554fdf1685a4b766698d9af255fd7921e3500a7390915957831eab440582d24e",
+    "terra_v2_reservation_record_hash": "6a66fa758fa20d231a02649263fddcdb53da314b2a1f6a9c9853b10e58610ed3",
+    "terra_v2_result_record_hash": "1c4b25beb71569d68642e9f6d554b7473d042c779b8f26c930ca63caa9959386",
+    "sol_v1_reservation_record_hash": "115405478d45a6cedfb406bf774dfd9a7f47df186f01513f557797c1e815be2a",
+    "sol_v1_result_record_hash": "352beabadd1ee86c0bc51f7b4c20dcfc66d2fd1574a947f1ef64660e43b4e167",
+    "gemini_v1_repository_head": "6f271faa7405c3f6ecf7fc5f81f874a295a01601",
+    "gemini_v1_authorization_hash": "84a0ccbf16292ed774a32e7d9640481e868488336c35533af22a4afe5b2cf022",
+    "gemini_v1_reservation_record_hash": "a891cb4fb77d86c073ff204fbdaffd0ff5d05d3e05a9c88d778e273a3b6e4c01",
+    "gemini_v1_result_record_hash": "222a10f499873278a526e12bd1c44b62d104a07f477162b1bba75860db488da8",
+    "gemini_v1_request_hash": "00f29bb98c9840ffb6d1e61fc080c607aa54a2b20ca862c58f862d08ed013584",
+    "gemini_v1_http_status": 400,
+    "gemini_v1_safe_failure_classification": "http_failure",
+    "gemini_v1_physical_provider_attempts": 1,
+    "gemini_v1_retry_count": 0,
+    "v3_state_directory": ".capstone-live-validation/capstone-cross-provider-text-validation-v3"
+  },
+  "correction": {
+    "classification": "small_proven_integration_defect",
+    "scope": "gemini_interactions_user_input_step_discriminator_only",
+    "v1_outer_input_object": {
+      "role": "user",
+      "content": "unchanged"
+    },
+    "v2_outer_input_object": {
+      "type": "user_input",
+      "content": "unchanged"
+    },
+    "fixture_meaning_changed": false,
+    "prompt_meaning_changed": false,
+    "canonical_output_schema_changed": false,
+    "request_configuration_changed": false,
+    "model_changed": false,
+    "official_contract": "https://ai.google.dev/api/interactions-api#UserInputStep"
+  },
+  "transport_binding": {
+    "binding_id": "capstone_gemini_v2_httpx_transport_v1",
+    "implementation_path": "backend/app/services/evaluation_live_transport.py",
+    "implementation_sha256": "58dfb5ed2c3dc7ef51c24c88d53019fb8f4a3e06a528c8cc8d8af1790f66c218",
+    "request_builder_path": "backend/app/services/evaluation_pilot_runner.py",
+    "request_builder_sha256": "3d1a3e796d8935f510260eb7673acfea064bf6db17c46f09df7d87605436336d",
+    "requirements_path": "backend/requirements.txt",
+    "requirements_sha256": "e9c36272c34580e1d513313c285ed5ba63957d5cda64dd40418c933b57d78aad",
+    "http_client_package": "httpx",
+    "http_client_requirement": "httpx>=0.27",
+    "same_runtime_identity_required": true,
+    "redirects_allowed": false,
+    "automatic_retry_count": 0
+  },
+  "execution_policy": {
+    "maximum_provider_calls_per_authorization": 1,
+    "maximum_lifetime_provider_calls_per_case": 1,
+    "maximum_new_provider_calls": 1,
+    "automatic_retry_count": 0,
+    "stop_after_provider_call": true,
+    "automatic_next_case_allowed": false,
+    "explicit_live_confirmation_flag": "--confirm-live",
+    "default_state": "blocked_awaiting_explicit_user_authorization",
+    "live_state_root": ".capstone-live-validation/capstone-gemini-text-validation-v4",
+    "historical_state_validation_required": true,
+    "reservation_marker_must_precede_provider_invocation": true,
+    "existing_case_reservation_or_result_blocks_execution": true
+  },
+  "spend_guard": {
+    "currency": "USD",
+    "arithmetic": "exact_decimal",
+    "maximum_fraction_digits": 8,
+    "total_validation_spend_ceiling_usd": "1.00000000",
+    "terra_v1_unresolved_exposure_usd": "0.05169700",
+    "terra_v2_conservative_exposure_usd": "0.05169700",
+    "sol_v1_conservative_exposure_usd": "0.10690800",
+    "historical_conservative_exposure_usd": "0.21030200",
+    "gemini_v1_external_monetary_exposure_usd": "0.00000000",
+    "gemini_v2_external_monetary_exposure_usd": "0.00000000",
+    "cumulative_after_gemini_v2_reservation_usd": "0.21030200",
+    "remaining_after_gemini_v2_reservation_usd": "0.78969800",
+    "strict_pilot_budget_is_not_a_source_or_sink": true,
+    "historical_exposure_release_allowed": false,
+    "free_tier_zero_is_capstone_external_exposure_only": true,
+    "strict_gemini_pricing_binding_mutation_allowed": false
+  },
+  "credential_policy": {
+    "resolution_timing": "provider_specific_immediately_before_transport",
+    "environment_variable_name": "GEMINI_API_KEY",
+    "value_printing_allowed": false,
+    "value_hashing_allowed": false,
+    "value_persistence_allowed": false,
+    "value_logging_allowed": false
+  },
+  "case_order": [
+    "capval-gemini-flash-pt1-v2"
+  ],
+  "cases": [
+    {
+      "validation_case_id": "capval-gemini-flash-pt1-v2",
+      "predecessor_validation_case_id": "capval-gemini-flash-pt1-v1",
+      "predecessor_result_record_hash": "222a10f499873278a526e12bd1c44b62d104a07f477162b1bba75860db488da8",
+      "source_call_id": "call-0005",
+      "candidate_id": "gemini_unified_v1",
+      "provider": "Google Gemini",
+      "model": "gemini-3.7-flash",
+      "api_family": "Gemini Interactions API v1beta with Api-Revision 2026-05-20",
+      "endpoint": "https://generativelanguage.googleapis.com/v1beta/interactions",
+      "fixture_id": "PT1",
+      "workload_stage": "text_analysis",
+      "request_configuration_id": "gemini_flash_text_pilot_v1",
+      "request_configuration_hash": "8644e02a24cff69f6619f744e02c6b55648e9463f76b30453b81dc04edbe466b",
+      "request_hash": "7ba77e1a55b8171d55d95aff39a7ffb171f8ba4eaf91a3dba342754ec4f57640",
+      "request_body_bytes": 6235,
+      "prompt_ids": ["text_system_v1", "text_input_v1"],
+      "prompt_hashes": [
+        "edfeb6bcfdfc89dc7372965838f565cd09ec3ddd1b484c8130d8afeb7a37404f",
+        "acee317c1353199340ae20c9d3ae9619ed2d3a3982d7ae24bd15de09d0a45384"
+      ],
+      "schema_id": "text_output_schema_v1",
+      "schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+      "role_mapping_id": "gemini_interactions_flash_v1",
+      "role_mapping_hash": "8900ae8cb50d6095d56b3c283c5e7d486ed6d94b4e8bc876d5e9253eaac83c2e",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "adapter_hash": "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5",
+      "maximum_output_tokens": 4096,
+      "reasoning": "medium",
+      "temperature": null,
+      "store": false,
+      "stream": false,
+      "input_token_bound_kind": "utf8_request_body_byte_upper_bound_for_rate_limit_only",
+      "input_token_bound": 6235,
+      "input_token_count_is_exact": false,
+      "billing_context": "provider_free_tier_no_billing_enabled",
+      "conservative_reservation_usd": "0.00000000",
+      "cumulative_worst_case_validation_exposure_usd": "0.21030200",
+      "remaining_after_reservation_usd": "0.78969800",
+      "credential_environment_variable": "GEMINI_API_KEY",
+      "provider_limits": {
+        "requests_per_minute": 5,
+        "tokens_per_minute": 250000,
+        "usage_at_setup": 0
+      },
+      "transport_binding_id": "capstone_gemini_v2_httpx_transport_v1",
+      "live_eligible": true
+    }
+  ],
+  "authorization_policy": {
+    "hash_bound": true,
+    "authorization_version": "v4",
+    "predecessor_state_binding_required": true,
+    "runtime_identity_binding_required": true,
+    "credential_readiness_value": "privately_confirmed",
+    "provider_control_confirmation_value": "confirmed",
+    "timestamp_format": "canonical_utc_seconds",
+    "required_false_authorities": [
+      "strict_pilot_execution_authorized",
+      "scored_execution_authorized",
+      "winner_selection_authorized",
+      "production_deployment_authorized"
+    ]
+  },
+  "record_policy": {
+    "record_type": "capstone_live_validation_result",
+    "record_version": "v4",
+    "raw_provider_response_persisted": false,
+    "semantic_provider_output_persisted": false,
+    "restricted_provider_prose_persisted": false,
+    "provider_request_id_ordinary_projection": null,
+    "provider_response_received_boolean_required": true,
+    "hashes_and_safe_status_only": true,
+    "result_is_pilot_record": false,
+    "result_is_scored_record": false,
+    "gemini_free_tier_external_exposure_recorded_separately_from_strict_pricing": true
+  },
+  "execution_boundary": {
+    "provider_calls_allowed_by_artifact": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "winner_selected": false,
+    "production_deployment_authorized": false
+  },
+  "specification_identity": {
+    "semantic_hash_algorithm": "sha256_canonical_json_with_semantic_hash_null",
+    "semantic_hash": "8a9632559202da1849f83afc4cd38e5a20d4cb29b2cff7c57f9705c528722a7a"
+  }
+}
