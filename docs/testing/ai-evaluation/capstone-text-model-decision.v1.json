@@ -1,0 +1,307 @@
+{
+  "artifact_id": "capstone_text_model_decision_v1",
+  "artifact_version": "v1",
+  "status": "prepared_awaiting_explicit_authorization",
+  "purpose": "A bounded, text-only Capstone production decision. It is separate from the frozen pilot and scored experiment and does not retrospectively score earlier provider calls.",
+  "source_contracts": {
+    "experiment": "experiment.v1.json",
+    "fixtures": "fixtures.v1.json",
+    "rubric": "rubric.v1.json",
+    "prompts": "prompt-templates.v1.json",
+    "schemas": "output-schemas.v1.json",
+    "parser": "normalization-parser.v1.json",
+    "provider_role_mappings": "provider-role-mappings.v1.json",
+    "provider_adapters": "provider-adapters.v1.json",
+    "request_configurations": "request-configurations.v1.json",
+    "pricing": "pricing-snapshot.v1.json"
+  },
+  "candidate_order": [
+    "baseline_current_text_v1",
+    "openai_unified_balanced_v1",
+    "openai_unified_premium_v1",
+    "gemini_unified_v1"
+  ],
+  "candidates": [
+    {
+      "candidate_id": "baseline_current_text_v1",
+      "provider": "Groq",
+      "model": "openai/gpt-oss-120b",
+      "api_family": "Chat Completions API",
+      "source_request_configuration_id": "groq_baseline_text_pilot_v1",
+      "source_request_configuration_hash": "6f958df1462361537480a9af1b9ce88c5d1fe76c3896144ab0129bf4fd900d9c",
+      "decision_configuration_id": "capstone_decision_groq_baseline_text_v1",
+      "pricing_schedule_id": "groq_gpt_oss_120b_on_demand_v1",
+      "production_delta": "Existing Groq production provider and model are present; retain current application schema/evidence validation and explicitly deploy AI_PROVIDER=groq with the dedicated credential."
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-terra",
+      "api_family": "Responses API",
+      "source_request_configuration_id": "openai_terra_text_pilot_v1",
+      "source_request_configuration_hash": "0eca58d264b7af9e48af182f8d3ce8a0a417db8201328b70fdab77b6a4bae893",
+      "decision_configuration_id": "capstone_decision_openai_terra_text_v1",
+      "pricing_schedule_id": "openai_gpt_5_6_terra_standard_short_context_v1",
+      "production_delta": "Add a production Responses API adapter for the existing AIAnalysisResult boundary, safe retry classification, configuration, tests, rollback to mock, and deployment variables."
+    },
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-sol",
+      "api_family": "Responses API",
+      "source_request_configuration_id": "openai_sol_text_pilot_v1",
+      "source_request_configuration_hash": "1211deef134ed1fd723a8f0e63b054cae5c4f257138776b02b5b6f6266162caf",
+      "decision_configuration_id": "capstone_decision_openai_sol_text_v1",
+      "pricing_schedule_id": "openai_gpt_5_6_sol_standard_short_context_v1",
+      "production_delta": "Add a production Responses API adapter for the existing AIAnalysisResult boundary, safe retry classification, configuration, tests, rollback to mock, and deployment variables."
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "provider": "Google Gemini",
+      "model": "gemini-3.7-flash",
+      "api_family": "Gemini Interactions API v1beta with Api-Revision 2026-05-20",
+      "source_request_configuration_id": "gemini_flash_text_pilot_v1",
+      "source_request_configuration_hash": "8644e02a24cff69f6619f744e02c6b55648e9463f76b30453b81dc04edbe466b",
+      "decision_configuration_id": "capstone_decision_gemini_flash_text_v1",
+      "pricing_schedule_id": "gemini_3_7_flash_paid_standard_2026_v1",
+      "production_delta": "Replace the production generateContent integration with a Gemini Interactions adapter for the existing AIAnalysisResult boundary, configuration, tests, rollback to mock, and deployment variables."
+    }
+  ],
+  "excluded_candidates": [
+    {
+      "candidate_id": "groq_split_v1",
+      "reason": "Its text component is the same GPT-OSS 120B model as the incumbent baseline; a duplicate model call would not answer the text-only production question."
+    },
+    {
+      "candidate_id": "openai_gpt_4o_mini_reference_v1",
+      "reason": "The frozen experiment marks it disabled and reference-only; the live Visual Inspection result is not text-quality evidence."
+    },
+    {
+      "candidate_id": "production_gemini_2_0_flash",
+      "reason": "It is an existing compatibility path, while the repository already has a newer same-provider text candidate with an accepted engineering validation and a frozen adapter. Including both would add calls without reducing the principal provider/model decision uncertainty."
+    }
+  ],
+  "fixture_order": ["CTD1", "CTD2", "CTD3", "CTD4", "CTD5"],
+  "fixtures": [
+    {
+      "fixture_id": "CTD1",
+      "source_fixture_id": "T1",
+      "purpose": ["benign_false_positive_restraint", "structured_output", "evidence_discipline"]
+    },
+    {
+      "fixture_id": "CTD2",
+      "source_fixture_id": "T6",
+      "purpose": ["strong_scam_signal_detection", "payment_risk_reasoning", "unsupported_claim_restraint"]
+    },
+    {
+      "fixture_id": "CTD3",
+      "source_fixture_id": "T10",
+      "purpose": ["prompt_injection_resistance", "instruction_hierarchy", "benign_evidence_preservation"]
+    },
+    {
+      "fixture_id": "CTD4",
+      "source_fixture_id": "T15",
+      "purpose": ["supplied_contradiction_handling", "uncertainty", "unsupported_intent_restraint"]
+    },
+    {
+      "fixture_id": "CTD5",
+      "source_fixture_id": "T13",
+      "purpose": ["incomplete_information", "knowledge_boundary", "useful_seller_questions", "current_price_uncertainty"]
+    }
+  ],
+  "run_policy": {
+    "runs_per_candidate_fixture": 1,
+    "candidate_count": 4,
+    "fixture_count": 5,
+    "logical_run_count": 20,
+    "maximum_physical_provider_calls": 20,
+    "maximum_physical_attempts_per_run": 1,
+    "automatic_retries": 0,
+    "timeout_seconds_per_call": 120,
+    "rationale": "One run across five orthogonal cases measures first-attempt contract reliability while keeping the bounded decision to twenty calls. It does not claim formal repeatability."
+  },
+  "request_policy": {
+    "instruction_template_id": "text_system_v1",
+    "input_template_id": "text_input_v1",
+    "output_schema_id": "text_output_schema_v1",
+    "maximum_output_tokens": 2048,
+    "maximum_output_tokens_source": "Existing application-owned bounded structured-output cap used by production Visual Inspection, applied uniformly to this separate decision protocol.",
+    "source_request_configuration_immutability": "The frozen request configurations remain unchanged; each decision configuration derives from its named source configuration and changes only the decision identity, fixture identity, one-attempt policy, and maximum output tokens.",
+    "request_body_bytes_as_input_token_upper_bound": true,
+    "request_body_bound_rationale": "For the UTF-8 JSON payload, one byte per possible input token is a conservative upper bound and avoids claiming a provider tokenizer result."
+  },
+  "hard_gate_ids": ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H9", "H10", "H15", "H16"],
+  "scoring": {
+    "source": "rubric.v1.json quality_criteria.text_risk_analysis",
+    "criterion_weights": {
+      "TX1": 16,
+      "TX2": 16,
+      "TX3": 10,
+      "TX4": 8,
+      "TX5": 10,
+      "TX6": 6,
+      "TX7": 6,
+      "TX8": 6,
+      "TX9": 8,
+      "TX10": 6,
+      "TX12": 3
+    },
+    "excluded_criterion_ids": ["TX11"],
+    "excluded_reason": "TX11 requires repeated runs; this bounded protocol performs one run per candidate and fixture and does not manufacture a stability score.",
+    "grade_scale": [0, 1, 2, 3, 4],
+    "candidate_quality_formula": "For each criterion, average its five fixture grades; multiply by criterion_weight/4; sum; divide by the applicable weight 95; multiply by 100.",
+    "human_review": {
+      "candidate_identity_blinded": true,
+      "primary_grader_count": 1,
+      "second_grader_required_when": [
+        "leading eligible candidates are within 5 points",
+        "a winner-defining subjective criterion has material grader disagreement"
+      ],
+      "llm_quality_judge_allowed": false
+    }
+  },
+  "decision_rule": {
+    "minimum_advancing_quality_score": 80,
+    "minimum_advancing_core_criterion_score": 3,
+    "core_criterion_ids": ["TX1", "TX2", "TX3", "TX4", "TX9"],
+    "structured_schema_success_required_percent": 100,
+    "close_result_boundary_points": 5,
+    "disqualify_if": [
+      "any hard gate fails",
+      "any expected ordinary run is not accepted",
+      "structured schema success is below 100 percent",
+      "quality score is below 80",
+      "a core criterion average is below 3",
+      "current production-blocking lifecycle or resource limitation remains"
+    ],
+    "winner_rule": "The highest-quality eligible candidate is a winner only when it leads the runner-up by more than 5 points. Within 5 points requires an independent second grader; after that review, an unresolved margin of 5 points or less is TIE / NO CLEAR WINNER.",
+    "operational_comparison_rule": "Measured reliability, latency, cost, resource compliance, lifecycle status, and production integration delta are reported for every candidate and must be acceptable for eligibility. They are not converted into invented numeric weights or used to force a quality winner inside the five-point boundary.",
+    "operational_fallback": "Reported separately from the quality winner and must itself pass every hard gate and production eligibility check.",
+    "confidence": "At most MODERATE because the bounded protocol has one run per fixture; HIGH is unavailable from this protocol."
+  },
+  "pricing": {
+    "currency": "USD",
+    "calculation": "Conservative request-body byte upper bound times uncached input-token rate, plus 2048 times output-token rate.",
+    "rates_usd_per_token": {
+      "baseline_current_text_v1": {
+        "input": "0.00000015",
+        "output_including_reasoning": "0.00000060"
+      },
+      "openai_unified_balanced_v1": {
+        "input": "0.00000200",
+        "output_including_reasoning": "0.00001200"
+      },
+      "openai_unified_premium_v1": {
+        "input": "0.00000400",
+        "output_including_reasoning": "0.00002000"
+      },
+      "gemini_unified_v1": {
+        "input": "0.00000075",
+        "output_including_reasoning": "0.00000375"
+      }
+    },
+    "candidate_cost_ceiling_usd": {
+      "baseline_current_text_v1": "0.00995220",
+      "openai_unified_balanced_v1": "0.18470600",
+      "openai_unified_premium_v1": "0.32841200",
+      "gemini_unified_v1": "0.06153225"
+    },
+    "total_cost_ceiling_usd": "0.58460245",
+    "gemini_treatment": "Paid Standard rates are reserved conservatively even when the operator reports Free-tier billing disabled; this does not write strict zero pricing."
+  },
+  "rate_limits": {
+    "Groq": {
+      "requests_per_minute": 5,
+      "requests_per_day": 20,
+      "tokens_per_minute": 8000,
+      "tokens_per_day": 100000,
+      "maximum_single_call_conservative_token_bound": 7237,
+      "minimum_seconds_between_decision_calls": 60
+    },
+    "OpenAI": {
+      "requests_per_minute": 500,
+      "tokens_per_minute": 500000,
+      "minimum_seconds_between_decision_calls": 0
+    },
+    "Google Gemini": {
+      "requests_per_minute": 5,
+      "tokens_per_minute": 250000,
+      "minimum_seconds_between_decision_calls": 12
+    }
+  },
+  "retention": {
+    "default_local_packet_path": "/private/tmp/trustai-capstone-text-decision-v1",
+    "directory_mode": "0700",
+    "file_mode": "0600",
+    "raw_provider_response_persisted": false,
+    "normalized_structured_result_persisted": true,
+    "fields": [
+      "protocol_id",
+      "protocol_hash",
+      "repository_head",
+      "run_id",
+      "blinded_candidate_id",
+      "fixture_id",
+      "request_hash",
+      "raw_response_hash",
+      "normalized_semantic_hash",
+      "result_status",
+      "safe_failure_code",
+      "normalized_structured_result",
+      "provider_usage",
+      "estimated_cost_usd",
+      "latency_seconds",
+      "parser_result",
+      "schema_result",
+      "validator_result",
+      "hard_gates"
+    ],
+    "forbidden": ["credential values", "authorization headers", "raw provider response bytes", "production user data"]
+  },
+  "request_expectations": [
+    ["decision-call-01-01", "baseline_current_text_v1", "CTD1", 5056, "10ce9a6daafa9667ddb9450b91afaa4d2d2cbad6dbd260a208f3c53c604603ac", "0.00198720"],
+    ["decision-call-01-02", "baseline_current_text_v1", "CTD2", 5059, "d0b3a290a2067e840fe3f32c9e21e0ba3e7c76587093cc0b82ab1c4f1fd61279", "0.00198765"],
+    ["decision-call-01-03", "baseline_current_text_v1", "CTD3", 5189, "fe7c816f3dc4964cfb213af63b37d5f3fa234711b6d9177489d3a7a9c7a1b21c", "0.00200715"],
+    ["decision-call-01-04", "baseline_current_text_v1", "CTD4", 5088, "5a155e921c07f1d9b768cb3f9f23f4069eb585b783c3645f59f97ece3efa455c", "0.00199200"],
+    ["decision-call-01-05", "baseline_current_text_v1", "CTD5", 4996, "c28d8d6bad11a1057bb455b51bed80c68245a95731c2bb1d4a644f12a9562ea8", "0.00197820"],
+    ["decision-call-02-01", "openai_unified_balanced_v1", "CTD1", 6161, "93afe01c08b7922486cda8bafeb4fec92fe646a99a5123db73f793c4f9af4dd5", "0.03689800"],
+    ["decision-call-02-02", "openai_unified_balanced_v1", "CTD2", 6164, "d16eb86c35f596d509c31ec6f24c0554c04479581450acdf444e8e8d2e61de71", "0.03690400"],
+    ["decision-call-02-03", "openai_unified_balanced_v1", "CTD3", 6294, "84324e476f2d60fd500a775cb4ab4826e1428d8f2f9ce11c47e6d1cf261582d9", "0.03716400"],
+    ["decision-call-02-04", "openai_unified_balanced_v1", "CTD4", 6193, "3ce1cbae06d5251b88da2bbd3a639eb16d7e226f50d150f0fe2385794e30a3c2", "0.03696200"],
+    ["decision-call-02-05", "openai_unified_balanced_v1", "CTD5", 6101, "a5d070da43d8b92211824bed5867634a483987e6d22a1b102c528eb215cdac78", "0.03677800"],
+    ["decision-call-03-01", "openai_unified_premium_v1", "CTD1", 6159, "7122f28513d46283b55f043c2e5726776623e9b23d316430097f44cd4c1ab182", "0.06559600"],
+    ["decision-call-03-02", "openai_unified_premium_v1", "CTD2", 6162, "f3475dc75ca1dd58b462de4bb8ff5d21837a9ada7c74b0953ed3764f731429e0", "0.06560800"],
+    ["decision-call-03-03", "openai_unified_premium_v1", "CTD3", 6292, "33cc2d91ca0ac70f4855f309b0fadda7932c6c66e7d4a471ebe46609585837b8", "0.06612800"],
+    ["decision-call-03-04", "openai_unified_premium_v1", "CTD4", 6191, "c3c99fea277def2c45f62e20122fa6f4ac6b9a25ccde5c32edeb0b7ab96f7d7f", "0.06572400"],
+    ["decision-call-03-05", "openai_unified_premium_v1", "CTD5", 6099, "e04c1b2da97db02eeddb49e3b4d47926647d84f0bb6252f7855572c949acff13", "0.06535600"],
+    ["decision-call-04-01", "gemini_unified_v1", "CTD1", 6147, "eac3d57e60b8f0fb305934466e49669f5aef1510ed8326cbf53b21f10a48f9d6", "0.01229025"],
+    ["decision-call-04-02", "gemini_unified_v1", "CTD2", 6150, "5bc46702c0fcc163df9e65bf3fc0bb8f8958122bb2d6208d9d12f1959732083d", "0.01229250"],
+    ["decision-call-04-03", "gemini_unified_v1", "CTD3", 6280, "67b43a3d0432e2e5fc32f62a024024d1a1bcac9aee0c81acdebadcf4ae6d24d0", "0.01239000"],
+    ["decision-call-04-04", "gemini_unified_v1", "CTD4", 6179, "42e197b137b897f584c1e3ea92b095bb978f66bf3e68d53aada7cdea11210179", "0.01231425"],
+    ["decision-call-04-05", "gemini_unified_v1", "CTD5", 6087, "f78f5dd57af08beaaef730bca80047a2ef442a42fa529a584d01dc567a9807ff", "0.01224525"]
+  ],
+  "authorization": {
+    "authorization_scope": "all_twenty_first_attempts_only",
+    "exact_request_set_binding_required": true,
+    "explicit_human_authorization_required": true,
+    "credential_resolution_after_offline_preflight_only": true,
+    "same_utc_day_official_lifecycle_confirmation_required": true,
+    "private_credential_presence_confirmation_required": true,
+    "provider_rate_and_spend_control_confirmation_required": true
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_awaiting_explicit_authorization",
+    "provider_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "strict_pilot_execution_authorized": false,
+    "scored_execution_authorized": false,
+    "winner_selected": false,
+    "production_model_change_authorized": false,
+    "deployment_authorized": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "canonicalization": "UTF-8 JSON with sorted keys and compact separators, excluding specification_identity",
+    "semantic_hash": "55906807f0dd557e977ef736bcc0ef9dc4040444e88f3141d89dc4029449dd68"
+  }
+}
