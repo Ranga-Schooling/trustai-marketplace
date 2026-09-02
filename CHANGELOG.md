@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.19.0...v1.19.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **history:** isolate listing retry state ([#106](https://github.com/Ranga-Schooling/trustai-marketplace/issues/106)) ([d05c060](https://github.com/Ranga-Schooling/trustai-marketplace/commit/d05c060b22e2d913a14be7d76ef61802285bdf8a))
+
 ## [1.19.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.18.0...v1.19.0) (2026-09-02)
 
 
