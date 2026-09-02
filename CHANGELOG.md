@@ -1,3 +1,10 @@
+## [1.17.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.5...v1.17.0) (2026-09-02)
+
+
+### Features
+
+* recover listings after a failed analysis (fixes [#80](https://github.com/Ranga-Schooling/trustai-marketplace/issues/80)) ([#100](https://github.com/Ranga-Schooling/trustai-marketplace/issues/100)) ([2c662d8](https://github.com/Ranga-Schooling/trustai-marketplace/commit/2c662d80f6886cd2904f389eb28af91758a2c840))
+
 ## [1.16.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.4...v1.16.5) (2026-09-02)
 
 
