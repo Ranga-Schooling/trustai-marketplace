@@ -10,6 +10,8 @@ Ownership:
 - GET /analyses*     E2 (Abdallah)  US-4.1
 - POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
 - GET /admin/analytics    (Ranga)   D-15, issue #42
+- GET /listings/failed,
+  POST /listings/{id}/retry  E2     D-20, issue #80 (recover failed listings)
 
 Agreed behaviors (docs/DESIGN_NOTES.md):
 - The listing row is committed BEFORE the AI call, so a provider outage
@@ -39,6 +41,16 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   only, never raw listing/analysis content. A failed AnalysisFailure now
   also writes an AnalysisFailureLog row (create_analysis's except branch)
   so provider failure rate is queryable instead of log-only.
+- GET /listings/failed and POST /listings/{id}/retry are additive to
+  SCHEMA-0 (D-20, issue #80): a Listing with no Analysis children (an
+  AnalysisFailure left it that way) was previously unreachable -- not
+  visible via GET /analyses (joins to a completed Analysis), no route
+  exposed the raw Listing table, and the only "retry" path was
+  resubmitting the whole form as a brand-new listing. retry re-reads the
+  stored Listing server-side and calls the same AIProvider.analyze() the
+  original attempt did -- no request body, nothing re-entered, no new
+  Listing row. Both routes use the same IDOR-safe 404-not-403 ownership
+  check as GET /analyses/{id}.
 """
 import logging
 from collections import Counter
@@ -69,9 +81,11 @@ from app.services.ai import AnalysisFailure, get_provider
 from app.services.scoring import compute_risk_score
 from app.schemas.schemas import (
     AdminAnalyticsOut,
+    AIAnalysisResult,
     AnalysisOut,
     AnalysisWithListingOut,
     CapabilitiesOut,
+    FailedListingOut,
     ListingIn,
     ListingPreviewOut,
     ListingUrlIn,
@@ -222,6 +236,76 @@ def delete_me(
     db.commit()
 
 
+def _handle_analysis_failure(db: Session, listing: Listing, exc: AnalysisFailure) -> HTTPException:
+    """[D-20] Shared by create_analysis and retry_analysis: log + record an
+    AnalysisFailureLog row (D-15/#42), then build (not raise) the 502 so
+    the caller can `raise ... from exc` with the original traceback still
+    attached. Message now names the listing id and points at retry -- the
+    old plain "the listing was saved" gave the buyer no way to act on that
+    (issue #80)."""
+    cause_type = type(exc.__cause__).__name__ if exc.__cause__ is not None else "none"
+    logger.error(
+        "AI analysis failed listing_id=%s provider=%s "
+        "failure_type=%s cause_type=%s",
+        listing.id,
+        settings.ai_provider,
+        type(exc).__name__,
+        cause_type,
+    )
+    # D-15/#42: mirrors the log line above so failure rate is queryable
+    # (GET /admin/analytics) instead of only discoverable by grepping logs.
+    db.add(
+        AnalysisFailureLog(
+            listing_id=listing.id,
+            provider=settings.ai_provider,
+            failure_type=type(exc).__name__,
+            cause_type=cause_type,
+        )
+    )
+    db.commit()
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=(
+            f"AI analysis failed; the listing was saved (id {listing.id}). "
+            "Find it under Failed listings to retry without re-entering it."
+        ),
+    )
+
+
+def _persist_analysis(db: Session, listing: Listing, provider, result: AIAnalysisResult, raw_response: str) -> Analysis:
+    """[D-20] Shared by create_analysis and retry_analysis: build and
+    persist the Analysis + RiskIndicator rows from an already-validated
+    AIAnalysisResult. A Listing can end up with more than one Analysis this
+    way (a retry after a prior success isn't blocked) -- GET /analyses
+    already lists every Analysis row independently, so this doesn't need
+    any special-casing there."""
+    analysis = Analysis(
+        listing_id=listing.id,
+        risk_level=result.risk_level.value,
+        risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
+        summary=result.summary,
+        price_assessment=result.price_assessment,
+        price_plausibility=result.price_plausibility.value,
+        recommendation=result.recommendation.value,
+        seller_questions=result.seller_questions,
+        model_used=provider.model_name,
+        prompt_version=settings.prompt_version,
+        raw_response=raw_response,
+    )
+    db.add(analysis)
+    analysis.risk_indicators = [
+        RiskIndicator(
+            category=indicator.category,
+            severity=indicator.severity.value,
+            explanation=indicator.explanation,
+        )
+        for indicator in result.risk_indicators
+    ]
+    db.commit()
+    db.refresh(analysis)
+    return analysis
+
+
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)
 def create_analysis(
     body: ListingIn,
@@ -253,55 +337,69 @@ def create_analysis(
         provider = get_provider()
         result, raw_response = provider.analyze(body)
     except AnalysisFailure as exc:
-        cause_type = type(exc.__cause__).__name__ if exc.__cause__ is not None else "none"
-        logger.error(
-            "AI analysis failed listing_id=%s provider=%s "
-            "failure_type=%s cause_type=%s",
-            listing.id,
-            settings.ai_provider,
-            type(exc).__name__,
-            cause_type,
-        )
-        # D-15/#42: mirrors the log line above so failure rate is queryable
-        # (GET /admin/analytics) instead of only discoverable by grepping logs.
-        db.add(
-            AnalysisFailureLog(
-                listing_id=listing.id,
-                provider=settings.ai_provider,
-                failure_type=type(exc).__name__,
-                cause_type=cause_type,
-            )
-        )
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI analysis failed; the listing was saved.",
-        ) from exc
-    analysis = Analysis(
-        listing_id=listing.id,
-        risk_level=result.risk_level.value,
-        risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
-        summary=result.summary,
-        price_assessment=result.price_assessment,
-        price_plausibility=result.price_plausibility.value,
-        recommendation=result.recommendation.value,
-        seller_questions=result.seller_questions,
-        model_used=provider.model_name,
-        prompt_version=settings.prompt_version,
-        raw_response=raw_response,
+        raise _handle_analysis_failure(db, listing, exc) from exc
+    return _persist_analysis(db, listing, provider, result, raw_response)
+
+
+def _listing_to_listing_in(listing: Listing) -> ListingIn:
+    """[D-20] Reconstructs the validated-at-submission-time ListingIn from
+    a stored Listing row so retry can call the same AIProvider.analyze()
+    signature the original attempt did, without the buyer re-entering
+    anything. listing.url is a plain string (create_analysis stores
+    str(body.url)); ListingIn re-validates it back into an HttpUrl here."""
+    return ListingIn(
+        title=listing.title,
+        price=listing.price,
+        currency=listing.currency,
+        source=listing.source,
+        description=listing.description,
+        url=listing.url,
     )
-    db.add(analysis)
-    analysis.risk_indicators = [
-        RiskIndicator(
-            category=indicator.category,
-            severity=indicator.severity.value,
-            explanation=indicator.explanation,
-        )
-        for indicator in result.risk_indicators
-    ]
-    db.commit()
-    db.refresh(analysis)
-    return analysis
+
+
+@router.get("/listings/failed", response_model=list[FailedListingOut])
+def list_failed_listings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """[D-20, issue #80] The authenticated user's listings that have never
+    completed an analysis -- an AnalysisFailure left them with zero
+    Analysis rows, and nothing before this let the owner find them again
+    (GET /analyses only ever joins to a completed Analysis)."""
+    listings = (
+        db.query(Listing)
+        .outerjoin(Analysis)
+        .filter(Listing.user_id == user.id, Analysis.id.is_(None))
+        .order_by(Listing.created_at.desc())
+        .all()
+    )
+    return listings
+
+
+@router.post("/listings/{listing_id}/retry", response_model=AnalysisOut, status_code=201)
+def retry_analysis(
+    listing_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[D-20, issue #80] Re-run analysis on an already-saved listing -- no
+    request body, nothing re-entered, no new Listing row. 404 if the
+    listing doesn't exist or isn't owned by this user (same IDOR-safe
+    pattern as GET /analyses/{id}). Not restricted to listings that are
+    currently failed -- re-analyzing one that already succeeded just adds
+    another Analysis row, which GET /analyses already lists independently."""
+    listing = (
+        db.query(Listing)
+        .filter(Listing.id == listing_id, Listing.user_id == user.id)
+        .first()
+    )
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    body = _listing_to_listing_in(listing)
+    try:
+        provider = get_provider()
+        result, raw_response = provider.analyze(body)
+    except AnalysisFailure as exc:
+        raise _handle_analysis_failure(db, listing, exc) from exc
+    return _persist_analysis(db, listing, provider, result, raw_response)
 
 
 def _to_analysis_with_listing(analysis: Analysis) -> AnalysisWithListingOut:

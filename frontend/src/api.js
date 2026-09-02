@@ -75,4 +75,8 @@ export const api = {
     files.forEach((file) => body.append('photos', file));
     return request(`/analyses/${analysisId}/visual-inspection`, { method: 'POST', body });
   },
+  // D-20, issue #80: listings whose AI call failed and were never
+  // retrieved anywhere -- and retrying one without re-entering it.
+  listFailedListings: () => request('/listings/failed'),
+  retryAnalysis: (listingId) => request(`/listings/${listingId}/retry`, { method: 'POST' }),
 };

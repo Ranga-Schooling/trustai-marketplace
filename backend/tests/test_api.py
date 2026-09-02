@@ -333,6 +333,106 @@ def test_ai_failure_returns_502_and_saves_listing(client, monkeypatch, caplog):
     assert "simulated outage" not in caplog.text
 
 
+class BrokenProvider:
+    """Shared by the failed-listing/retry tests below (D-20, issue #80)."""
+
+    model_name = "broken"
+
+    def analyze(self, listing):
+        from app.services.ai import AnalysisFailure
+
+        raise AnalysisFailure("simulated outage")
+
+
+def test_failed_listing_appears_in_failed_listings(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
+    client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+
+    body = client.get("/api/listings/failed", headers=headers).json()
+
+    assert len(body) == 1
+    assert body[0]["title"] == SAFE_LISTING["title"]
+    assert body[0]["price"] == SAFE_LISTING["price"]
+
+
+def test_successful_listing_not_in_failed_listings(client):
+    headers = register_and_login(client)
+    client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+
+    assert client.get("/api/listings/failed", headers=headers).json() == []
+
+
+def test_failed_listings_scoped_per_user(client, monkeypatch):
+    alice = register_and_login(client, "alice@example.com")
+    bob = register_and_login(client, "bob@example.com")
+
+    from app.api import routes
+    monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
+    client.post("/api/analyses", json=SAFE_LISTING, headers=alice)
+
+    assert len(client.get("/api/listings/failed", headers=alice).json()) == 1
+    assert client.get("/api/listings/failed", headers=bob).json() == []
+
+
+def test_retry_analysis_succeeds_and_clears_failed_list(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    real_get_provider = routes.get_provider
+
+    monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
+    create = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+    assert create.status_code == 502
+
+    failed = client.get("/api/listings/failed", headers=headers).json()
+    assert len(failed) == 1
+    listing_id = failed[0]["id"]
+
+    monkeypatch.setattr(routes, "get_provider", real_get_provider, raising=False)
+    retry = client.post(f"/api/listings/{listing_id}/retry", headers=headers)
+
+    assert retry.status_code == 201
+    assert retry.json()["risk_level"] == RiskLevel.low.value
+    assert client.get("/api/listings/failed", headers=headers).json() == []
+    assert len(client.get("/api/analyses", headers=headers).json()) == 1
+
+
+def test_retry_still_failing_provider_returns_502_with_listing_id(client, monkeypatch):
+    headers = register_and_login(client)
+
+    from app.api import routes
+    monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
+    create = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
+    listing_id = create.json()["detail"].split("id ")[1].split(")")[0]
+
+    retry = client.post(f"/api/listings/{listing_id}/retry", headers=headers)
+
+    assert retry.status_code == 502
+    assert f"id {listing_id}" in retry.json()["detail"]
+    # still unretrieved -- a second failed retry doesn't hide it or duplicate it.
+    assert len(client.get("/api/listings/failed", headers=headers).json()) == 1
+
+
+def test_retry_unknown_listing_returns_404(client):
+    headers = register_and_login(client)
+    assert client.post("/api/listings/999999/retry", headers=headers).status_code == 404
+
+
+def test_retry_listing_not_owned_returns_404(client, monkeypatch):
+    alice = register_and_login(client, "alice@example.com")
+    bob = register_and_login(client, "bob@example.com")
+
+    from app.api import routes
+    monkeypatch.setattr(routes, "get_provider", lambda: BrokenProvider(), raising=False)
+    client.post("/api/analyses", json=SAFE_LISTING, headers=alice)
+    listing_id = client.get("/api/listings/failed", headers=alice).json()[0]["id"]
+
+    assert client.post(f"/api/listings/{listing_id}/retry", headers=bob).status_code == 404
+
+
 def test_evidence_policy_exhaustion_persists_only_listing(client, monkeypatch):
     headers = register_and_login(client)
     user_id = client.get("/api/auth/me", headers=headers).json()["id"]
@@ -353,8 +453,13 @@ def test_evidence_policy_exhaustion_persists_only_listing(client, monkeypatch):
     response = client.post("/api/analyses", json=SAFE_LISTING, headers=headers)
 
     assert response.status_code == 502
+    # D-20/#80: message now names the listing id and points at retry, not
+    # just "the listing was saved" with no way to act on it.
     assert response.json() == {
-        "detail": "AI analysis failed; the listing was saved.",
+        "detail": (
+            "AI analysis failed; the listing was saved (id 1). "
+            "Find it under Failed listings to retry without re-entering it."
+        ),
     }
 
     db = SessionLocal()

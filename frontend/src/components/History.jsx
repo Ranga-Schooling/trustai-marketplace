@@ -11,23 +11,46 @@ function formatDate(value) {
 
 export default function History({ onOpen, onNewListing }) {
   const [analyses, setAnalyses] = useState([]);
+  const [failedListings, setFailedListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // D-20, issue #80: per-listing state so one retry's spinner/error doesn't
+  // block or clobber another's while both sit in the failed list.
+  const [retryingId, setRetryingId] = useState(null);
+  const [retryError, setRetryError] = useState('');
 
   useEffect(() => {
-    async function loadAnalyses() {
-      try {
-        const items = await api.listAnalyses();
-        setAnalyses(items);
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Unable to load your history.');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadAnalyses();
+    loadHistory();
   }, []);
+
+  async function loadHistory() {
+    setLoading(true);
+    try {
+      const [analysesResult, failedResult] = await Promise.all([
+        api.listAnalyses(),
+        api.listFailedListings(),
+      ]);
+      setAnalyses(analysesResult);
+      setFailedListings(failedResult);
+      setError('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unable to load your history.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRetry(listingId) {
+    setRetryError('');
+    setRetryingId(listingId);
+    try {
+      const analysis = await api.retryAnalysis(listingId);
+      onOpen(analysis);
+    } catch (err) {
+      setRetryError(err instanceof ApiError ? err.message : 'Unable to retry that listing right now.');
+      setRetryingId(null);
+    }
+  }
 
   return (
     <div className="card history-panel">
@@ -42,7 +65,40 @@ export default function History({ onOpen, onNewListing }) {
       {loading ? <p className="subtle">Loading your review history…</p> : null}
       {error ? <div className="error">{error}</div> : null}
 
-      {!loading && !error && analyses.length === 0 ? (
+      {!loading && !error && failedListings.length > 0 ? (
+        <div className="failed-listings">
+          <p className="eyebrow">Failed listings</p>
+          <p className="subtle">
+            The AI check didn't complete for these — your listing details were still saved. Retry without re-entering anything.
+          </p>
+          {retryError ? <div className="error">{retryError}</div> : null}
+          <div className="history-list">
+            {failedListings.map((item) => (
+              <div key={item.id} className="history-card failed-listing-card">
+                <div>
+                  <div className="history-topline">
+                    <strong>{item.title}</strong>
+                    <span className="badge medium">needs retry</span>
+                  </div>
+                  <p className="subtle">
+                    {item.price} {item.currency} • {formatDate(item.created_at)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => handleRetry(item.id)}
+                  disabled={retryingId === item.id}
+                >
+                  {retryingId === item.id ? 'Retrying…' : 'Retry analysis'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {!loading && !error && analyses.length === 0 && failedListings.length === 0 ? (
         <div className="empty-state">
           <h2>No analyses yet</h2>
           <p className="subtle">Start by submitting your first listing and building a history of your reviews.</p>
@@ -50,25 +106,27 @@ export default function History({ onOpen, onNewListing }) {
         </div>
       ) : null}
 
-      <div className="history-list">
-        {analyses.map((item) => (
-          <button key={item.id} type="button" className="history-card" onClick={() => onOpen(item)}>
-            <div>
-              <div className="history-topline">
-                <strong>{item.listing_title}</strong>
-                {typeof item.risk_score === 'number' ? (
-                  <span className="risk-score">{item.risk_score} / 100</span>
-                ) : null}
-                <span className={`badge ${item.risk_level}`}>{item.risk_level}</span>
+      {analyses.length > 0 ? (
+        <div className="history-list">
+          {analyses.map((item) => (
+            <button key={item.id} type="button" className="history-card" onClick={() => onOpen(item)}>
+              <div>
+                <div className="history-topline">
+                  <strong>{item.listing_title}</strong>
+                  {typeof item.risk_score === 'number' ? (
+                    <span className="risk-score">{item.risk_score} / 100</span>
+                  ) : null}
+                  <span className={`badge ${item.risk_level}`}>{item.risk_level}</span>
+                </div>
+                <p className="subtle">
+                  {item.listing_price} {item.listing_currency} • {formatDate(item.created_at)}
+                </p>
               </div>
-              <p className="subtle">
-                {item.listing_price} {item.listing_currency} • {formatDate(item.created_at)}
-              </p>
-            </div>
-            <span className="link">Open</span>
-          </button>
-        ))}
-      </div>
+              <span className="link">Open</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

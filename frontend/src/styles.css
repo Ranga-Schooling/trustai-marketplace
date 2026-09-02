@@ -1090,6 +1090,14 @@ button.ghost:hover { background: var(--surface-ghost-hover); }
 .history-card:hover { border-color: var(--trust); box-shadow: var(--history-shadow); }
 .history-topline { display: flex; gap: 10px; align-items: center; margin-bottom: 3px; }
 .history-card .link { color: var(--trust); font-weight: 600; }
+
+/* D-20, issue #80: failed-listing rows are a <div>, not a <button> --
+   they hold a real retry button, and buttons can't nest -- so the row
+   itself isn't clickable and shouldn't borrow .history-card's hover glow. */
+.failed-listings { margin-bottom: 20px; }
+.failed-listings > .subtle { margin-bottom: 12px; }
+.failed-listing-card { cursor: default; }
+.failed-listing-card:hover { border-color: var(--line); box-shadow: none; }
 .empty-state {
   padding: 20px 0 8px;
   text-align: center;

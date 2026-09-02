@@ -655,6 +655,40 @@ Production ingress also requires an explicit request-body limit before
 deployment, and provider configuration and credential governance must be
 resolved before live evaluation or deployment. The feature must not be called
 production-ready, and model adherence has not yet been proven.
+**Recovering failed listings (D-20, issue #80).** US-2.2's
+persist-before-analyze decision (above) already made the listing survive
+an `AnalysisFailure`, but "the listing was saved" was never actually true
+from the buyer's side: `GET /analyses` only ever joins `Listing` to a completed
+`Analysis`, so a listing with zero `Analysis` rows was invisible there; no
+route exposed the raw `Listing` table at all; and the only way to try
+again was resubmitting the whole form as a brand-new `Listing` row,
+leaving the original orphaned forever. The issue explicitly asked which
+of two shapes retry should take: reuse `POST /analyses` (would mean
+either re-sending the full `ListingIn` body redundantly, or making its
+fields conditionally optional when a listing id is present -- both add
+real complexity to the frozen contract for a case that's supposed to need
+*less* input, not a variant of the same input), or a dedicated endpoint.
+Went with dedicated: `GET /listings/failed` (the user's listings with no
+`Analysis` children, newest first) and `POST /listings/{id}/retry` (no
+request body -- re-reads the stored `Listing` server-side, rebuilds a
+`ListingIn` from it, and calls the exact same `AIProvider.analyze()` the
+original attempt did). Both are additive to SCHEMA-0: `ListingIn`,
+`AIAnalysisResult`, and `POST /analyses` are all unchanged. Retry isn't
+restricted to currently-failed listings -- retrying one that already
+succeeded just adds a second `Analysis` row, which `GET /analyses` already
+lists independently since it was never deduplicated by listing in the
+first place, so no special-casing was needed to allow this.
+
+The 502 message itself changed too (the issue's explicit "the error
+message should indicate where the listing was saved" AC): it used to be
+a dead end -- `"AI analysis failed; the listing was saved."`, no id, no
+next step. Now names the listing id and points at where to actually find
+it. The failure-handling and success-persistence logic that used to live
+solely inside `create_analysis` were pulled into two shared helpers
+(`_handle_analysis_failure`, `_persist_analysis`) so `retry_analysis`
+doesn't duplicate either -- same `AnalysisFailureLog` row (D-15/#42) gets
+written on a failed retry as on a failed first attempt, so admin failure-
+rate analytics don't undercount retries.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI

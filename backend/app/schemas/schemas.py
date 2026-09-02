@@ -182,6 +182,24 @@ class CapabilitiesOut(BaseModel):
     visual_inspection_available: bool
 
 
+class FailedListingOut(BaseModel):
+    """GET /listings/failed response (D-20, issue #80): a Listing row with
+    no Analysis children -- the AI call failed after the listing was
+    persisted (US-2.2) and nothing before this let the owner find it again.
+    Deliberately not the full ListingIn shape -- just enough to recognize
+    the listing and decide to retry; the description/url aren't needed for
+    that and retry re-reads them server-side (POST /listings/{id}/retry)."""
+
+    id: int
+    title: str
+    price: float
+    currency: str
+    source: str
+    created_at: dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- Admin (D-15, issue #42) ----------
 class AdminAnalyticsOut(BaseModel):
     """GET /admin/analytics response — aggregates only, never raw listing/
