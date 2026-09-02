@@ -123,4 +123,21 @@ describe('Visual Inspection API requests', () => {
 
     expect(fetchMock.mock.calls[0][1].headers['Content-Type']).toBe('application/json');
   });
+
+  it('gets the server-authoritative capability response without request configuration', async () => {
+    setToken('existing-token');
+    const capability = { visual_inspection_available: true };
+    const fetchMock = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => capability,
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.capabilities()).resolves.toEqual(capability);
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/capabilities', {
+      headers: { Authorization: 'Bearer existing-token', 'Content-Type': 'application/json' },
+    });
+  });
 });

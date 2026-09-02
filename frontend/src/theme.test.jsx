@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { api, setToken } from './api';
-import { THEME_STORAGE_KEY } from './theme';
+import VisualInspection from './components/VisualInspection';
+import { THEME_STORAGE_KEY, useTheme } from './theme';
 
 function createMemoryStorage() {
   const values = new Map();
@@ -56,6 +57,18 @@ function installMatchMedia(initiallyDark) {
       });
     },
   };
+}
+
+function ThemedVisualInspectionHarness() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <>
+      <button type="button" onClick={toggleTheme}>
+        Switch to {theme === 'dark' ? 'light' : 'dark'} mode
+      </button>
+      <VisualInspection analysisId={42} />
+    </>
+  );
 }
 
 describe('theme preference', () => {
@@ -219,6 +232,39 @@ describe('theme preference', () => {
     unmount();
 
     expect(mediaQuery.removeEventListener).toHaveBeenCalledWith('change', listener);
+  });
+
+  it('preserves transient visual findings while the theme changes', async () => {
+    installMatchMedia(false);
+    vi.spyOn(api, 'visualInspect').mockResolvedValue({
+      findings: [
+        {
+          category: 'visible_damage',
+          observation: 'Photo 1 visibly shows a scratch.',
+          photo_numbers: [1],
+        },
+      ],
+    });
+    const events = userEvent.setup();
+    render(<ThemedVisualInspectionHarness />);
+
+    await events.upload(
+      screen.getByLabelText('Choose photos'),
+      new File(['jpeg'], 'synthetic-photo.jpg', { type: 'image/jpeg' }),
+    );
+    await events.click(
+      screen.getByRole('checkbox', {
+        name: /I consent to sending these photos to OpenAI for visual inspection/i,
+      }),
+    );
+    await events.click(screen.getByRole('button', { name: 'Inspect photos' }));
+    expect(await screen.findByText('Photo 1 visibly shows a scratch.')).toBeVisible();
+
+    await events.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(screen.getByText('Photo 1 visibly shows a scratch.')).toBeVisible();
+    expect(screen.getByText(/Visual findings do not change the existing Trust score/i)).toBeVisible();
   });
 
   it('keeps the theme preference through sign-in and sign-out', async () => {

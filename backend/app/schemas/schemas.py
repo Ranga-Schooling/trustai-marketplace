@@ -175,6 +175,13 @@ class AnalysisWithListingOut(AnalysisOut):
     listing_currency: str
 
 
+# ---------- Application capabilities ----------
+class CapabilitiesOut(BaseModel):
+    """Public-safe availability only; never provider configuration or secrets."""
+
+    visual_inspection_available: bool
+
+
 # ---------- Admin (D-15, issue #42) ----------
 class AdminAnalyticsOut(BaseModel):
     """GET /admin/analytics response — aggregates only, never raw listing/

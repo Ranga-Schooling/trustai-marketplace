@@ -65,6 +65,7 @@ export const api = {
   me: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   deleteMe: () => request('/auth/me', { method: 'DELETE' }),
+  capabilities: () => request('/capabilities'),
   createAnalysis: (data) => request('/analyses', { method: 'POST', body: JSON.stringify(data) }),
   previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),

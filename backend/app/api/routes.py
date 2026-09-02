@@ -71,6 +71,7 @@ from app.schemas.schemas import (
     AdminAnalyticsOut,
     AnalysisOut,
     AnalysisWithListingOut,
+    CapabilitiesOut,
     ListingIn,
     ListingPreviewOut,
     ListingUrlIn,
@@ -87,6 +88,7 @@ from app.services.visual_inspection import (
     VisualInspectionServiceFailure,
     VisualInspectionServiceUnavailable,
     get_visual_inspection_service,
+    is_visual_inspection_available,
     validate_visual_evidence_policy,
 )
 from app.services.visual_inspection_images import (
@@ -117,6 +119,15 @@ _VISUAL_IMAGE_ERROR_STATUS = {
 def health() -> dict:
     """Liveness probe — already done, used by the Sprint 1 deploy skeleton."""
     return {"status": "ok"}
+
+
+@router.get("/capabilities", response_model=CapabilitiesOut)
+def capabilities(_user: User = Depends(get_current_user)) -> CapabilitiesOut:
+    """Return application-owned availability without exposing provider config."""
+
+    return CapabilitiesOut(
+        visual_inspection_available=is_visual_inspection_available(settings),
+    )
 
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)

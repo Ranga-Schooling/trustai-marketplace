@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '../api';
 import RiskGauge from './RiskGauge';
 import VisualInspection from './VisualInspection';
 
@@ -14,6 +15,7 @@ const PLAUSIBILITY_DISPLAY = {
 
 export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
   const [copied, setCopied] = useState(false);
+  const [visualInspectionAvailable, setVisualInspectionAvailable] = useState(false);
   const riskLevel = analysis.risk_level || 'low';
   const recommendationLabel = {
     buy: 'Buy',
@@ -25,6 +27,23 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
   const riskScore = typeof analysis.risk_score === 'number' ? analysis.risk_score : null;
   const indicators = Array.isArray(analysis.risk_indicators) ? analysis.risk_indicators : [];
   const sellerQuestions = Array.isArray(analysis.seller_questions) ? analysis.seller_questions : [];
+
+  useEffect(() => {
+    let active = true;
+    setVisualInspectionAvailable(false);
+    api.capabilities()
+      .then((capability) => {
+        if (active) {
+          setVisualInspectionAvailable(capability.visual_inspection_available === true);
+        }
+      })
+      .catch(() => {
+        if (active) setVisualInspectionAvailable(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [analysis.id]);
 
   async function handleCopyQuestions() {
     if (sellerQuestions.length === 0) return;
@@ -105,7 +124,7 @@ export default function AnalysisResult({ analysis, onBack, onViewHistory }) {
         </section>
       </div>
 
-      <VisualInspection analysisId={analysis.id} />
+      {visualInspectionAvailable ? <VisualInspection analysisId={analysis.id} /> : null}
 
       <p className="disclaimer dashed">Disclaimer — TrustAI provides decision-support guidance, not a guarantee.</p>
 
