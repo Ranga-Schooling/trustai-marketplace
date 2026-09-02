@@ -203,20 +203,26 @@ class OpenAIVisualInspectionService:
         }
 
 
+def is_visual_inspection_available(settings: Settings) -> bool:
+    """Return whether the complete explicit V1 provider configuration exists."""
+
+    provider = settings.visual_inspection_provider.strip().casefold()
+    api_key = settings.openai_api_key.strip()
+    model_name = settings.visual_inspection_model.strip()
+    return provider == "openai" and bool(api_key) and bool(model_name)
+
+
 def get_visual_inspection_service(
     settings: Settings,
 ) -> OpenAIVisualInspectionService:
     """Resolve the explicitly configured V1 visual provider or fail closed."""
 
-    provider = settings.visual_inspection_provider.strip().casefold()
-    api_key = settings.openai_api_key.strip()
-    model_name = settings.visual_inspection_model.strip()
-    if provider != "openai" or not api_key or not model_name:
+    if not is_visual_inspection_available(settings):
         raise VisualInspectionServiceUnavailable()
 
     return OpenAIVisualInspectionService(
-        api_key=api_key,
-        model_name=model_name,
+        api_key=settings.openai_api_key.strip(),
+        model_name=settings.visual_inspection_model.strip(),
     )
 
 

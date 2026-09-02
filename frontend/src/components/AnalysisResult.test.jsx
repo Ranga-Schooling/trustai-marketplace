@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from '../api';
 import AnalysisResult from './AnalysisResult';
 
@@ -18,6 +18,12 @@ const ANALYSIS = {
 };
 
 describe('AnalysisResult', () => {
+  beforeEach(() => {
+    vi.spyOn(api, 'capabilities').mockResolvedValue({
+      visual_inspection_available: true,
+    });
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -41,7 +47,7 @@ describe('AnalysisResult', () => {
     ).toBeVisible();
   });
 
-  it('exposes Visual Inspection only from a completed analysis result', () => {
+  it('exposes Visual Inspection only when the server reports it available', async () => {
     render(
       <AnalysisResult
         analysis={ANALYSIS}
@@ -51,8 +57,43 @@ describe('AnalysisResult', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: 'Add photos for visual inspection' }),
+      await screen.findByRole('heading', { name: 'Add photos for visual inspection' }),
     ).toBeVisible();
+  });
+
+  it('does not render Visual Inspection when the server reports it unavailable', async () => {
+    api.capabilities.mockResolvedValue({ visual_inspection_available: false });
+
+    render(
+      <AnalysisResult
+        analysis={ANALYSIS}
+        onBack={vi.fn()}
+        onViewHistory={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalledOnce());
+    expect(
+      screen.queryByRole('heading', { name: 'Add photos for visual inspection' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('fails closed when the capability request fails', async () => {
+    api.capabilities.mockRejectedValue(new Error('private capability failure'));
+
+    render(
+      <AnalysisResult
+        analysis={ANALYSIS}
+        onBack={vi.fn()}
+        onViewHistory={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(api.capabilities).toHaveBeenCalledOnce());
+    expect(
+      screen.queryByRole('heading', { name: 'Add photos for visual inspection' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/private capability failure/i)).not.toBeInTheDocument();
   });
 
   it('keeps the Trust result intact after visual findings and after resetting them', async () => {
@@ -74,6 +115,7 @@ describe('AnalysisResult', () => {
         onViewHistory={vi.fn()}
       />,
     );
+    await screen.findByLabelText('Choose photos');
     const photo = new File(['jpeg'], 'private-photo-name.jpg', { type: 'image/jpeg' });
     await events.upload(screen.getByLabelText('Choose photos'), photo);
     await events.click(

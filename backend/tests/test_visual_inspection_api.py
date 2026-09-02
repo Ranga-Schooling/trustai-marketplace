@@ -526,11 +526,11 @@ def _listing_context() -> ListingIn:
     return ListingIn.model_validate(SAFE_LISTING)
 
 
-def test_visual_inspection_configuration_defaults_to_disabled_openai_model():
+def test_visual_inspection_configuration_defaults_to_fully_disabled():
     configured = _visual_settings()
 
     assert configured.visual_inspection_provider == "disabled"
-    assert configured.visual_inspection_model == "gpt-4o-mini"
+    assert configured.visual_inspection_model == ""
     assert not hasattr(configured, "visual_inspection_api_key")
 
 
@@ -591,11 +591,12 @@ def test_text_provider_does_not_implicitly_enable_visual_inspection(
     assert unexpected_post.calls == []
 
 
-def test_visual_factory_reuses_openai_key_and_default_visual_model(monkeypatch):
+def test_visual_factory_reuses_openai_key_and_explicit_visual_model(monkeypatch):
     post = _RecordingPost(_OpenAIResponse())
     monkeypatch.setattr(visual_inspection.httpx, "post", post)
     configured = _visual_settings(
         visual_inspection_provider="openai",
+        visual_inspection_model="gpt-4o-mini",
         openai_api_key="synthetic-shared-openai-key",
     )
 
