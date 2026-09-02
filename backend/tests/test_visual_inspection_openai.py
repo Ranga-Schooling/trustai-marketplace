@@ -358,8 +358,38 @@ def test_openai_visual_schema_failure_retries_then_returns_compliant_result():
     assert rejected_content.casefold() not in correction
 
 
-@pytest.mark.parametrize("status_code", [401, 403, 429, 500])
-def test_openai_visual_http_failures_retry_once_then_fail_safely(status_code):
+@pytest.mark.parametrize("status_code", [400, 401, 403, 404, 409, 422])
+def test_openai_visual_deterministic_http_failures_do_not_retry(status_code):
+    post = RecordingPost(
+        FakeOpenAIResponse(status_code=status_code),
+    )
+
+    with pytest.raises(VisualInspectionServiceFailure) as exc_info:
+        _service(post).inspect([_image(1)], _listing())
+
+    assert len(post.calls) == 1
+    _assert_safe_failure(exc_info, PRIVATE_PROVIDER_BODY, SYNTHETIC_API_KEY)
+
+
+@pytest.mark.parametrize("status_code", [300, 408, 410, 418, 425, 501, 505])
+def test_openai_visual_unclassified_http_failures_fail_closed_without_retry(
+    status_code,
+):
+    post = RecordingPost(
+        FakeOpenAIResponse(status_code=status_code),
+    )
+
+    with pytest.raises(VisualInspectionServiceFailure) as exc_info:
+        _service(post).inspect([_image(1)], _listing())
+
+    assert len(post.calls) == 1
+    _assert_safe_failure(exc_info, PRIVATE_PROVIDER_BODY, SYNTHETIC_API_KEY)
+
+
+@pytest.mark.parametrize("status_code", [429, 500, 502, 503, 504])
+def test_openai_visual_transient_http_failures_retry_once_then_fail_safely(
+    status_code,
+):
     post = RecordingPost(
         FakeOpenAIResponse(status_code=status_code),
         FakeOpenAIResponse(status_code=status_code),
@@ -369,6 +399,33 @@ def test_openai_visual_http_failures_retry_once_then_fail_safely(status_code):
         _service(post).inspect([_image(1)], _listing())
 
     assert len(post.calls) == 2
+    _assert_safe_failure(exc_info, PRIVATE_PROVIDER_BODY, SYNTHETIC_API_KEY)
+
+
+@pytest.mark.parametrize("status_code", [429, 500, 502, 503, 504])
+def test_openai_visual_transient_http_failure_can_succeed_on_second_attempt(
+    status_code,
+):
+    post = RecordingPost(
+        FakeOpenAIResponse(status_code=status_code),
+        FakeOpenAIResponse(),
+    )
+
+    result = _service(post).inspect([_image(1)], _listing())
+
+    assert result.model_dump(mode="json") == VALID_RESULT
+    assert len(post.calls) == 2
+
+
+def test_openai_visual_v1_403_regression_never_starts_second_request():
+    post = RecordingPost(
+        FakeOpenAIResponse(status_code=403),
+    )
+
+    with pytest.raises(VisualInspectionServiceFailure) as exc_info:
+        _service(post).inspect([_image(1)], _listing())
+
+    assert len(post.calls) == 1
     _assert_safe_failure(exc_info, PRIVATE_PROVIDER_BODY, SYNTHETIC_API_KEY)
 
 
@@ -385,6 +442,35 @@ def test_openai_visual_network_failures_retry_once_then_fail_safely(error_class)
         _service(post).inspect([_image(1)], _listing())
 
     assert len(post.calls) == 2
+    _assert_safe_failure(exc_info, private_error, SYNTHETIC_API_KEY)
+
+
+@pytest.mark.parametrize("error_class", [httpx.ReadTimeout, httpx.ConnectError])
+def test_openai_visual_network_failure_can_succeed_on_second_attempt(error_class):
+    private_error = "private-network-error-marker"
+    request = httpx.Request("POST", OPENAI_ENDPOINT)
+    post = RecordingPost(
+        error_class(private_error, request=request),
+        FakeOpenAIResponse(),
+    )
+
+    result = _service(post).inspect([_image(1)], _listing())
+
+    assert result.model_dump(mode="json") == VALID_RESULT
+    assert len(post.calls) == 2
+
+
+def test_openai_visual_unclassified_transport_failure_fails_closed_without_retry():
+    private_error = "private-protocol-error-marker"
+    request = httpx.Request("POST", OPENAI_ENDPOINT)
+    post = RecordingPost(
+        httpx.ProtocolError(private_error, request=request),
+    )
+
+    with pytest.raises(VisualInspectionServiceFailure) as exc_info:
+        _service(post).inspect([_image(1)], _listing())
+
+    assert len(post.calls) == 1
     _assert_safe_failure(exc_info, private_error, SYNTHETIC_API_KEY)
 
 
