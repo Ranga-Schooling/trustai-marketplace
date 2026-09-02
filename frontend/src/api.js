@@ -28,7 +28,11 @@ export function setOnSessionExpired(fn) {
 }
 
 async function request(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const headers = {
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    ...(options.headers || {}),
+  };
   const hadToken = hasToken();
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
@@ -61,8 +65,18 @@ export const api = {
   me: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
   deleteMe: () => request('/auth/me', { method: 'DELETE' }),
+  capabilities: () => request('/capabilities'),
   createAnalysis: (data) => request('/analyses', { method: 'POST', body: JSON.stringify(data) }),
   previewListingUrl: (url) => request('/listings/preview', { method: 'POST', body: JSON.stringify({ url }) }),
   listAnalyses: () => request('/analyses'),
   getAnalysis: (id) => request(`/analyses/${id}`),
+  visualInspect: (analysisId, files) => {
+    const body = new FormData();
+    files.forEach((file) => body.append('photos', file));
+    return request(`/analyses/${analysisId}/visual-inspection`, { method: 'POST', body });
+  },
+  // D-20, issue #80: listings whose AI call failed and were never
+  // retrieved anywhere -- and retrying one without re-entering it.
+  listFailedListings: () => request('/listings/failed'),
+  retryAnalysis: (listingId) => request(`/listings/${listingId}/retry`, { method: 'POST' }),
 };

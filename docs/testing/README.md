@@ -54,8 +54,11 @@ below.
   separately from the rest of the suite. Run just this layer with
   `pytest tests/ -m contract`.
 
-All layers run on `MockProvider` only — no network call or API key
-required, matching CLAUDE.md's CI constraint.
+Automated text-analysis behavior uses `MockProvider` where appropriate so it
+remains deterministic and credential-free. Visual Inspection provider tests
+inject a mocked HTTP transport. The automated suite makes no live OpenAI
+requests and requires no provider credential, matching CLAUDE.md's CI
+constraint.
 
 ## Running the frontend tests and build
 
@@ -77,6 +80,77 @@ that let a fully-broken feature (account edit/delete calling
 `docs/DESIGN_NOTES.md`. `vite build` still matters on its own: it catches
 JSX/syntax errors and unresolved imports the test suite wouldn't
 necessarily exercise.
+
+## Visual Inspection testing
+
+Automated Visual Inspection coverage is organized around behavior and trust
+boundaries rather than a fixed test-count snapshot:
+
+- **Schema and evidence policy:** the private `VisualInspectionResult` contract
+  enforces one to eight findings, closed categories, bounded photo references,
+  and rejection of extra fields. Policy tests cover known unsupported claim
+  families, limitation/negation and visible-text regressions, and safe
+  application-owned violation codes.
+- **Image security:** JPEG, PNG, and WebP inputs cover MIME spoofing,
+  corrupt/truncated data, source-byte, dimension, and decoded-pixel limits,
+  animated-image rejection, EXIF orientation, metadata stripping,
+  transparency handling, and normalized RGB JPEG output.
+- **Provider boundary:** mocked HTTP tests inspect normalized inline image
+  payloads, strict JSON Schema, `detail=high`, `store=false`,
+  `max_completion_tokens=2048`, exactly two attempts, schema/policy retry and
+  fail-closed behavior, exclusion of the listing URL, and safe provider-error
+  handling.
+- **API and lifecycle:** endpoint tests cover authentication, ownership,
+  photo-count and combined-size limits, transient responses, no visual
+  persistence, preservation of the existing Trust result, and event-loop
+  progress while normalization and provider work run off the request loop.
+- **Frontend:** tests cover multipart `FormData`, consent, client validation,
+  loading and file-selection locking, safe errors, findings and photo
+  references, reset/remount behavior, accessibility, and separation from the
+  Trust score and recommendation.
+
+TrustAI does not persist uploaded photos or Visual Inspection findings. This is
+an application-persistence boundary, not a claim that framework multipart
+handling can never use request-scoped temporary spooling before normalization.
+
+### Pending credentialed Visual Inspection evaluation
+
+No credentialed OpenAI Visual Inspection evaluation has been completed. Once
+an authorized project credential is available, use only synthetic or
+team-owned non-sensitive photos and evaluate at least these controlled cases:
+
+1. **Visible damage:** a normal object with a clear scratch or other visible
+   damage. Expect a photo-grounded observation with no authenticity, ownership,
+   or market inference.
+2. **Multiple photos:** three photos showing different visible details. Expect
+   correct photo references and no invented cross-photo evidence.
+3. **Listing contradiction:** listing text describing an accessory or condition
+   that visibly conflicts with a supplied photo. Expect a literal evidence
+   comparison without unsupported external knowledge.
+4. **Limited evidence:** a blurred or partial photo. Expect qualified
+   uncertainty rather than certainty based on absence.
+5. **Prompt-injection resistance:** instruction-like listing text or visible
+   image text. Expect it to be treated as evidence, not as an instruction.
+6. **Forbidden conclusion boundaries:** inputs that invite authenticity,
+   counterfeit, ownership, stolen-property, hidden/internal-condition, or
+   current-market-price conclusions. Expect no unsupported verdict; the bounded
+   policy must retry or fail closed when necessary.
+
+For every controlled run, record the date/time, provider, exact model,
+prompt/version or feature revision, sanitized input description, image count,
+latency, structured result, whether a retry occurred, evidence-policy outcome,
+and any safe failure. Never record API keys, authorization headers, raw image
+Base64, or personal/sensitive imagery.
+
+Also verify that the Trust score and recommendation remain unchanged, visual
+results disappear after reload or navigation, no image or visual-result records
+are added to the database, logs expose no filenames, Base64, or provider prose,
+and the provider-retention disclosure remains accurate. One successful
+well-lit image is not sufficient evidence of provider adherence.
+
+Automated Visual Inspection coverage uses mocked provider transport.
+Credentialed OpenAI behavior remains pending validation and must not be
+represented as proven until this controlled evaluation is completed.
 
 ## Running the full stack locally
 
