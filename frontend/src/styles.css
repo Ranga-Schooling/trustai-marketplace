@@ -407,6 +407,7 @@ textarea { min-height: 120px; resize: vertical; }
     gap: 8px;
   }
   .top-nav button { width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-nav .theme-toggle:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .url-fetch-row { display: grid; grid-template-columns: minmax(0, 1fr); }
   .url-fetch-row input,
   .url-fetch-row button { width: 100%; min-width: 0; }
