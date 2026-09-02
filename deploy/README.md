@@ -64,6 +64,9 @@ rather than defaulting to `latest`, so a stale or bad `latest` can't silently ge
    # optional:
    # AI_PROVIDER=mock
    # GROQ_API_KEY=
+   # For the D-21 production text path:
+   # AI_PROVIDER=gpt
+   # OPENAI_MODEL=gpt-5.6-terra
    # Visual Inspection is fail-closed unless all three values are set:
    # OPENAI_API_KEY=
    # VISUAL_INSPECTION_PROVIDER=disabled
@@ -76,6 +79,11 @@ rather than defaulting to `latest`, so a stale or bad `latest` can't silently ge
    `AI_PROVIDER`, so enabling Visual Inspection does not switch the text-analysis provider.
    Credential values stay only in the host `.env`; they are never committed or stored in
    GitHub Actions.
+
+   `AI_PROVIDER=gpt` selects the Responses-backed Terra text adapter only when
+   explicitly configured; the repository default remains `mock`. The same
+   `OPENAI_API_KEY` setting may independently support Visual Inspection, but
+   neither provider setting switches the other feature.
 
    nginx grants only the Visual Inspection endpoint an 11 MiB request-body limit: 10 MiB for
    the application-level combined image allowance plus a bounded 1 MiB for multipart framing

@@ -29,12 +29,12 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "gpt-5.6-terra"
     visual_inspection_provider: str = "disabled"
     visual_inspection_model: str = ""
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
-    prompt_version: str = "v3"
+    prompt_version: str = "v4"
 
     # Basic abuse guardrails for the public analysis endpoint.
     max_description_chars: int = 4000

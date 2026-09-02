@@ -9,7 +9,8 @@
 #   IMAGE_TAG=<commit-sha> docker compose up -d
 #
 # Required in .env beside this file: JWT_SECRET, POSTGRES_PASSWORD
-# Optional: GROQ_API_KEY, AI_PROVIDER. Visual Inspection remains disabled
+# Optional: GROQ_API_KEY, AI_PROVIDER, OPENAI_API_KEY, OPENAI_MODEL.
+# Visual Inspection remains disabled
 # unless its provider, model, and OpenAI credential are all set explicitly.
 # IMAGE_TAG is supplied by the deployment command and is not stored in .env.
 
@@ -60,6 +61,7 @@ services:
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-terra}
       VISUAL_INSPECTION_PROVIDER: ${VISUAL_INSPECTION_PROVIDER:-disabled}
       VISUAL_INSPECTION_MODEL: ${VISUAL_INSPECTION_MODEL:-}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}

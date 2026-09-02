@@ -187,8 +187,10 @@ solved by the existing `AIProvider` Protocol + `get_provider()` strategy
 `GroqProvider` was refactored into a thin subclass of a new
 `OpenAICompatibleProvider` base (request/response shape, JSON mode,
 retry-once-then-`AnalysisFailure` — all now written once); `GPTProvider`
-is a second ~5-line subclass, since OpenAI's own API is the shape Groq
-already mirrors. `GeminiProvider` does **not** subclass that base — Google's
+was initially a second thin Chat Completions subclass. D-21 supersedes that
+OpenAI-specific implementation after the Capstone evaluation selected a
+Responses-backed production path. `GeminiProvider` does **not** subclass the
+base — Google's
 `generateContent` API uses `contents`/`parts`, not `messages`/`choices` —
 but implements the identical external contract (validate into
 `AIAnalysisResult`, one retry, then `AnalysisFailure`), so `get_provider()`
@@ -689,6 +691,52 @@ solely inside `create_analysis` were pulled into two shared helpers
 doesn't duplicate either -- same `AnalysisFailureLog` row (D-15/#42) gets
 written on a failed retry as on a failed first attempt, so admin failure-
 rate analytics don't undercount retries.
+
+**Capstone production text-model selection (D-21).** The frozen
+`capstone_text_model_decision_v1` result remains **TIE / NO CLEAR WINNER**:
+Terra's quality score of 98.0000 led Sol's 95.0526 by 2.9474 points, below the
+protocol's strict greater-than-five-point winner threshold. That historical
+result is not rewritten. A separate engineering/governance decision selected
+OpenAI GPT-5.6 Terra for the current Capstone production text-analysis
+workload. The selection uses the observed quality leadership and evidence
+discipline together with 5/5 first-attempt acceptance, lower observed mean
+latency (about 4.9755 seconds versus 5.8192), lower five-call estimated cost
+(USD 0.02345450 versus USD 0.05105700), and a manageable integration path. It
+is not a claim that Terra formally won the frozen decision or is universally
+better than Sol or any other model.
+
+`AI_PROVIDER=gpt` now selects a lean OpenAI Responses adapter using
+`POST /v1/responses`, with `OPENAI_MODEL=gpt-5.6-terra`. The request keeps the
+authoritative instructions separate from one deterministic JSON projection of
+untrusted listing data, requests strict JSON Schema output generated from
+`AIAnalysisResult`, caps output at 2,048 tokens, uses medium reasoning and the
+validated standard configuration, disables storage, streaming, truncation,
+redirects, and tools/search, and retains the public `AIAnalysisResult` shape.
+The v4 prompt adds an explicit instruction-injection boundary; its substantive
+evidence, current-knowledge, image, price, risk, and recommendation semantics
+remain those of v3.
+
+The response path extracts exactly one completed Responses `output_text`,
+strictly parses UTF-8 JSON with duplicate-key and resource-limit rejection,
+rejects unexpected top-level or indicator fields, validates the Pydantic
+contract, enforces the deterministic indicator/risk/recommendation mapping,
+then applies the existing evidence-policy gate. Schema, cross-field, evidence,
+configuration, and HTTP 400/401/403/404/409/422 failures are terminal. Only
+HTTP 429/500/502/503/504, transport failures, and timeouts may use the second
+and final attempt. Logs retain safe classifications only, never provider bodies
+or credentials.
+
+The repository default stays `AI_PROVIDER=mock`, so local development and CI
+cannot unexpectedly spend money. Production must explicitly supply
+`AI_PROVIDER=gpt`, `OPENAI_MODEL=gpt-5.6-terra`, and `OPENAI_API_KEY` through
+deployment configuration. Rollback is `AI_PROVIDER=mock` plus a process
+restart; no persisted analysis needs rewriting. Visual Inspection remains an
+independent D-20 channel controlled by `VISUAL_INSPECTION_PROVIDER` and
+`VISUAL_INSPECTION_MODEL`, still using `gpt-4o-mini` when enabled. No database,
+HTTP response, frontend, deterministic scoring, history, or visual-result
+contract changes. The frozen decision report plus this established design log
+are the authoritative chronology, so a separate ADR would duplicate rather
+than clarify the decision.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
