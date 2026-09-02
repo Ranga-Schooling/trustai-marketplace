@@ -1,0 +1,252 @@
+{
+  "artifact_id": "pilot_budget_control_v2",
+  "artifact_version": "v2",
+  "status": "frozen_operator_ceiling_pre_execution",
+  "purpose": "Enforce the approved USD 5.00 pilot ceiling with exact decimal pre-attempt reservations, immutable physical-attempt accounting, and fail-closed pending-cost reconciliation without authorizing provider execution.",
+  "supersession": {
+    "supersedes_artifact_id": "pilot_budget_control_v1",
+    "supersedes_artifact_version": "v1",
+    "supersedes_semantic_hash": "2a6d8fdfdd39efcf8ddc027734988a557d222885f736ddc60d8162dd059b7b23",
+    "reason": "v1 cannot represent a crossed provider invocation whose exact billable usage and actual cost are not yet authoritatively known",
+    "historical_v1_identity_and_meaning_preserved": true,
+    "changed_semantics": [
+      "pending_cost_reconciliation immutable state",
+      "full pending reservation encumbrance",
+      "global live execution interlock while cost is unresolved",
+      "separate immutable authoritative reconciliation record"
+    ]
+  },
+  "source_bindings": {
+    "pricing_snapshot_id": "pricing_snapshot_v1",
+    "pricing_snapshot_version": "v1",
+    "pricing_snapshot_hash": "0467643eafbe55e6e2215c9ad0e0576dac2d0d157a94418eef23382b0ec09282",
+    "pilot_cost_envelope_id": "pilot_cost_envelope_v1",
+    "pilot_cost_envelope_version": "v1",
+    "pilot_cost_envelope_hash": "40899a9b6a8b94928bb52947da1f040699cbee7f7f13be0902c17a7db25b2942",
+    "url_discovery_id": "provider_native_url_discovery_v1",
+    "url_discovery_version": "v1",
+    "url_discovery_hash": "c8c0c6280e665677ad211aa1240c42418b851a7537fbde7030200eec119d5145",
+    "retry_policy_id": "retry_policy_v1",
+    "retry_policy_version": "v1",
+    "retry_policy_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b",
+    "result_record_id": "pilot_result_record_v1",
+    "result_record_version": "v1",
+    "result_record_hash": "2dd0ccdc09ce7e3944843bb0e189deacd7750641be8d64a4325778801e9f33d1"
+  },
+  "approved_ceiling": {
+    "currency": "USD",
+    "amount": "5.00",
+    "authorization_status": "approved_operator_ceiling",
+    "approval_scope": "pilot_only",
+    "spend_or_provider_execution_authority": false,
+    "binary_floating_point_money_authority": false,
+    "arithmetic": "exact_decimal"
+  },
+  "call_plan": {
+    "planned_nominal_calls": 26,
+    "planned_maximum_physical_attempts": 52,
+    "currently_eligible_nominal_calls": 22,
+    "currently_eligible_maximum_physical_attempts": 44,
+    "currently_eligible_breakdown": {
+      "text_analysis": 10,
+      "visual_inspection": 8,
+      "openai_url_discovery": 2,
+      "openai_search_synthesis": 2,
+      "preflight_no_call": 1
+    },
+    "ineligible_search_paths_excluded": [
+      "gemini_unified_v1",
+      "groq_split_v1"
+    ],
+    "retry_attempts_assumed_free": false
+  },
+  "known_cost_state": {
+    "known_charge_subtotal_one_attempt_usd": "1.36717440",
+    "known_charge_subtotal_two_attempts_usd": "2.73434880",
+    "remaining_headroom_over_known_subtotal_usd": "2.26565120",
+    "conservative_maximum_total_cost_usd": null,
+    "all_planned_costs_finalized": false,
+    "known_subtotal_is_attempt_reservation_authority": false,
+    "unknown_components": [
+      "provider_reported_input_and_cached_input_tokens_for_configured_model_calls",
+      "openai_web_search_content_tokens_billed_at_model_rates",
+      "gemini_billable_search_query_count_and_shared_free_allowance_state",
+      "groq_compound_internal_model_and_tool_usage_with_incomplete_official_pricing"
+    ]
+  },
+  "pre_attempt_reservation": {
+    "required_before_provider_invocation": true,
+    "reservation_must_be_conservative_upper_bound": true,
+    "reservation_must_be_non_null": true,
+    "reservation_must_be_positive": true,
+    "reservation_input_type": "canonical_decimal_string",
+    "maximum_fraction_digits": 8,
+    "maximum_fraction_digits_derivation": "maximum fractional precision of the frozen pricing_snapshot_v1 usd_per_unit rates",
+    "admission_equation": "committed_exact_actual_cost_plus_active_pre_attempt_reservations_plus_unresolved_pending_reconciliation_encumbrances_plus_requested_reservation_less_than_or_equal_to_5.00",
+    "unknown_or_unbounded_component_result": "pilot_attempt_cost_not_conservatively_bounded",
+    "ceiling_exhaustion_result": "pilot_budget_ceiling_exhausted",
+    "pending_reconciliation_result": "pending_cost_reconciliation",
+    "block_occurs_before_provider_invocation": true,
+    "blocked_reservation_creates_attempt": false,
+    "blocked_reservation_increments_provider_call_count": false
+  },
+  "immutable_ledger": {
+    "active_reservation_fields": [
+      "attempt_id",
+      "conservative_upper_bound_usd"
+    ],
+    "completed_exact_cost_fields": [
+      "attempt_id",
+      "reserved_upper_bound_usd",
+      "actual_cost_usd",
+      "outcome"
+    ],
+    "pending_cost_fields": [
+      "attempt_id",
+      "provider",
+      "candidate_id",
+      "model",
+      "reserved_upper_bound_usd",
+      "outcome",
+      "billing_state",
+      "pending_state_reference"
+    ],
+    "reconciliation_record_fields": [
+      "reconciliation_id",
+      "attempt_id",
+      "provider",
+      "candidate_id",
+      "model",
+      "reserved_upper_bound_usd",
+      "actual_cost_usd",
+      "released_reservation_usd",
+      "authoritative_evidence_type",
+      "authoritative_evidence_reference",
+      "reconciled_at",
+      "pricing_snapshot_id",
+      "pricing_snapshot_hash",
+      "reconciliation_policy_id",
+      "reconciliation_policy_version",
+      "reconciliation_policy_hash",
+      "prior_pending_state_reference",
+      "reconciliation_record_hash"
+    ],
+    "completed_attempt_outcomes": [
+      "succeeded",
+      "failed_retryable",
+      "failed_nonretryable"
+    ],
+    "failed_attempt_cost_preserved": true,
+    "retried_attempt_cost_preserved": true,
+    "pending_attempt_fact_preserved_after_reconciliation": true,
+    "actual_cost_nullable_only_for_pending_reconciliation": true,
+    "actual_cost_may_exceed_reservation": false,
+    "provider_calls_completed_equals_unique_invoked_attempt_count": true,
+    "reservation_is_provider_call": false,
+    "pending_attempt_is_provider_call": true,
+    "reconciliation_is_provider_call": false,
+    "attempt_semantic_or_transport_outcome_separate_from_billing_state": true
+  },
+  "pending_cost_reconciliation_policy": {
+    "policy_id": "pending_cost_reconciliation_policy_v1",
+    "policy_version": "v1",
+    "policy_hash_algorithm": "SHA-256",
+    "policy_hash_input": "canonical_compact_utf8_json_of_this_object_with_policy_hash_replaced_by_null",
+    "policy_hash": "9d0598ad72f4b3da7b76b349081bae7f61aeb195a852c32c8ec863df4555a0c6",
+    "trigger": "provider invocation boundary crossed and exact billable usage or actual cost cannot be established authoritatively",
+    "billing_state": "pending_cost_reconciliation",
+    "actual_cost_usd": null,
+    "full_reservation_remains_encumbered": true,
+    "physical_provider_attempt_counted_exactly_once": true,
+    "attempt_number_consumed": true,
+    "retry_blocked_until_reconciliation": true,
+    "next_logical_run_blocked": true,
+    "next_candidate_blocked": true,
+    "all_provider_invocation_blocked": true,
+    "scored_execution_blocked": true,
+    "timeout_connection_or_provider_error_without_exact_usage_assumed_zero": false,
+    "reservation_may_be_used_as_actual_cost": false,
+    "exact_zero_rule": "actual_cost_usd may be zero only when authoritative deterministic evidence establishes exact zero",
+    "successful_response_with_authoritative_usage_and_later_semantic_failure": "record exact calculated actual cost and preserve semantic failure outcome",
+    "closed_authoritative_evidence_types": [
+      "provider_usage_metadata",
+      "provider_usage_record",
+      "provider_billing_record"
+    ],
+    "authoritative_evidence_reference_format": "lowercase_sha256_hex",
+    "raw_billing_evidence_in_ordinary_ledger": false,
+    "provider_diagnostic_prose_in_ordinary_ledger": false,
+    "multiple_unresolved_pending_attempts_result": "fail_closed"
+  },
+  "reconciliation": {
+    "authenticated_provider_or_billing_api_access_permitted_by_this_artifact": false,
+    "reconciliation_requires_exact_decimal_actual_cost": true,
+    "reconciliation_requires_authoritative_evidence_type_and_reference": true,
+    "original_attempt_and_pending_fact_are_immutable": true,
+    "completion_accounting": "replace unresolved full-reservation encumbrance with committed exact actual cost and release reserved_upper_bound_usd minus actual_cost_usd",
+    "actual_cost_greater_than_reservation_result": "fail_closed_actual_cost_exceeds_reservation",
+    "execution_resume_requirements": [
+      "valid reconciliation record",
+      "no unresolved pending cost",
+      "coherent budget within approved ceiling",
+      "all other live gates remain valid"
+    ]
+  },
+  "result_record_projection": {
+    "result_record_contract": "pilot_result_record_v1",
+    "pending_attempt_estimated_cost": null,
+    "pending_attempt_required_notes_and_anomalies_value": "pending_cost_reconciliation",
+    "reconciliation_mutates_original_attempt_record": false,
+    "reconciliation_record_is_separate": true
+  },
+  "candidate_budget_eligibility": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "url_discovery_configuration_id": "openai_sol_url_discovery_pilot_v1",
+      "structurally_eligible": true,
+      "attempt_requires_same_day_conservative_reservation_proof": true
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "url_discovery_configuration_id": "openai_terra_url_discovery_pilot_v1",
+      "structurally_eligible": true,
+      "attempt_requires_same_day_conservative_reservation_proof": true
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "url_discovery_configuration_id": null,
+      "structurally_eligible": false,
+      "reason": "billable_search_query_count_is_not_bounded"
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "url_discovery_configuration_id": null,
+      "structurally_eligible": false,
+      "reason": "compound_internal_topology_and_complete_pricing_are_not_bounded"
+    }
+  ],
+  "same_day_boundary": {
+    "pricing_and_lifecycle_certification_required": true,
+    "attempt_specific_reservation_proof_required": true,
+    "provider_side_project_spend_limit_required_where_supported": true,
+    "missing_proof_result": "block_affected_attempt_before_provider_invocation"
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "pending_cost_reconciliation_is_independent_hard_blocker": true,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "provider_calls_completed": 0,
+  "pilot_calls_completed": 0,
+  "scored_calls_completed": 0,
+  "winner_selected": false,
+  "specification_identity": {
+    "hash_algorithm": "SHA-256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "7e4065dd69809f581ca475a3a9da8d4669b5961274da0c43574b844f3c12f824"
+  }
+}

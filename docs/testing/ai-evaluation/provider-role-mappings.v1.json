@@ -1,0 +1,279 @@
+{
+  "artifact_id": "provider_role_mappings_v1",
+  "artifact_version": "v1",
+  "status": "frozen_pre_execution_contract",
+  "purpose": "Freeze the provider-native request-side placement selected before each pilot attempt without constructing requests, using credentials, or authorizing execution.",
+  "provider_neutral_common_contract": "normalization-parser.v1.json#/provider_role_mapping_contract_v1",
+  "search_authority_contract": "search-authority.v2.json@v2",
+  "mapping_order": [
+    "openai_responses_sol_v1",
+    "openai_responses_terra_v1",
+    "gemini_interactions_flash_v1",
+    "groq_gpt_oss_chat_v1",
+    "groq_baseline_chat_v1",
+    "groq_compound_chat_v1",
+    "groq_qwen_vision_chat_v1"
+  ],
+  "official_documentation_evidence": [
+    {
+      "evidence_id": "openai_responses_2026_08_31",
+      "provider": "OpenAI",
+      "observed_on": "2026-08-31",
+      "api_or_model_family": "Responses API and GPT-5.6",
+      "source": "https://developers.openai.com/api/reference/resources/responses/methods/create",
+      "facts": [
+        "instructions inserts a system or developer message",
+        "input accepts text, image, or file input",
+        "developer or system instructions have higher authority than user messages",
+        "text.format supports JSON Schema structured output",
+        "web_search is a built-in tool and source records can be requested",
+        "response includes id, status, output, incomplete details, and usage"
+      ]
+    },
+    {
+      "evidence_id": "gemini_interactions_2026_08_31",
+      "provider": "Google Gemini",
+      "observed_on": "2026-08-31",
+      "api_or_model_family": "Gemini Interactions API and Gemini 3.7 Flash",
+      "source": "https://ai.google.dev/api/interactions-api-v1",
+      "additional_sources": [
+        "https://ai.google.dev/gemini-api/docs/structured-output",
+        "https://ai.google.dev/gemini-api/docs/google-search",
+        "https://ai.google.dev/gemini-api/docs/image-understanding"
+      ],
+      "facts": [
+        "system_instruction is distinct from input",
+        "response_format accepts a JSON Schema",
+        "tools accepts Google Search",
+        "input accepts image content",
+        "interaction response includes id, status, steps, and usage",
+        "structured output combined with built-in tools is Preview, so pilot search uses separate retrieval and synthesis calls"
+      ]
+    },
+    {
+      "evidence_id": "groq_chat_compound_2026_08_31",
+      "provider": "Groq",
+      "observed_on": "2026-08-31",
+      "api_or_model_family": "Chat Completions, Compound, GPT-OSS 120B, and Qwen 3.8 27B",
+      "source": "https://console.groq.com/docs/api-reference",
+      "additional_sources": [
+        "https://console.groq.com/docs/compound",
+        "https://console.groq.com/docs/structured-outputs",
+        "https://console.groq.com/docs/vision"
+      ],
+      "facts": [
+        "chat messages support system and user roles",
+        "Compound provides built-in web search and exposes executed tool records and citations",
+        "GPT-OSS 120B supports strict JSON Schema output",
+        "Qwen 3.8 27B accepts text and image input and supports JSON Schema output; current strict constrained-decoding support is not documented for this model",
+        "structured outputs cannot currently be combined with tool use, so search retrieval and synthesis are separate calls",
+        "chat responses include finish_reason, usage, and x_groq request metadata"
+      ]
+    }
+  ],
+  "mappings": [
+    {
+      "mapping_id": "openai_responses_sol_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "8378af7ef40c05640fda77f153637b10aa196ed7dcf507b7e2637463e4e42fc0",
+      "official_evidence_refs": ["openai_responses_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "openai_responses_sol_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"openai_responses_adapter_v1","adapter_version":"v1"},
+          "provider": "OpenAI",
+          "api_family": "Responses API",
+          "candidate_ids": ["openai_unified_premium_v1"],
+          "model_ids": ["gpt-5.6-sol"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"input user message input_text"}],"schema_placement":"text.format json_schema text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"search_retrieval","topology_id":"two_call_search_retrieval","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_retrieval","ordered_native_segments":[{"ordinal":0,"source":"search_retrieval_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"search_retrieval_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input user message input_text"}],"schema_placement":"none_harness_assembles_retrieval_evidence_bundle_v1","visual_media_placement":null,"search_tool_placement":"tools web_search; include web_search_call.action.sources"},
+            {"workload_stage":"search_synthesis","topology_id":"two_call_search_synthesis","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_synthesis","ordered_native_segments":[{"ordinal":0,"source":"search_synthesis_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"search_synthesis_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input user message input_text part 0"},{"ordinal":2,"source":"search_synthesis_v2_untrusted_evidence","authority_class":"untrusted_retrieved_evidence","native_surface":"input same user message input_text part 1"}],"schema_placement":"text.format json_schema search_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"visual_inspection","topology_id":"single_call_visual","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.visual_inspection","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"untrusted_context components in exact manifest order","authority_class":"untrusted_context","native_surface":"input user message input_text"},{"ordinal":2,"source":"frozen local normalized image bytes","authority_class":"visual_media","native_surface":"input same user message input_image"}],"schema_placement":"text.format json_schema visual_output_schema_v1","visual_media_placement":"input_image after untrusted context in same user message","search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "openai_responses_terra_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "1726614cdf2959edd4125be6cb7c5098c712631a13f13820edec87681e51685d",
+      "official_evidence_refs": ["openai_responses_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "openai_responses_terra_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"openai_responses_adapter_v1","adapter_version":"v1"},
+          "provider": "OpenAI",
+          "api_family": "Responses API",
+          "candidate_ids": ["openai_unified_balanced_v1"],
+          "model_ids": ["gpt-5.6-terra"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"input user message input_text"}],"schema_placement":"text.format json_schema text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"search_retrieval","topology_id":"two_call_search_retrieval","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_retrieval","ordered_native_segments":[{"ordinal":0,"source":"search_retrieval_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"search_retrieval_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input user message input_text"}],"schema_placement":"none_harness_assembles_retrieval_evidence_bundle_v1","visual_media_placement":null,"search_tool_placement":"tools web_search; include web_search_call.action.sources"},
+            {"workload_stage":"search_synthesis","topology_id":"two_call_search_synthesis","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_synthesis","ordered_native_segments":[{"ordinal":0,"source":"search_synthesis_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"search_synthesis_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input user message input_text part 0"},{"ordinal":2,"source":"search_synthesis_v2_untrusted_evidence","authority_class":"untrusted_retrieved_evidence","native_surface":"input same user message input_text part 1"}],"schema_placement":"text.format json_schema search_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"visual_inspection","topology_id":"single_call_visual","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.visual_inspection","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"instructions"},{"ordinal":1,"source":"untrusted_context components in exact manifest order","authority_class":"untrusted_context","native_surface":"input user message input_text"},{"ordinal":2,"source":"frozen local normalized image bytes","authority_class":"visual_media","native_surface":"input same user message input_image"}],"schema_placement":"text.format json_schema visual_output_schema_v1","visual_media_placement":"input_image after untrusted context in same user message","search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "gemini_interactions_flash_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "8900ae8cb50d6095d56b3c283c5e7d486ed6d94b4e8bc876d5e9253eaac83c2e",
+      "official_evidence_refs": ["gemini_interactions_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "gemini_interactions_flash_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"gemini_interactions_adapter_v1","adapter_version":"v1"},
+          "provider": "Google Gemini",
+          "api_family": "Gemini Interactions API v1beta with Api-Revision 2026-05-20",
+          "candidate_ids": ["gemini_unified_v1"],
+          "model_ids": ["gemini-3.7-flash"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"system_instruction"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"input text content"}],"schema_placement":"response_format application/json schema text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"search_retrieval","topology_id":"two_call_search_retrieval","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_retrieval","ordered_native_segments":[{"ordinal":0,"source":"search_retrieval_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"system_instruction"},{"ordinal":1,"source":"search_retrieval_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input text content"}],"schema_placement":"none_harness_assembles_retrieval_evidence_bundle_v1","visual_media_placement":null,"search_tool_placement":"tools google_search"},
+            {"workload_stage":"search_synthesis","topology_id":"two_call_search_synthesis","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_synthesis","ordered_native_segments":[{"ordinal":0,"source":"search_synthesis_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"system_instruction"},{"ordinal":1,"source":"search_synthesis_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"input text content item 0"},{"ordinal":2,"source":"search_synthesis_v2_untrusted_evidence","authority_class":"untrusted_retrieved_evidence","native_surface":"input text content item 1"}],"schema_placement":"response_format application/json schema search_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"visual_inspection","topology_id":"single_call_visual","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.visual_inspection","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"system_instruction"},{"ordinal":1,"source":"untrusted_context components in exact manifest order","authority_class":"untrusted_context","native_surface":"input text content"},{"ordinal":2,"source":"frozen local normalized image bytes","authority_class":"visual_media","native_surface":"input image content"}],"schema_placement":"response_format application/json schema visual_output_schema_v1","visual_media_placement":"image content after untrusted text content","search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "groq_gpt_oss_chat_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6",
+      "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "groq_gpt_oss_chat_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"groq_chat_completions_adapter_v1","adapter_version":"v1"},
+          "provider": "Groq",
+          "api_family": "Chat Completions API",
+          "candidate_ids": ["groq_split_v1"],
+          "model_ids": ["openai/gpt-oss-120b"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"response_format json_schema strict true text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null},
+            {"workload_stage":"search_synthesis","topology_id":"two_call_search_synthesis","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_synthesis","ordered_native_segments":[{"ordinal":0,"source":"search_synthesis_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"search_synthesis_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"messages user content part 0"},{"ordinal":2,"source":"search_synthesis_v2_untrusted_evidence","authority_class":"untrusted_retrieved_evidence","native_surface":"messages same user content part 1"}],"schema_placement":"response_format json_schema strict true search_output_schema_v1","visual_media_placement":null,"search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "groq_baseline_chat_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "f9034ce72afd00be0e60ae7e5a3c4dad713fac0d45e5ec97efb177721f164ce1",
+      "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "groq_baseline_chat_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"groq_chat_completions_adapter_v1","adapter_version":"v1"},
+          "provider": "Groq",
+          "api_family": "Chat Completions API",
+          "candidate_ids": ["baseline_current_text_v1"],
+          "model_ids": ["openai/gpt-oss-120b"],
+          "workload_bindings": [
+            {"workload_stage":"text_analysis","topology_id":"single_call_text","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.text_analysis","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_input components in exact manifest order","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"response_format json_object; harness validates text_output_schema_v1","visual_media_placement":null,"search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "groq_compound_chat_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "7301d3def1841bbce445fd5f0565adbe74c9628fe257feda47c2003a9e565667",
+      "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "groq_compound_chat_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"groq_compound_chat_completions_adapter_v1","adapter_version":"v1"},
+          "provider": "Groq",
+          "api_family": "Chat Completions API with Compound",
+          "candidate_ids": ["groq_split_v1"],
+          "model_ids": ["groq/compound"],
+          "workload_bindings": [
+            {"workload_stage":"search_retrieval","topology_id":"two_call_search_retrieval","authority_contract_ref":"search_authority_contract_v2.workload_layouts.search_retrieval","ordered_native_segments":[{"ordinal":0,"source":"search_retrieval_v2_trusted_instructions","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"search_retrieval_v2_untrusted_target","authority_class":"untrusted_input","native_surface":"messages user content"}],"schema_placement":"none_harness_assembles_retrieval_evidence_bundle_v1","visual_media_placement":null,"search_tool_placement":"Compound built-in web_search with citations and executed_tools capture"}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    },
+    {
+      "mapping_id": "groq_qwen_vision_chat_v1",
+      "mapping_version": "v1",
+      "semantic_hash": "e908746cc8a02251bfafbad5514451b381b4486e6428b1fac2e2d27eb3741754",
+      "official_evidence_refs": ["groq_chat_compound_2026_08_31"],
+      "envelope": {
+        "identity_domain": "trustai.provider_role_mapping.v1",
+        "provider_role_mapping_id": "groq_qwen_vision_chat_v1",
+        "provider_role_mapping_version": "v1",
+        "content": {
+          "applicable_adapter": {"adapter_id":"groq_vision_chat_completions_adapter_v1","adapter_version":"v1"},
+          "provider": "Groq",
+          "api_family": "Chat Completions API with vision content",
+          "candidate_ids": ["groq_split_v1"],
+          "model_ids": ["qwen/qwen3.8-27b"],
+          "workload_bindings": [
+            {"workload_stage":"visual_inspection","topology_id":"single_call_visual","authority_contract_ref":"provider_role_mapping_contract_v1.request_component_manifests.visual_inspection","ordered_native_segments":[{"ordinal":0,"source":"authoritative_instruction components in exact manifest order","authority_class":"authoritative_instruction","native_surface":"messages system content"},{"ordinal":1,"source":"untrusted_context components in exact manifest order","authority_class":"untrusted_context","native_surface":"messages user content text part"},{"ordinal":2,"source":"frozen local normalized image bytes","authority_class":"visual_media","native_surface":"messages same user content image_url part"}],"schema_placement":"response_format json_schema strict false visual_output_schema_v1; harness validates visual_output_schema_v1","visual_media_placement":"image_url part after untrusted text part in same user message","search_tool_placement":null}
+          ],
+          "ordering_rule":"exact listed workload binding and native segment order",
+          "selection_time":"before physical attempt creation",
+          "response_mutation_allowed":false
+        }
+      }
+    }
+  ],
+  "selection_and_conformance": {
+    "selection_owner": "harness request configuration",
+    "selection_time": "before physical attempt creation",
+    "exact_match_fields": ["candidate_id","provider","model_id","api_family","workload_stage","topology_id"],
+    "ambiguous_or_missing_result": "topology_preflight_failure_no_attempt",
+    "response_may_select_or_modify_mapping": false,
+    "required_fail_closed_mutations": ["wrong provider","wrong model or API family","wrong workload or topology","wrong prompt component or authority class","wrong order","missing trusted segment","untrusted input or evidence promoted to trusted","wrong schema or media placement","search result promoted to trusted","wrong mapping hash","stale mapping version"]
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json#/execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "canonicalization": "UTF-8 JSON with object keys sorted lexicographically, compact separators, array order preserved, and no non-finite values",
+    "semantic_hash_excluded_json_pointers": ["/specification_identity/semantic_hash"],
+    "semantic_hash": "eed99c137d409cdb067c1bcd983daa33f0c69ee55fd9c71fa58fbcf9424e0d8a"
+  }
+}

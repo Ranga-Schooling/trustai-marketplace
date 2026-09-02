@@ -1,0 +1,547 @@
+{
+  "artifact_id": "provider_adapters_v1",
+  "artifact_version": "v1",
+  "status": "frozen_pre_execution_contract",
+  "purpose": "Freeze the minimum non-streaming HTTP response adapters for pilot preflight without constructing requests, using credentials, or authorizing provider execution.",
+  "provider_neutral_contract": "normalization-parser.v1.json#/provider_adapter_interface",
+  "role_mapping_contract": "provider-role-mappings.v1.json@v1",
+  "transport_contract": "normalization-parser.v1.json#/raw_provider_response_policy and evaluation_transport_capture.py",
+  "privacy_contract": "provider-data-handling-review.v1.json",
+  "url_security_contract": "url-security-policy.v1.json@v1",
+  "adapter_order": [
+    "openai_responses_adapter_v1",
+    "gemini_interactions_adapter_v1",
+    "groq_chat_completions_adapter_v1",
+    "groq_compound_chat_completions_adapter_v1",
+    "groq_vision_chat_completions_adapter_v1"
+  ],
+  "official_documentation_evidence": [
+    {
+      "evidence_id": "openai_responses_response_2026_08_31",
+      "provider": "OpenAI",
+      "observed_on": "2026-08-31",
+      "source": "https://developers.openai.com/api/reference/resources/responses/methods/create",
+      "facts": [
+        "a non-streaming Responses API result is an HTTP JSON response whose top-level status can be completed",
+        "final assistant content is represented by an output item of type message containing content of type output_text",
+        "usage exposes input_tokens, output_tokens, and output_tokens_details.reasoning_tokens",
+        "web_search_call action sources expose source URLs when requested but do not document requested URL, redirect chain, final fetch URL, or retrieval authentication context"
+      ]
+    },
+    {
+      "evidence_id": "gemini_interactions_response_2026_08_31",
+      "provider": "Google Gemini",
+      "observed_on": "2026-08-31",
+      "source": "https://ai.google.dev/api/interactions-api-v1",
+      "facts": [
+        "the post-May-2026 Interactions API response has status, steps, and usage",
+        "final model content is represented by a model_output step containing text content",
+        "usage exposes total_input_tokens, total_output_tokens, total_thought_tokens, and modality token breakdowns",
+        "google_search_result items expose title, URL, and snippet in result order but do not document requested URL, redirect chain, final fetch URL, or retrieval authentication context"
+      ]
+    },
+    {
+      "evidence_id": "groq_chat_response_2026_08_31",
+      "provider": "Groq",
+      "observed_on": "2026-08-31",
+      "source": "https://console.groq.com/docs/api-reference",
+      "additional_sources": [
+        "https://console.groq.com/docs/tool-use/built-in-tools",
+        "https://console.groq.com/docs/tool-use/built-in-tools/web-search"
+      ],
+      "facts": [
+        "a non-streaming Chat Completions result exposes choices[0].message.content and choices[0].finish_reason",
+        "usage exposes prompt_tokens and completion_tokens",
+        "Compound exposes ordered executed_tools and web search results with title, URL, content, and score",
+        "Compound search results do not document requested URL, redirect chain, final fetch URL, or retrieval authentication context"
+      ]
+    }
+  ],
+  "common_transport_policy": {
+    "response_transport_mode": "non_streaming_http",
+    "streaming_enabled": false,
+    "sdk_native_structured_mode_allowed": false,
+    "canonical_raw_surface": "content_decoded_response_bytes",
+    "canonical_raw_surface_definition": "exact HTTP response-body bytes after transport-level Content-Encoding decoding and before UTF-8 decoding, JSON parsing, SDK conversion, or provider-envelope extraction",
+    "content_encoding_decoding_owner": "HTTP transport layer before CanonicalRawResponseAccumulator",
+    "accepted_media_type": "application/json",
+    "successful_http_status": 200,
+    "raw_capture_primitive": "CanonicalRawResponseAccumulator(non_streaming_http)",
+    "semantic_capture_primitive": "ExtractedSemanticAccumulator",
+    "strict_envelope_parser": "parse_strict_json_payload",
+    "duplicate_key_policy": "fail before provider-envelope selection",
+    "unknown_envelope_fields": "retained in canonical raw response bytes and ignored only for documented envelope selection; never filtered from extracted model-authored semantic content",
+    "multiple_semantic_candidates": "failed_transport_extraction",
+    "missing_semantic_candidate": "failed_transport_extraction",
+    "non_completed_terminal_state": "provider-native state is retained as terminal evidence and ordinary semantic parsing is forbidden",
+    "provider_request_id_ordinary_projection": null,
+    "provider_request_id_rule": "excluded until the privacy contract gains an exact provider-specific non-secret verifier",
+    "wire_response_bytes_exposed": false,
+    "wire_response_hash_exposed": false,
+    "safe_metadata_only": true
+  },
+  "search_topology_preflight": {
+    "assessment_time": "before physical attempt creation",
+    "provider_calls_required": false,
+    "failure_result": "topology_preflight_failure",
+    "affected_workload_stage": "search_retrieval",
+    "all_current_built_in_search_topologies_eligible": false,
+    "mandatory_missing_surfaces": [
+      "exact requested URL context",
+      "exact final URL context",
+      "complete relevant redirect context",
+      "retrieval authentication context sufficient to distinguish public authenticated and session-bound retrieval"
+    ],
+    "returned source URL_must_not_be_relabelled_as": [
+      "requested URL",
+      "final fetched URL",
+      "proof of no redirect",
+      "proof of public unauthenticated retrieval"
+    ],
+    "semantic_output_substitution_for_ineligibility_allowed": false,
+    "attempt_created_on_failure": false,
+    "provider_call_incremented_on_failure": false
+  },
+  "adapters": [
+    {
+      "adapter_id": "openai_responses_adapter_v1",
+      "adapter_version": "v1",
+      "semantic_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+      "official_evidence_refs": [
+        "openai_responses_response_2026_08_31"
+      ],
+      "content": {
+        "provider": "OpenAI",
+        "api_family": "Responses API",
+        "role_mapping_ids": [
+          "openai_responses_sol_v1",
+          "openai_responses_terra_v1"
+        ],
+        "model_ids": [
+          "gpt-5.6-sol",
+          "gpt-5.6-terra"
+        ],
+        "eligible_workload_stages": [
+          "text_analysis",
+          "search_synthesis",
+          "visual_inspection"
+        ],
+        "ineligible_workload_stages": {
+          "search_retrieval": [
+            "web_search source records do not expose exact requested-to-final redirect context",
+            "web_search source records do not expose authoritative retrieval authentication context"
+          ]
+        },
+        "response_contract": {
+          "root_status_path": [
+            "status"
+          ],
+          "successful_root_status": "completed",
+          "required_null_paths": [
+            [
+              "error"
+            ],
+            [
+              "incomplete_details"
+            ]
+          ],
+          "model_path": [
+            "model"
+          ],
+          "semantic_candidate_rule": "exactly one output item with type message, role assistant, status completed, and exactly one content item with type output_text and string text",
+          "semantic_location": "output[documented_unique_message_index].content[0].text",
+          "usage_paths": {
+            "input_token_usage": [
+              "usage",
+              "input_tokens"
+            ],
+            "output_token_usage": [
+              "usage",
+              "output_tokens"
+            ],
+            "reasoning_usage_if_exposed": [
+              "usage",
+              "output_tokens_details",
+              "reasoning_tokens"
+            ]
+          },
+          "authoritative_refusal_signal": null,
+          "refusal_rule": "no provider-native refusal mapping is frozen here; absent unique successful semantic content fails transport extraction rather than parsing provider prose",
+          "response_identifier_ordinary_projection": null
+        }
+      }
+    },
+    {
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "adapter_version": "v1",
+      "semantic_hash": "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5",
+      "official_evidence_refs": [
+        "gemini_interactions_response_2026_08_31"
+      ],
+      "content": {
+        "provider": "Google Gemini",
+        "api_family": "Gemini Interactions API v1beta with Api-Revision 2026-05-20",
+        "role_mapping_ids": [
+          "gemini_interactions_flash_v1"
+        ],
+        "model_ids": [
+          "gemini-3.7-flash"
+        ],
+        "eligible_workload_stages": [
+          "text_analysis",
+          "search_synthesis",
+          "visual_inspection"
+        ],
+        "ineligible_workload_stages": {
+          "search_retrieval": [
+            "google_search_result records do not expose exact requested-to-final redirect context",
+            "google_search_result records do not expose authoritative retrieval authentication context"
+          ]
+        },
+        "response_contract": {
+          "root_status_path": [
+            "status"
+          ],
+          "successful_root_status": "completed",
+          "required_empty_or_absent_paths": [
+            [
+              "errors"
+            ]
+          ],
+          "model_path": [
+            "model"
+          ],
+          "semantic_candidate_rule": "exactly one steps item with type model_output and exactly one content item with type text and string text",
+          "semantic_location": "steps[documented_unique_model_output_index].content[0].text",
+          "usage_paths": {
+            "input_token_usage": [
+              "usage",
+              "total_input_tokens"
+            ],
+            "output_token_usage": [
+              "usage",
+              "total_output_tokens"
+            ],
+            "reasoning_usage_if_exposed": [
+              "usage",
+              "total_thought_tokens"
+            ],
+            "image_usage_if_exposed": "sum usage.input_tokens_by_modality[].tokens where modality equals image"
+          },
+          "authoritative_refusal_signal": null,
+          "refusal_rule": "no provider-native refusal mapping is frozen here; absent unique successful semantic content fails transport extraction rather than parsing provider prose",
+          "response_identifier_ordinary_projection": null
+        }
+      }
+    },
+    {
+      "adapter_id": "groq_chat_completions_adapter_v1",
+      "adapter_version": "v1",
+      "semantic_hash": "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a",
+      "official_evidence_refs": [
+        "groq_chat_response_2026_08_31"
+      ],
+      "content": {
+        "provider": "Groq",
+        "api_family": "Chat Completions API",
+        "role_mapping_ids": [
+          "groq_gpt_oss_chat_v1",
+          "groq_baseline_chat_v1"
+        ],
+        "model_ids": [
+          "openai/gpt-oss-120b"
+        ],
+        "eligible_workload_stages": [
+          "text_analysis",
+          "search_synthesis"
+        ],
+        "ineligible_workload_stages": {},
+        "response_contract": {
+          "successful_finish_reason": "stop",
+          "model_path": [
+            "model"
+          ],
+          "semantic_candidate_rule": "choices is exactly one item with index 0, finish_reason stop, and message role assistant with string content",
+          "semantic_location": "choices[0].message.content",
+          "usage_paths": {
+            "input_token_usage": [
+              "usage",
+              "prompt_tokens"
+            ],
+            "output_token_usage": [
+              "usage",
+              "completion_tokens"
+            ],
+            "reasoning_usage_if_exposed": null
+          },
+          "authoritative_refusal_signal": null,
+          "refusal_rule": "no provider-native refusal mapping is frozen here; absent unique successful semantic content fails transport extraction rather than parsing provider prose",
+          "response_identifier_ordinary_projection": null,
+          "x_groq_request_id_ordinary_projection": null
+        }
+      }
+    },
+    {
+      "adapter_id": "groq_compound_chat_completions_adapter_v1",
+      "adapter_version": "v1",
+      "semantic_hash": "3ff807e50f87f60a7d031dadb2bcf96dcedfa3942dad3b9b634dd64d5f8b530a",
+      "official_evidence_refs": [
+        "groq_chat_response_2026_08_31"
+      ],
+      "content": {
+        "provider": "Groq",
+        "api_family": "Chat Completions API with Compound",
+        "role_mapping_ids": [
+          "groq_compound_chat_v1"
+        ],
+        "model_ids": [
+          "groq/compound"
+        ],
+        "eligible_workload_stages": [],
+        "ineligible_workload_stages": {
+          "search_retrieval": [
+            "executed_tools search_results do not expose exact requested-to-final redirect context",
+            "executed_tools search_results do not expose authoritative retrieval authentication context"
+          ]
+        },
+        "response_contract": {
+          "successful_finish_reason": "stop",
+          "model_path": [
+            "model"
+          ],
+          "semantic_candidate_rule": "choices is exactly one item with index 0, finish_reason stop, and message role assistant with string content",
+          "semantic_location": "choices[0].message.content",
+          "usage_paths": {
+            "input_token_usage": [
+              "usage",
+              "prompt_tokens"
+            ],
+            "output_token_usage": [
+              "usage",
+              "completion_tokens"
+            ],
+            "reasoning_usage_if_exposed": null
+          },
+          "restricted_tool_trace_location": "choices[0].message.executed_tools",
+          "restricted_raw_arguments_allowed_in_ordinary_output": false,
+          "restricted_raw_search_results_allowed_in_ordinary_output": false,
+          "authoritative_refusal_signal": null,
+          "refusal_rule": "no provider-native refusal mapping is frozen here; absent unique successful semantic content fails transport extraction rather than parsing provider prose",
+          "response_identifier_ordinary_projection": null,
+          "x_groq_request_id_ordinary_projection": null
+        }
+      }
+    },
+    {
+      "adapter_id": "groq_vision_chat_completions_adapter_v1",
+      "adapter_version": "v1",
+      "semantic_hash": "835ffdf536f84b4f23c9da3f812c3833778abe55352a708b56a33a40372c33db",
+      "official_evidence_refs": [
+        "groq_chat_response_2026_08_31"
+      ],
+      "content": {
+        "provider": "Groq",
+        "api_family": "Chat Completions API with vision content",
+        "role_mapping_ids": [
+          "groq_qwen_vision_chat_v1"
+        ],
+        "model_ids": [
+          "qwen/qwen3.8-27b"
+        ],
+        "eligible_workload_stages": [
+          "visual_inspection"
+        ],
+        "ineligible_workload_stages": {},
+        "response_contract": {
+          "successful_finish_reason": "stop",
+          "model_path": [
+            "model"
+          ],
+          "semantic_candidate_rule": "choices is exactly one item with index 0, finish_reason stop, and message role assistant with string content",
+          "semantic_location": "choices[0].message.content",
+          "usage_paths": {
+            "input_token_usage": [
+              "usage",
+              "prompt_tokens"
+            ],
+            "output_token_usage": [
+              "usage",
+              "completion_tokens"
+            ],
+            "reasoning_usage_if_exposed": null,
+            "image_usage_if_exposed": null
+          },
+          "authoritative_refusal_signal": null,
+          "refusal_rule": "no provider-native refusal mapping is frozen here; absent unique successful semantic content fails transport extraction rather than parsing provider prose",
+          "response_identifier_ordinary_projection": null,
+          "x_groq_request_id_ordinary_projection": null
+        }
+      }
+    }
+  ],
+  "topology_matrix": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "workload_stage": "search_retrieval",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": false
+    },
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "workload_stage": "search_synthesis",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "workload_stage": "visual_inspection",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "workload_stage": "search_retrieval",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": false
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "workload_stage": "search_synthesis",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "workload_stage": "visual_inspection",
+      "adapter_id": "openai_responses_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "workload_stage": "search_retrieval",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "eligible": false
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "workload_stage": "search_synthesis",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "workload_stage": "visual_inspection",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "groq_chat_completions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "workload_stage": "search_retrieval",
+      "adapter_id": "groq_compound_chat_completions_adapter_v1",
+      "eligible": false
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "workload_stage": "search_synthesis",
+      "adapter_id": "groq_chat_completions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "workload_stage": "visual_inspection",
+      "adapter_id": "groq_vision_chat_completions_adapter_v1",
+      "eligible": true
+    },
+    {
+      "candidate_id": "baseline_current_text_v1",
+      "workload_stage": "text_analysis",
+      "adapter_id": "groq_chat_completions_adapter_v1",
+      "eligible": true
+    }
+  ],
+  "test_vectors": [
+    {
+      "id": "PA1",
+      "case": "duplicate key in provider envelope",
+      "expected": "failed_transport_extraction_before_semantic_selection"
+    },
+    {
+      "id": "PA2",
+      "case": "two documented final semantic candidates",
+      "expected": "failed_transport_extraction"
+    },
+    {
+      "id": "PA3",
+      "case": "non-completed provider terminal state with JSON-looking content",
+      "expected": "ordinary_semantic_parsing_forbidden"
+    },
+    {
+      "id": "PA4",
+      "case": "provider response contains a different model identity",
+      "expected": "failed_transport_extraction"
+    },
+    {
+      "id": "PA5",
+      "case": "retrieval source URL exists but redirect and auth context do not",
+      "expected": "topology_preflight_failure_before_attempt"
+    },
+    {
+      "id": "PA6",
+      "case": "provider request ID is exposed in native response",
+      "expected": "ordinary_projection_remains_null"
+    },
+    {
+      "id": "PA7",
+      "case": "content bytes exceed extracted semantic resource limit",
+      "expected": "failed_resource_limit"
+    },
+    {
+      "id": "PA8",
+      "case": "response body exceeds raw response resource limit",
+      "expected": "failed_resource_limit_before_storage"
+    }
+  ],
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash_excluded_json_pointers": [
+      "/specification_identity/semantic_hash"
+    ],
+    "semantic_hash": "d5c98a4645c15beed550679c7c1dc1e63342dbb4142ccfe5bc905759514dc61f"
+  }
+}

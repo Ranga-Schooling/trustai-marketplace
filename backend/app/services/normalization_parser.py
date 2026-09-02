@@ -1,0 +1,801 @@
+"""Provider-neutral normalization primitives."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import struct
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any
+
+from app.services.evaluation_resource_limits import (
+    JsonResourceSyntaxError,
+    NativeResourceTopologyError,
+    account_canonical_payload_fragment,
+    account_raw_response_chunk,
+    enforce_extracted_semantic_bytes,
+    enforce_materialized_json_resource_limits,
+    enforce_native_json_resource_limits,
+    native_number_lexeme,
+    scan_json_resource_limits,
+)
+
+
+class StrictJsonPayloadError(ValueError):
+    """Base error for the strict semantic-payload parsing boundary."""
+
+
+class StrictUtf8DecodeError(StrictJsonPayloadError):
+    """The extracted semantic payload is not strict UTF-8."""
+
+    category = "utf8"
+
+
+class StrictJsonSyntaxError(StrictJsonPayloadError):
+    """The decoded payload is not strict RFC 8259 JSON."""
+
+    category = "json_syntax"
+
+
+class DuplicateJsonKeyError(StrictJsonPayloadError):
+    """A syntactically valid object contains a duplicate decoded key."""
+
+    category = "duplicate_key"
+
+
+class NumericDomainError(ValueError):
+    """An exact JSON number is outside the frozen semantic numeric domain."""
+
+    category = "numeric_domain_ineligible"
+
+    def __init__(self, reason: str, lexeme: str) -> None:
+        super().__init__(f"Numeric domain rejected: {reason}")
+        self.reason = reason
+        self.lexeme = lexeme
+
+
+class NativeEquivalenceIneligibleError(ValueError):
+    """Lossless native-object equivalence cannot be established."""
+
+    category = "topology_preflight_failure"
+
+
+@dataclass(frozen=True)
+class ExactJsonNumber:
+    """One JSON number with both lexical and exact mathematical identity."""
+
+    lexeme: str
+    exact_decimal: Decimal
+
+
+@dataclass(frozen=True)
+class StrictParsedJson:
+    """Opaque strict-parsing result before numeric-domain admission."""
+
+    value: Any
+
+
+@dataclass(frozen=True)
+class CanonicalValidationCandidate:
+    """Complete unfiltered model-owned value before numeric/schema validation."""
+
+    value: Any
+
+
+@dataclass(frozen=True)
+class Binary64Value:
+    """One exact IEEE-754 binary64 conversion and its physical identity."""
+
+    value: float
+    bits: int
+
+
+@dataclass(frozen=True)
+class AdmittedJsonNumber:
+    """A strict number admitted to the frozen semantic numeric domain."""
+
+    lexeme: str
+    exact_decimal: Decimal
+    binary64_value: float
+    binary64_bits: int
+    jcs_numeric_representation: str
+    jcs_reparsed_decimal: Decimal
+    mathematical_integer: bool
+
+
+@dataclass(frozen=True)
+class NumericDomainAdmission:
+    """A strict semantic tree after every contained number is admitted."""
+
+    value: Any
+
+
+@dataclass(frozen=True)
+class CanonicalSemanticJson:
+    """RFC 8785 bytes and hash for one completely admitted semantic tree."""
+
+    admitted: NumericDomainAdmission
+    canonical_bytes: bytes
+    strict_parsed_semantic_payload_hash: str
+
+
+@dataclass(frozen=True)
+class _NumericToken:
+    lexeme: str
+
+
+@dataclass(frozen=True)
+class _ObjectPairs:
+    pairs: tuple[tuple[str, Any], ...]
+
+
+@dataclass(frozen=True)
+class _JcsLiteral:
+    value: str
+
+
+def _preserve_numeric_lexeme(lexeme: str) -> _NumericToken:
+    return _NumericToken(lexeme)
+
+
+def _preserve_object_pairs(pairs: list[tuple[str, Any]]) -> _ObjectPairs:
+    return _ObjectPairs(tuple(pairs))
+
+
+def _reject_nonfinite_constant(value: str) -> None:
+    raise StrictJsonSyntaxError(f"Non-finite JSON number is forbidden: {value}")
+
+
+def _reject_duplicate_keys(value: Any) -> None:
+    stack = [value]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, _ObjectPairs):
+            seen: set[str] = set()
+            for key, child in current.pairs:
+                if key in seen:
+                    raise DuplicateJsonKeyError("Duplicate JSON object key")
+                seen.add(key)
+                stack.append(child)
+        elif isinstance(current, list):
+            stack.extend(current)
+
+
+def _contains_surrogate(value: str) -> bool:
+    return any("\ud800" <= character <= "\udfff" for character in value)
+
+
+def _reject_unpaired_surrogates(value: Any) -> None:
+    stack = [value]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, str):
+            if _contains_surrogate(current):
+                raise StrictJsonSyntaxError(
+                    "Unpaired Unicode surrogate is forbidden in JSON strings"
+                )
+        elif isinstance(current, _ObjectPairs):
+            for key, child in current.pairs:
+                if _contains_surrogate(key):
+                    raise StrictJsonSyntaxError(
+                        "Unpaired Unicode surrogate is forbidden in JSON object keys"
+                    )
+                stack.append(child)
+        elif isinstance(current, list):
+            stack.extend(current)
+
+
+def _materialize_exact_tree(value: Any) -> Any:
+    root: list[Any] = [None]
+    stack: list[tuple[Any, Any, Any]] = [(value, root, 0)]
+
+    while stack:
+        current, destination, position = stack.pop()
+        if isinstance(current, _NumericToken):
+            destination[position] = ExactJsonNumber(
+                lexeme=current.lexeme,
+                exact_decimal=Decimal(current.lexeme),
+            )
+        elif isinstance(current, _ObjectPairs):
+            materialized_object: dict[str, Any] = {}
+            destination[position] = materialized_object
+            for key, child in reversed(current.pairs):
+                stack.append((child, materialized_object, key))
+        elif isinstance(current, list):
+            materialized_array: list[Any] = [None] * len(current)
+            destination[position] = materialized_array
+            for index in range(len(current) - 1, -1, -1):
+                stack.append((current[index], materialized_array, index))
+        else:
+            destination[position] = current
+
+    return root[0]
+
+
+def _round_ratio_ties_to_even(numerator: int, denominator: int) -> int:
+    quotient, remainder = divmod(numerator, denominator)
+    doubled_remainder = remainder * 2
+    if doubled_remainder > denominator or (
+        doubled_remainder == denominator and quotient & 1
+    ):
+        quotient += 1
+    return quotient
+
+
+def _floor_log2_ratio(numerator: int, denominator: int) -> int:
+    exponent = numerator.bit_length() - denominator.bit_length()
+    if exponent >= 0:
+        if numerator < denominator << exponent:
+            exponent -= 1
+    elif numerator << -exponent < denominator:
+        exponent -= 1
+    return exponent
+
+
+def convert_exact_decimal_to_binary64(exact_decimal: Decimal) -> Binary64Value:
+    """Convert a finite Decimal to binary64 with exact ties-to-even rounding."""
+    if not isinstance(exact_decimal, Decimal):
+        raise TypeError("exact_decimal must be Decimal")
+    if not exact_decimal.is_finite():
+        raise ValueError("exact_decimal must be finite")
+
+    negative = exact_decimal.is_signed()
+    sign_bits = int(negative) << 63
+    numerator, denominator = exact_decimal.copy_abs().as_integer_ratio()
+
+    if numerator == 0:
+        bits = sign_bits
+    elif numerator << 1022 < denominator:
+        significand = _round_ratio_ties_to_even(
+            numerator << 1074,
+            denominator,
+        )
+        if significand >= 1 << 52:
+            bits = sign_bits | (1 << 52)
+        else:
+            bits = sign_bits | significand
+    else:
+        exponent = _floor_log2_ratio(numerator, denominator)
+        if exponent > 1023:
+            bits = sign_bits | (0x7FF << 52)
+        else:
+            shift = 52 - exponent
+            if shift >= 0:
+                significand = _round_ratio_ties_to_even(
+                    numerator << shift,
+                    denominator,
+                )
+            else:
+                significand = _round_ratio_ties_to_even(
+                    numerator,
+                    denominator << -shift,
+                )
+            if significand == 1 << 53:
+                significand = 1 << 52
+                exponent += 1
+            if exponent > 1023:
+                bits = sign_bits | (0x7FF << 52)
+            else:
+                exponent_bits = exponent + 1023
+                fraction_bits = significand - (1 << 52)
+                bits = sign_bits | (exponent_bits << 52) | fraction_bits
+
+    value = struct.unpack(">d", struct.pack(">Q", bits))[0]
+    return Binary64Value(value=value, bits=bits)
+
+
+def _jcs_number_from_binary64(value: float) -> str:
+    if not math.isfinite(value):
+        raise ValueError("JCS numbers must be finite")
+    if value == 0:
+        return "0"
+
+    sign = "-" if value < 0 else ""
+    rendered = repr(abs(value)).lower()
+    if "e" in rendered:
+        mantissa, exponent_text = rendered.split("e", 1)
+        exponent = int(exponent_text)
+    else:
+        mantissa = rendered
+        exponent = 0
+
+    if "." in mantissa:
+        integer_part, fractional_part = mantissa.split(".", 1)
+    else:
+        integer_part, fractional_part = mantissa, ""
+
+    digits = (integer_part + fractional_part).lstrip("0") or "0"
+    decimal_power = exponent - len(fractional_part)
+    while len(digits) > 1 and digits.endswith("0"):
+        digits = digits[:-1]
+        decimal_power += 1
+
+    decimal_point = len(digits) + decimal_power
+    if len(digits) <= decimal_point <= 21:
+        body = digits + ("0" * (decimal_point - len(digits)))
+    elif 0 < decimal_point <= 21:
+        body = digits[:decimal_point] + "." + digits[decimal_point:]
+    elif -6 < decimal_point <= 0:
+        body = "0." + ("0" * -decimal_point) + digits
+    else:
+        exponent_value = decimal_point - 1
+        coefficient = digits[0]
+        if len(digits) > 1:
+            coefficient += "." + digits[1:]
+        exponent_sign = "+" if exponent_value >= 0 else ""
+        body = f"{coefficient}e{exponent_sign}{exponent_value}"
+    return sign + body
+
+
+def _is_mathematical_integer(value: Decimal) -> bool:
+    representation = value.as_tuple()
+    if representation.exponent >= 0:
+        return True
+    fractional_digits = -representation.exponent
+    if fractional_digits > len(representation.digits):
+        return all(digit == 0 for digit in representation.digits)
+    return all(digit == 0 for digit in representation.digits[-fractional_digits:])
+
+
+def admit_exact_json_number(number: ExactJsonNumber) -> AdmittedJsonNumber:
+    """Apply the frozen ordered numeric-domain predicates to one number."""
+    if not isinstance(number, ExactJsonNumber):
+        raise TypeError("number must be ExactJsonNumber")
+
+    exact_decimal = number.exact_decimal
+    if exact_decimal.is_zero() and number.lexeme.startswith("-"):
+        raise NumericDomainError("negative_zero", number.lexeme)
+
+    converted = convert_exact_decimal_to_binary64(exact_decimal)
+    if not math.isfinite(converted.value):
+        raise NumericDomainError("binary64_overflow_nonfinite", number.lexeme)
+    if not exact_decimal.is_zero() and converted.value == 0:
+        raise NumericDomainError("nonzero_underflow_to_zero", number.lexeme)
+
+    jcs_representation = _jcs_number_from_binary64(converted.value)
+    jcs_reparsed_decimal = Decimal(jcs_representation)
+    if jcs_reparsed_decimal != exact_decimal:
+        raise NumericDomainError("decimal_round_trip_changed", number.lexeme)
+
+    return AdmittedJsonNumber(
+        lexeme=number.lexeme,
+        exact_decimal=exact_decimal,
+        binary64_value=converted.value,
+        binary64_bits=converted.bits,
+        jcs_numeric_representation=jcs_representation,
+        jcs_reparsed_decimal=jcs_reparsed_decimal,
+        mathematical_integer=_is_mathematical_integer(exact_decimal),
+    )
+
+
+def admit_semantic_numeric_domain(
+    parsed: StrictParsedJson,
+) -> NumericDomainAdmission:
+    """Admit every exact number while preserving the strict semantic tree."""
+    if not isinstance(parsed, StrictParsedJson):
+        raise TypeError("parsed must be StrictParsedJson")
+
+    root: list[Any] = [None]
+    stack: list[tuple[Any, Any, Any]] = [(parsed.value, root, 0)]
+    while stack:
+        current, destination, position = stack.pop()
+        if isinstance(current, ExactJsonNumber):
+            destination[position] = admit_exact_json_number(current)
+        elif isinstance(current, dict):
+            admitted_object: dict[str, Any] = {}
+            destination[position] = admitted_object
+            for key, child in reversed(tuple(current.items())):
+                if not isinstance(key, str):
+                    raise TypeError("semantic object keys must be strings")
+                stack.append((child, admitted_object, key))
+        elif isinstance(current, list):
+            admitted_array: list[Any] = [None] * len(current)
+            destination[position] = admitted_array
+            for index in range(len(current) - 1, -1, -1):
+                stack.append((current[index], admitted_array, index))
+        elif current is None or isinstance(current, (str, bool)):
+            destination[position] = current
+        else:
+            raise TypeError("parsed tree contains a non-JSON semantic value")
+
+    return NumericDomainAdmission(value=root[0])
+
+
+def _clone_strict_semantic_tree(value: Any) -> Any:
+    root: list[Any] = [None]
+    stack: list[tuple[Any, Any, Any]] = [(value, root, 0)]
+    while stack:
+        current, destination, position = stack.pop()
+        if isinstance(current, ExactJsonNumber):
+            destination[position] = current
+        elif isinstance(current, dict):
+            cloned_object: dict[str, Any] = {}
+            destination[position] = cloned_object
+            for key, child in reversed(tuple(current.items())):
+                if not isinstance(key, str):
+                    raise TypeError("semantic object keys must be strings")
+                stack.append((child, cloned_object, key))
+        elif isinstance(current, list):
+            cloned_array: list[Any] = [None] * len(current)
+            destination[position] = cloned_array
+            for index in range(len(current) - 1, -1, -1):
+                stack.append((current[index], cloned_array, index))
+        elif current is None or isinstance(current, (str, bool)):
+            destination[position] = current
+        else:
+            raise TypeError("strict semantic tree contains a non-JSON value")
+    return root[0]
+
+
+def construct_unfiltered_canonical_validation_candidate(
+    parsed: StrictParsedJson,
+) -> CanonicalValidationCandidate:
+    """Snapshot every strict semantic field without filtering or repair."""
+    if not isinstance(parsed, StrictParsedJson):
+        raise TypeError("parsed must be StrictParsedJson")
+    return CanonicalValidationCandidate(_clone_strict_semantic_tree(parsed.value))
+
+
+def admit_canonical_validation_candidate(
+    candidate: CanonicalValidationCandidate,
+) -> NumericDomainAdmission:
+    """Apply numeric admission to a complete unfiltered candidate."""
+    if not isinstance(candidate, CanonicalValidationCandidate):
+        raise TypeError("candidate must be CanonicalValidationCandidate")
+    return admit_semantic_numeric_domain(StrictParsedJson(candidate.value))
+
+
+def _native_number_to_exact(value: int | float | Decimal) -> ExactJsonNumber:
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise NativeEquivalenceIneligibleError(
+                "Native number is not a finite JSON number"
+            )
+        lexeme = native_number_lexeme(value)
+        exact_decimal = value
+    elif isinstance(value, int) and not isinstance(value, bool):
+        lexeme = native_number_lexeme(value)
+        exact_decimal = Decimal(value)
+    elif isinstance(value, float):
+        if not math.isfinite(value):
+            raise NativeEquivalenceIneligibleError(
+                "Native number is not a finite JSON number"
+            )
+        lexeme = native_number_lexeme(value)
+        exact_decimal = Decimal(lexeme)
+    else:
+        raise NativeEquivalenceIneligibleError(
+            "Native payload contains a non-JSON numeric value"
+        )
+    return ExactJsonNumber(lexeme=lexeme, exact_decimal=exact_decimal)
+
+
+def _materialize_native_json_tree(value: Any) -> StrictParsedJson:
+    try:
+        enforce_native_json_resource_limits(value)
+    except NativeResourceTopologyError as exc:
+        raise NativeEquivalenceIneligibleError(
+            f"Native payload failed bounded topology preflight: {exc}"
+        ) from exc
+
+    root: list[Any] = [None]
+    active_container_ids: set[int] = set()
+    stack: list[tuple[str, Any, Any, Any]] = [("enter", value, root, 0)]
+    while stack:
+        operation, current, destination, position = stack.pop()
+        if operation == "exit":
+            active_container_ids.remove(id(current))
+            continue
+        if current is None or isinstance(current, bool):
+            destination[position] = current
+        elif isinstance(current, str):
+            if _contains_surrogate(current):
+                raise NativeEquivalenceIneligibleError(
+                    "Native string contains a non-scalar Unicode value"
+                )
+            destination[position] = current
+        elif isinstance(current, (int, float, Decimal)):
+            destination[position] = _native_number_to_exact(current)
+        elif isinstance(current, list):
+            if id(current) in active_container_ids:
+                raise NativeEquivalenceIneligibleError(
+                    "Native payload contains a container cycle"
+                )
+            active_container_ids.add(id(current))
+            native_array: list[Any] = [None] * len(current)
+            destination[position] = native_array
+            stack.append(("exit", current, None, None))
+            for index in range(len(current) - 1, -1, -1):
+                stack.append(("enter", current[index], native_array, index))
+        elif isinstance(current, dict):
+            if not all(isinstance(key, str) for key in current):
+                raise NativeEquivalenceIneligibleError(
+                    "Native object keys must be strings"
+                )
+            if any(_contains_surrogate(key) for key in current):
+                raise NativeEquivalenceIneligibleError(
+                    "Native object key contains a non-scalar Unicode value"
+                )
+            if id(current) in active_container_ids:
+                raise NativeEquivalenceIneligibleError(
+                    "Native payload contains a container cycle"
+                )
+            active_container_ids.add(id(current))
+            native_object: dict[str, Any] = {}
+            destination[position] = native_object
+            stack.append(("exit", current, None, None))
+            for key, child in reversed(tuple(current.items())):
+                stack.append(("enter", child, native_object, key))
+        else:
+            raise NativeEquivalenceIneligibleError(
+                "Native payload contains a non-JSON semantic value"
+            )
+    return StrictParsedJson(root[0])
+
+
+def _admit_for_native_equivalence(
+    parsed: StrictParsedJson,
+) -> NumericDomainAdmission:
+    try:
+        return admit_semantic_numeric_domain(parsed)
+    except (NumericDomainError, TypeError) as exc:
+        raise NativeEquivalenceIneligibleError(
+            "Native-object numeric equivalence is ineligible"
+        ) from exc
+
+
+def compare_independent_native_payloads(
+    reference_semantic_payload: StrictParsedJson,
+    candidate_native_payload: Any,
+) -> str:
+    """Compare an independent strict reference with a complete native object.
+
+    The caller is responsible for establishing that the reference was produced
+    by an independent strict path.  This primitive performs the frozen exact
+    recursive comparison and fails closed when either numeric surface is
+    outside the semantic numeric domain.
+    """
+    if not isinstance(reference_semantic_payload, StrictParsedJson):
+        raise TypeError("reference_semantic_payload must be StrictParsedJson")
+
+    reference = _admit_for_native_equivalence(reference_semantic_payload).value
+    candidate = _admit_for_native_equivalence(
+        _materialize_native_json_tree(candidate_native_payload)
+    ).value
+
+    pending = [(reference, candidate)]
+    while pending:
+        reference_item, candidate_item = pending.pop()
+        if isinstance(reference_item, AdmittedJsonNumber):
+            if not isinstance(candidate_item, AdmittedJsonNumber):
+                return "proven_unequal"
+            if reference_item.exact_decimal != candidate_item.exact_decimal:
+                return "proven_unequal"
+        elif isinstance(reference_item, dict):
+            if not isinstance(candidate_item, dict):
+                return "proven_unequal"
+            if reference_item.keys() != candidate_item.keys():
+                return "proven_unequal"
+            pending.extend(
+                (reference_item[key], candidate_item[key])
+                for key in reference_item
+            )
+        elif isinstance(reference_item, list):
+            if not isinstance(candidate_item, list):
+                return "proven_unequal"
+            if len(reference_item) != len(candidate_item):
+                return "proven_unequal"
+            pending.extend(zip(reference_item, candidate_item, strict=True))
+        elif type(reference_item) is not type(candidate_item):
+            return "proven_unequal"
+        elif reference_item != candidate_item:
+            return "proven_unequal"
+    return "proven_equal"
+
+
+def _serialize_jcs_string(value: str) -> str:
+    output = ['"']
+    short_escapes = {
+        "\b": "\\b",
+        "\t": "\\t",
+        "\n": "\\n",
+        "\f": "\\f",
+        "\r": "\\r",
+        '"': '\\"',
+        "\\": "\\\\",
+    }
+    for character in value:
+        if character in short_escapes:
+            output.append(short_escapes[character])
+        elif ord(character) <= 0x1F:
+            output.append(f"\\u{ord(character):04x}")
+        elif _contains_surrogate(character):
+            raise ValueError("JCS strings must contain Unicode scalar values")
+        else:
+            output.append(character)
+    output.append('"')
+    return "".join(output)
+
+
+def _utf16_sort_key(value: str) -> bytes:
+    return value.encode("utf-16-be")
+
+
+def _serialize_admitted_tree(value: Any) -> bytes:
+    output = bytearray()
+    stack: list[Any] = [value]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, _JcsLiteral):
+            fragment = current.value.encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif isinstance(current, AdmittedJsonNumber):
+            fragment = current.jcs_numeric_representation.encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif isinstance(current, str):
+            fragment = _serialize_jcs_string(current).encode("utf-8")
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif current is True:
+            fragment = b"true"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif current is False:
+            fragment = b"false"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif current is None:
+            fragment = b"null"
+            account_canonical_payload_fragment(len(output), fragment)
+            output.extend(fragment)
+        elif isinstance(current, list):
+            sequence: list[Any] = [_JcsLiteral("[")]
+            for index, child in enumerate(current):
+                if index:
+                    sequence.append(_JcsLiteral(","))
+                sequence.append(child)
+            sequence.append(_JcsLiteral("]"))
+            stack.extend(reversed(sequence))
+        elif isinstance(current, dict):
+            sequence = [_JcsLiteral("{")]
+            for index, (key, child) in enumerate(
+                sorted(current.items(), key=lambda item: _utf16_sort_key(item[0]))
+            ):
+                if index:
+                    sequence.append(_JcsLiteral(","))
+                sequence.extend(
+                    (
+                        _JcsLiteral(_serialize_jcs_string(key)),
+                        _JcsLiteral(":"),
+                        child,
+                    )
+                )
+            sequence.append(_JcsLiteral("}"))
+            stack.extend(reversed(sequence))
+        else:
+            raise TypeError("admitted tree contains a non-JCS semantic value")
+    return bytes(output)
+
+
+def canonicalize_semantic_json(
+    admitted: NumericDomainAdmission,
+) -> CanonicalSemanticJson:
+    """Produce RFC 8785 semantic bytes and their domain-specific SHA-256."""
+    if not isinstance(admitted, NumericDomainAdmission):
+        raise TypeError("admitted must be NumericDomainAdmission")
+    try:
+        enforce_materialized_json_resource_limits(
+            admitted.value,
+            numeric_lexeme_resolver=(
+                lambda current: current.lexeme
+                if isinstance(current, AdmittedJsonNumber)
+                else None
+            ),
+        )
+    except NativeResourceTopologyError as exc:
+        if str(exc) == "non_scalar_native_string":
+            raise ValueError("admitted tree contains a non-scalar string") from exc
+        raise TypeError("admitted tree contains a non-JCS semantic value") from exc
+    canonical_bytes = _serialize_admitted_tree(admitted.value)
+    semantic_hash = hashlib.sha256(canonical_bytes).hexdigest()
+    return CanonicalSemanticJson(
+        admitted=admitted,
+        canonical_bytes=canonical_bytes,
+        strict_parsed_semantic_payload_hash=semantic_hash,
+    )
+
+
+def normalize_semantic_json(extracted_payload: bytes) -> CanonicalSemanticJson:
+    """Run strict parsing, numeric admission, JCS, and semantic hashing."""
+    parsed = parse_strict_json_payload(extracted_payload)
+    candidate = construct_unfiltered_canonical_validation_candidate(parsed)
+    admitted = admit_canonical_validation_candidate(candidate)
+    return canonicalize_semantic_json(admitted)
+
+
+def replay_canonical_semantic_json(
+    canonical_payload: bytes,
+) -> CanonicalSemanticJson:
+    """Reconstruct an immutable-stage snapshot from exact canonical bytes.
+
+    Canonical bytes are governed by ``maximum_canonical_payload_bytes``, not
+    the earlier extracted-semantic byte ceiling. The replay must reproduce the
+    input byte-for-byte so this function cannot normalize or repair a caller's
+    representation.
+    """
+    if not isinstance(canonical_payload, bytes):
+        raise TypeError("canonical_payload must be bytes")
+    account_canonical_payload_fragment(0, canonical_payload)
+    parsed = _parse_strict_json_bytes(
+        canonical_payload,
+        payload_name="canonical_payload",
+    )
+    candidate = construct_unfiltered_canonical_validation_candidate(parsed)
+    admitted = admit_canonical_validation_candidate(candidate)
+    replayed = canonicalize_semantic_json(admitted)
+    if replayed.canonical_bytes != canonical_payload:
+        raise ValueError("canonical_payload is not exact canonical JSON")
+    return replayed
+
+
+def hash_raw_provider_response(raw_provider_response: bytes) -> str:
+    """Return the SHA-256 identity of exact raw-provider-response bytes."""
+    if not isinstance(raw_provider_response, bytes):
+        raise TypeError("raw_provider_response must be bytes")
+    account_raw_response_chunk(0, raw_provider_response)
+    return hashlib.sha256(raw_provider_response).hexdigest()
+
+
+def parse_strict_json_payload(extracted_payload: bytes) -> StrictParsedJson:
+    """Parse exact UTF-8 JSON bytes without losing numeric or object identity."""
+    if not isinstance(extracted_payload, bytes):
+        raise TypeError("extracted_payload must be bytes")
+
+    enforce_extracted_semantic_bytes(extracted_payload)
+    return _parse_strict_json_bytes(
+        extracted_payload,
+        payload_name="extracted_payload",
+    )
+
+
+def _parse_strict_json_bytes(
+    payload: bytes,
+    *,
+    payload_name: str,
+) -> StrictParsedJson:
+    """Apply the shared strict parser after the caller enforces byte surface."""
+
+    try:
+        decoded_text = payload.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise StrictUtf8DecodeError(f"{payload_name} is not strict UTF-8") from exc
+
+    if decoded_text.startswith("\ufeff"):
+        raise StrictJsonSyntaxError("UTF-8 byte-order mark is forbidden")
+
+    try:
+        scan_json_resource_limits(decoded_text)
+    except JsonResourceSyntaxError as exc:
+        raise StrictJsonSyntaxError(f"{payload_name} is not strict JSON") from exc
+
+    try:
+        temporary_tree = json.loads(
+            decoded_text,
+            parse_int=_preserve_numeric_lexeme,
+            parse_float=_preserve_numeric_lexeme,
+            parse_constant=_reject_nonfinite_constant,
+            object_pairs_hook=_preserve_object_pairs,
+        )
+    except StrictJsonSyntaxError:
+        raise
+    except json.JSONDecodeError as exc:
+        raise StrictJsonSyntaxError(f"{payload_name} is not strict JSON") from exc
+
+    _reject_duplicate_keys(temporary_tree)
+    _reject_unpaired_surrogates(temporary_tree)
+    exact_tree = _materialize_exact_tree(temporary_tree)
+    return StrictParsedJson(value=exact_tree)

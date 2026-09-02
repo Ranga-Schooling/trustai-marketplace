@@ -1,0 +1,761 @@
+{
+  "artifact_id": "pilot_request_configurations_v1",
+  "artifact_version": "v1",
+  "status": "frozen_pre_execution_contract",
+  "purpose": "Freeze the approved balanced provider-native controls and exact candidate/workload request selections for eligible pilot stages without constructing a request, accessing credentials, or authorizing execution.",
+  "governance_decision": {
+    "decision_date": "2026-08-31",
+    "decision": "balanced_pilot_request_configuration_approved",
+    "text_maximum_output_tokens": 4096,
+    "search_synthesis_maximum_output_tokens": 8192,
+    "visual_maximum_output_tokens": 4096,
+    "reasoning_or_thinking": "medium where supported; otherwise omitted and recorded unsupported or unavailable",
+    "candidate_openai_and_groq_temperature": 1.0,
+    "gemini_temperature": "unsupported_or_unavailable_on_selected_surface",
+    "baseline_temperature": 0.2,
+    "top_p": "deliberately_unset",
+    "seed": "deliberately_unset_or_explicitly_unsupported",
+    "streaming_enabled": false,
+    "timeout_seconds_per_physical_attempt": 120,
+    "maximum_physical_attempts": 2,
+    "search_retrieval_security_contract_weakened": false
+  },
+  "source_contracts": {
+    "experiment": "experiment.v1.json",
+    "prompt_template_set_version": "v1",
+    "prompt_template_set_hash": "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2",
+    "output_schema_set_version": "v1",
+    "output_schema_set_hash": "125809d08e911d51b4619002f02a969b03b8da5866bfab1b8346758c0bb9a6f4",
+    "provider_role_mapping_artifact_hash": "eed99c137d409cdb067c1bcd983daa33f0c69ee55fd9c71fa58fbcf9424e0d8a",
+    "provider_adapter_artifact_hash": "d5c98a4645c15beed550679c7c1dc1e63342dbb4142ccfe5bc905759514dc61f",
+    "retry_policy_id": "retry_policy_v1",
+    "retry_policy_version": "v1",
+    "retry_policy_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b",
+    "resource_policy_id": "normalization_parser_resource_limits_v1",
+    "resource_policy_version": "v1",
+    "resource_policy_hash": "9269950928ddf05e6b691623c57e6b60797c1131ee96f893e4977d5f223b2d16"
+  },
+  "official_documentation_evidence": [
+    {
+      "provider": "OpenAI",
+      "observed_on": "2026-08-31",
+      "source": "https://developers.openai.com/api/reference/resources/responses/methods/create",
+      "fact": "Responses exposes max_output_tokens, reasoning, temperature, text.format JSON Schema, store, stream, service_tier, and truncation controls."
+    },
+    {
+      "provider": "Google Gemini",
+      "observed_on": "2026-08-31",
+      "source": "https://ai.google.dev/api/interactions-api-v1",
+      "fact": "Interactions exposes generation_config max_output_tokens and thinking_level, response_format JSON Schema, store, and stream controls on the selected API surface."
+    },
+    {
+      "provider": "Groq",
+      "observed_on": "2026-08-31",
+      "source": "https://console.groq.com/docs/api-reference",
+      "additional_sources": [
+        "https://console.groq.com/docs/structured-outputs",
+        "https://console.groq.com/docs/model/qwen/qwen3.8-27b"
+      ],
+      "fact": "Chat Completions exposes max_completion_tokens, reasoning_effort where supported, temperature, response_format, stream, and seed; strict constrained JSON Schema is frozen only for the documented GPT-OSS binding, while Qwen remains best-effort plus harness validation."
+    }
+  ],
+  "native_profile_order": [
+    "openai_responses_balanced_v1",
+    "gemini_interactions_balanced_v1",
+    "groq_gpt_oss_balanced_v1",
+    "groq_qwen_visual_balanced_v1",
+    "groq_current_text_baseline_v1"
+  ],
+  "native_profiles": [
+    {
+      "profile_id": "openai_responses_balanced_v1",
+      "profile_version": "v1",
+      "semantic_hash": "16bfa034229521474f40bfd3973ab208f6b934ae8632692d4ffc2241c2f6512b",
+      "provider": "OpenAI",
+      "api_family": "Responses API",
+      "endpoint_identity": "POST /v1/responses",
+      "maximum_output_tokens_parameter": "max_output_tokens",
+      "reasoning": {
+        "state": "configured",
+        "value": "medium",
+        "native_parameter": "reasoning.effort"
+      },
+      "temperature": {
+        "state": "configured",
+        "value": 1.0,
+        "native_parameter": "temperature"
+      },
+      "top_p": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "top_p"
+      },
+      "seed": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "structured_output_mode": "json_schema_strict",
+      "harness_schema_validation_required": true,
+      "image_detail": {
+        "state": "configured_for_visual_only",
+        "value": "auto",
+        "native_parameter": "input_image.detail"
+      },
+      "streaming": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "stream"
+      },
+      "storage": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "store"
+      },
+      "caching": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "other_controls": {
+        "truncation": "disabled",
+        "service_tier": "default"
+      }
+    },
+    {
+      "profile_id": "gemini_interactions_balanced_v1",
+      "profile_version": "v1",
+      "semantic_hash": "87feef957ecb197e814d1950b01ba8c9525ce5f4770550f6a82355e18e476712",
+      "provider": "Google Gemini",
+      "api_family": "Gemini Interactions API v1beta with Api-Revision 2026-05-20",
+      "endpoint_identity": "POST /v1beta/interactions with Api-Revision 2026-05-20",
+      "maximum_output_tokens_parameter": "generation_config.max_output_tokens",
+      "reasoning": {
+        "state": "configured",
+        "value": "medium",
+        "native_parameter": "generation_config.thinking_level"
+      },
+      "temperature": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "top_p": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": null
+      },
+      "seed": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "structured_output_mode": "json_schema",
+      "harness_schema_validation_required": true,
+      "image_detail": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "streaming": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "stream"
+      },
+      "storage": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "store"
+      },
+      "caching": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "other_controls": {}
+    },
+    {
+      "profile_id": "groq_gpt_oss_balanced_v1",
+      "profile_version": "v1",
+      "semantic_hash": "072d2e0ae03f3ad8e580923290a55c7fd331e1c690728ab2de96210e3ffaefa9",
+      "provider": "Groq",
+      "api_family": "Chat Completions API",
+      "endpoint_identity": "POST /openai/v1/chat/completions",
+      "maximum_output_tokens_parameter": "max_completion_tokens",
+      "reasoning": {
+        "state": "configured",
+        "value": "medium",
+        "native_parameter": "reasoning_effort"
+      },
+      "temperature": {
+        "state": "configured",
+        "value": 1.0,
+        "native_parameter": "temperature"
+      },
+      "top_p": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "top_p"
+      },
+      "seed": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "seed"
+      },
+      "structured_output_mode": "json_schema_strict",
+      "harness_schema_validation_required": true,
+      "image_detail": {
+        "state": "not_applicable",
+        "value": null,
+        "native_parameter": null
+      },
+      "streaming": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "stream"
+      },
+      "storage": {
+        "state": "unsupported",
+        "value": null,
+        "native_parameter": "store"
+      },
+      "caching": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "other_controls": {}
+    },
+    {
+      "profile_id": "groq_qwen_visual_balanced_v1",
+      "profile_version": "v1",
+      "semantic_hash": "f987de1d45e888267d8fe902f0229548302b8a78b3a592b854f0de6ea1a78ca0",
+      "provider": "Groq",
+      "api_family": "Chat Completions API with vision content",
+      "endpoint_identity": "POST /openai/v1/chat/completions",
+      "maximum_output_tokens_parameter": "max_completion_tokens",
+      "reasoning": {
+        "state": "configured",
+        "value": "medium",
+        "native_parameter": "reasoning_effort"
+      },
+      "temperature": {
+        "state": "configured",
+        "value": 1.0,
+        "native_parameter": "temperature"
+      },
+      "top_p": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "top_p"
+      },
+      "seed": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "seed"
+      },
+      "structured_output_mode": "json_schema_best_effort",
+      "harness_schema_validation_required": true,
+      "image_detail": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "streaming": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "stream"
+      },
+      "storage": {
+        "state": "unsupported",
+        "value": null,
+        "native_parameter": "store"
+      },
+      "caching": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "other_controls": {}
+    },
+    {
+      "profile_id": "groq_current_text_baseline_v1",
+      "profile_version": "v1",
+      "semantic_hash": "190ed301b4bddac9e7cc24185ff9cbd157f8a1a0f4c354960fd04d6296e17afa",
+      "provider": "Groq",
+      "api_family": "Chat Completions API",
+      "endpoint_identity": "POST /openai/v1/chat/completions",
+      "maximum_output_tokens_parameter": "max_completion_tokens",
+      "reasoning": {
+        "state": "deliberately_unset_baseline",
+        "value": null,
+        "native_parameter": "reasoning_effort"
+      },
+      "temperature": {
+        "state": "configured_baseline",
+        "value": 0.2,
+        "native_parameter": "temperature"
+      },
+      "top_p": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "top_p"
+      },
+      "seed": {
+        "state": "deliberately_unset",
+        "value": null,
+        "native_parameter": "seed"
+      },
+      "structured_output_mode": "json_object",
+      "harness_schema_validation_required": true,
+      "image_detail": {
+        "state": "not_applicable",
+        "value": null,
+        "native_parameter": null
+      },
+      "streaming": {
+        "state": "configured",
+        "value": false,
+        "native_parameter": "stream"
+      },
+      "storage": {
+        "state": "unsupported",
+        "value": null,
+        "native_parameter": "store"
+      },
+      "caching": {
+        "state": "unsupported_or_unavailable",
+        "value": null,
+        "native_parameter": null
+      },
+      "other_controls": {}
+    }
+  ],
+  "configuration_order": [
+    "openai_sol_text_pilot_v1",
+    "openai_sol_search_synthesis_pilot_v1",
+    "openai_sol_visual_pilot_v1",
+    "openai_terra_text_pilot_v1",
+    "openai_terra_search_synthesis_pilot_v1",
+    "openai_terra_visual_pilot_v1",
+    "gemini_flash_text_pilot_v1",
+    "gemini_flash_search_synthesis_pilot_v1",
+    "gemini_flash_visual_pilot_v1",
+    "groq_gpt_oss_text_pilot_v1",
+    "groq_gpt_oss_search_synthesis_pilot_v1",
+    "groq_qwen_visual_pilot_v1",
+    "groq_baseline_text_pilot_v1"
+  ],
+  "configurations": [
+    {
+      "configuration_id": "openai_sol_text_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "1211deef134ed1fd723a8f0e63b054cae5c4f257138776b02b5b6f6266162caf",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_sol_text_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_premium_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-sol",
+          "workload_stage": "text_analysis",
+          "topology_id": "single_call_text",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_sol_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8378af7ef40c05640fda77f153637b10aa196ed7dcf507b7e2637463e4e42fc0",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "text_output_schema_v1",
+          "output_schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "openai_sol_search_synthesis_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "d1d5b893c6a4c2a5d9488ccda1bccc33f08c29ee7d22cff3dd43521bf6f0231d",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_sol_search_synthesis_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_premium_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-sol",
+          "workload_stage": "search_synthesis",
+          "topology_id": "two_call_search_synthesis",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_sol_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8378af7ef40c05640fda77f153637b10aa196ed7dcf507b7e2637463e4e42fc0",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "search_output_schema_v1",
+          "output_schema_hash": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05",
+          "maximum_output_tokens": 8192,
+          "search_and_tool_configuration": "none_synthesis_consumes_frozen_retrieval_evidence_bundle"
+        }
+      }
+    },
+    {
+      "configuration_id": "openai_sol_visual_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "f5596e2b345c900fda72ccf63094bb9df021ef86099e870d17a34359a0fe57ce",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_sol_visual_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_premium_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-sol",
+          "workload_stage": "visual_inspection",
+          "topology_id": "single_call_visual",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_sol_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8378af7ef40c05640fda77f153637b10aa196ed7dcf507b7e2637463e4e42fc0",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "visual_output_schema_v1",
+          "output_schema_hash": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "openai_terra_text_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "0eca58d264b7af9e48af182f8d3ce8a0a417db8201328b70fdab77b6a4bae893",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_terra_text_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_balanced_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-terra",
+          "workload_stage": "text_analysis",
+          "topology_id": "single_call_text",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_terra_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "1726614cdf2959edd4125be6cb7c5098c712631a13f13820edec87681e51685d",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "text_output_schema_v1",
+          "output_schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "openai_terra_search_synthesis_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "84e7eaba3196e7c3d84b98e30f4fd136ac91fea6a0391d887ab42e730da2ad35",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_terra_search_synthesis_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_balanced_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-terra",
+          "workload_stage": "search_synthesis",
+          "topology_id": "two_call_search_synthesis",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_terra_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "1726614cdf2959edd4125be6cb7c5098c712631a13f13820edec87681e51685d",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "search_output_schema_v1",
+          "output_schema_hash": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05",
+          "maximum_output_tokens": 8192,
+          "search_and_tool_configuration": "none_synthesis_consumes_frozen_retrieval_evidence_bundle"
+        }
+      }
+    },
+    {
+      "configuration_id": "openai_terra_visual_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "b1bf3e1a030ee88e4798fc4a8cddcf7306fa0e785ec4206d49f1f62af9cc5526",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "openai_terra_visual_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "openai_unified_balanced_v1",
+          "provider": "OpenAI",
+          "model": "gpt-5.6-terra",
+          "workload_stage": "visual_inspection",
+          "topology_id": "single_call_visual",
+          "profile_id": "openai_responses_balanced_v1",
+          "role_mapping_id": "openai_responses_terra_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "1726614cdf2959edd4125be6cb7c5098c712631a13f13820edec87681e51685d",
+          "adapter_id": "openai_responses_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "78cb5800877d25970d4ed7e9a34ad63a25a591b8ba3b890da098a88a5052063d",
+          "output_schema_id": "visual_output_schema_v1",
+          "output_schema_hash": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "gemini_flash_text_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "8644e02a24cff69f6619f744e02c6b55648e9463f76b30453b81dc04edbe466b",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "gemini_flash_text_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "gemini_unified_v1",
+          "provider": "Google Gemini",
+          "model": "gemini-3.7-flash",
+          "workload_stage": "text_analysis",
+          "topology_id": "single_call_text",
+          "profile_id": "gemini_interactions_balanced_v1",
+          "role_mapping_id": "gemini_interactions_flash_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8900ae8cb50d6095d56b3c283c5e7d486ed6d94b4e8bc876d5e9253eaac83c2e",
+          "adapter_id": "gemini_interactions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5",
+          "output_schema_id": "text_output_schema_v1",
+          "output_schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "gemini_flash_search_synthesis_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "a0ff91b87bd69ab44e541a8306e0839088e0d3fcd222c6700663a6c7bb4f91e1",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "gemini_flash_search_synthesis_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "gemini_unified_v1",
+          "provider": "Google Gemini",
+          "model": "gemini-3.7-flash",
+          "workload_stage": "search_synthesis",
+          "topology_id": "two_call_search_synthesis",
+          "profile_id": "gemini_interactions_balanced_v1",
+          "role_mapping_id": "gemini_interactions_flash_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8900ae8cb50d6095d56b3c283c5e7d486ed6d94b4e8bc876d5e9253eaac83c2e",
+          "adapter_id": "gemini_interactions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5",
+          "output_schema_id": "search_output_schema_v1",
+          "output_schema_hash": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05",
+          "maximum_output_tokens": 8192,
+          "search_and_tool_configuration": "none_synthesis_consumes_frozen_retrieval_evidence_bundle"
+        }
+      }
+    },
+    {
+      "configuration_id": "gemini_flash_visual_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "542cf13eeceb37eecff065848e2dbcbd7eb418033d054f7aefcac95c3196ebef",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "gemini_flash_visual_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "gemini_unified_v1",
+          "provider": "Google Gemini",
+          "model": "gemini-3.7-flash",
+          "workload_stage": "visual_inspection",
+          "topology_id": "single_call_visual",
+          "profile_id": "gemini_interactions_balanced_v1",
+          "role_mapping_id": "gemini_interactions_flash_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "8900ae8cb50d6095d56b3c283c5e7d486ed6d94b4e8bc876d5e9253eaac83c2e",
+          "adapter_id": "gemini_interactions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9b74156f6ea19b2f2b4f9107a9c7325b580e091fff4651cff4996b6641e89fa5",
+          "output_schema_id": "visual_output_schema_v1",
+          "output_schema_hash": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "groq_gpt_oss_text_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "b6454ac1bfc0b59715acbd81a30ff67cf6ef9300dcbff597975ec8445de2a9bd",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "groq_gpt_oss_text_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "groq_split_v1",
+          "provider": "Groq",
+          "model": "openai/gpt-oss-120b",
+          "workload_stage": "text_analysis",
+          "topology_id": "single_call_text",
+          "profile_id": "groq_gpt_oss_balanced_v1",
+          "role_mapping_id": "groq_gpt_oss_chat_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6",
+          "adapter_id": "groq_chat_completions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a",
+          "output_schema_id": "text_output_schema_v1",
+          "output_schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "groq_gpt_oss_search_synthesis_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "9e44cdac1e507cd24d7a97c53ca36ba1d82d5df386e3c2847388fa84b06d7146",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "groq_gpt_oss_search_synthesis_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "groq_split_v1",
+          "provider": "Groq",
+          "model": "openai/gpt-oss-120b",
+          "workload_stage": "search_synthesis",
+          "topology_id": "two_call_search_synthesis",
+          "profile_id": "groq_gpt_oss_balanced_v1",
+          "role_mapping_id": "groq_gpt_oss_chat_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "83dc83749e17901043cb2026d0c6adacaa9a6601610fb501b9c50c97a8a3f6d6",
+          "adapter_id": "groq_chat_completions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a",
+          "output_schema_id": "search_output_schema_v1",
+          "output_schema_hash": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05",
+          "maximum_output_tokens": 8192,
+          "search_and_tool_configuration": "none_synthesis_consumes_frozen_retrieval_evidence_bundle"
+        }
+      }
+    },
+    {
+      "configuration_id": "groq_qwen_visual_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "a87f157303353e8266757f0bb600f29bc65f2215fe3f100248417d6d2814b0af",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "groq_qwen_visual_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "groq_split_v1",
+          "provider": "Groq",
+          "model": "qwen/qwen3.8-27b",
+          "workload_stage": "visual_inspection",
+          "topology_id": "single_call_visual",
+          "profile_id": "groq_qwen_visual_balanced_v1",
+          "role_mapping_id": "groq_qwen_vision_chat_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "e908746cc8a02251bfafbad5514451b381b4486e6428b1fac2e2d27eb3741754",
+          "adapter_id": "groq_vision_chat_completions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "835ffdf536f84b4f23c9da3f812c3833778abe55352a708b56a33a40372c33db",
+          "output_schema_id": "visual_output_schema_v1",
+          "output_schema_hash": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    },
+    {
+      "configuration_id": "groq_baseline_text_pilot_v1",
+      "configuration_version": "v1",
+      "semantic_hash": "6f958df1462361537480a9af1b9ce88c5d1fe76c3896144ab0129bf4fd900d9c",
+      "envelope": {
+        "identity_domain": "trustai.pilot_request_configuration.v1",
+        "request_configuration_id": "groq_baseline_text_pilot_v1",
+        "request_configuration_version": "v1",
+        "content": {
+          "candidate_id": "baseline_current_text_v1",
+          "provider": "Groq",
+          "model": "openai/gpt-oss-120b",
+          "workload_stage": "text_analysis",
+          "topology_id": "single_call_text",
+          "profile_id": "groq_current_text_baseline_v1",
+          "role_mapping_id": "groq_baseline_chat_v1",
+          "role_mapping_version": "v1",
+          "role_mapping_hash": "f9034ce72afd00be0e60ae7e5a3c4dad713fac0d45e5ec97efb177721f164ce1",
+          "adapter_id": "groq_chat_completions_adapter_v1",
+          "adapter_version": "v1",
+          "adapter_hash": "9af01c2b0c7267a42962e2136d650eacdd883ef6bacd76a842afcc7b95391f0a",
+          "output_schema_id": "text_output_schema_v1",
+          "output_schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+          "maximum_output_tokens": 4096,
+          "search_and_tool_configuration": "not_applicable"
+        }
+      }
+    }
+  ],
+  "ineligible_search_retrieval": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "mapping_id": "openai_responses_sol_v1",
+      "adapter_id": "openai_responses_adapter_v1",
+      "reason": "documented built-in search response lacks exact redirect-chain and authoritative retrieval-authentication context"
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "mapping_id": "openai_responses_terra_v1",
+      "adapter_id": "openai_responses_adapter_v1",
+      "reason": "documented built-in search response lacks exact redirect-chain and authoritative retrieval-authentication context"
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "mapping_id": "gemini_interactions_flash_v1",
+      "adapter_id": "gemini_interactions_adapter_v1",
+      "reason": "documented built-in search response lacks exact redirect-chain and authoritative retrieval-authentication context"
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "mapping_id": "groq_compound_chat_v1",
+      "adapter_id": "groq_compound_chat_completions_adapter_v1",
+      "reason": "documented built-in search response lacks exact redirect-chain and authoritative retrieval-authentication context"
+    }
+  ],
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false,
+    "credentials_present": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash_excluded_json_pointers": [
+      "/specification_identity/semantic_hash"
+    ],
+    "semantic_hash": "1aaca1df3d67f51c3d9c1e5638d63b541bd947a1301aa509291cc7445e60b152"
+  }
+}

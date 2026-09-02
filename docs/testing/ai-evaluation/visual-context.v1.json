@@ -1,0 +1,99 @@
+{
+  "artifact_id": "pilot_visual_context_v1",
+  "artifact_version": "v1",
+  "status": "frozen_pre_execution_contract",
+  "purpose": "Freeze the minimum provider-neutral untrusted listing-context projection for existing PV1 and PV2 assets without changing the historical prompt template or authorizing execution.",
+  "derivation": {
+    "mechanically_derivable": true,
+    "source_fixture_file": "pilot-fixtures.v1.json",
+    "source_fixture_file_sha256": "95a6670975becfdecd39f091c6760652c237ad4c449c9fdb8b7e68d93010cfb9",
+    "source_fixture_ids": ["PV1", "PV2"],
+    "prompt_template_id": "visual_context_v1",
+    "prompt_template_canonical_sha256": "4f04c3c60db5803e22e6d197e22b28ea1a769dea61038a714b96657414ddc156",
+    "prompt_template_set_version": "v1",
+    "prompt_template_set_hash": "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2",
+    "visual_asset_truth_contract": "visual-asset-and-truth-records.v1.json@v1",
+    "visual_asset_truth_contract_hash": "68ffa0e96b740a1bf159aac4e2ebfe559f738d74c7d39cab5d6e778f63eec44b",
+    "new_provider_visible_semantics_added": false
+  },
+  "provider_visible_shape": {
+    "type": "object",
+    "keys_in_allowlist_order": ["title", "description"],
+    "required_keys": ["title", "description"],
+    "additional_properties": false,
+    "value_types": {"title": "nonempty_string", "description": "nonempty_string"},
+    "value_source": "exact sanitized_listing_context member of the selected frozen pilot fixture",
+    "whole_fixture_serialization_forbidden": true,
+    "fixture_id_provider_visible": false,
+    "truth_or_grading_metadata_provider_visible": false,
+    "asset_identity_or_hash_provider_visible": false
+  },
+  "rendering": {
+    "rendering_policy_id": "canonical_untrusted_json_v1",
+    "rendering_policy_version": "v1",
+    "object_member_order": "lexicographic_by_key",
+    "encoding": "UTF-8",
+    "separators": "compact_comma_and_colon",
+    "ensure_ascii": false,
+    "rendered_value_replaces_placeholder": "sanitized_listing_context",
+    "authority_class": "untrusted_context",
+    "image_bytes_in_rendered_context": false
+  },
+  "fixture_contexts": [
+    {
+      "fixture_id": "PV1",
+      "provider_visible_context": {
+        "title": "Desktop calculator with demonstration label",
+        "description": "Synthetic demonstration object photographed in a neutral controlled setting."
+      },
+      "canonical_json_sha256": "1e5c19392ec97367675dddf5be2b9b8313c33f265900d31fc56eef65ffe55cba"
+    },
+    {
+      "fixture_id": "PV2",
+      "provider_visible_context": {
+        "title": "Blue storage case with demonstration card",
+        "description": "Synthetic demonstration object photographed in a neutral controlled setting."
+      },
+      "canonical_json_sha256": "322ffd7b86c78939530229042553048f5c30a0a3f81da968d071d960e310d5e3"
+    }
+  ],
+  "adapter_binding": {
+    "workload_stage": "visual_inspection",
+    "topology_id": "single_call_visual",
+    "role_mapping_ids": [
+      "openai_responses_sol_v1",
+      "openai_responses_terra_v1",
+      "gemini_interactions_flash_v1",
+      "groq_qwen_vision_chat_v1"
+    ],
+    "text_segment_source": "untrusted_context components in exact manifest order",
+    "visual_media_source": "frozen local normalized image bytes",
+    "text_precedes_image": true,
+    "provider_specific_content_added": false
+  },
+  "privacy": {
+    "personal_information": false,
+    "credentials_or_secrets": false,
+    "real_user_listing_data": false,
+    "current_price_truth": false,
+    "provider_visible_fields": ["title", "description"],
+    "evaluator_only_fields_excluded": true
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash_excluded_json_pointers": ["/specification_identity/semantic_hash"],
+    "semantic_hash": "7e6c51a9484f7e9de6910caa829728298b5e4d787af52106e9e2797ddbcae961"
+  }
+}
