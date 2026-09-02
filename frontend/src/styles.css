@@ -834,6 +834,69 @@ button.ghost:hover { background: var(--surface-ghost-hover); }
     color:var(--ink-soft);
 }
 
+/* Theme compatibility for Visual Inspection. These selectors are inert until
+   the separately reviewed Visual Inspection component is present. */
+.visual-inspection {
+  border-color: var(--trust-border);
+  background: var(--surface-subtle);
+  box-shadow: var(--card-shadow);
+}
+
+.visual-inspection-icon,
+.visual-file-trigger span,
+.visual-selection-count {
+  background: var(--trust-soft-bg);
+}
+
+.visual-file-trigger {
+  border-color: var(--trust-border);
+  background: var(--surface-subtle);
+}
+
+.visual-file-trigger:hover {
+  border-color: var(--trust);
+  background: var(--trust-faint-bg);
+}
+
+.visual-file-input:focus-visible + .visual-file-trigger,
+.visual-consent input:focus-visible {
+  outline-color: var(--focus-ring);
+}
+
+.visual-file-input:disabled + .visual-file-trigger {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.visual-privacy-disclosure,
+.visual-limitations {
+  border-color: var(--line);
+  background: var(--hero-tile-bg);
+}
+
+.visual-notice-heading span,
+.visual-consent,
+.visual-inspection-loading,
+.visual-advisory-chip {
+  border-color: var(--trust-border);
+}
+
+.visual-consent,
+.visual-inspection-loading,
+.visual-advisory-chip,
+.visual-score-separation {
+  background: var(--trust-faint-bg);
+}
+
+.visual-loading-spinner {
+  border-color: var(--trust-border);
+  border-top-color: var(--trust);
+}
+
+.visual-photo-reference {
+  background: var(--model-pill-bg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .theme-toggle-icon { transition: none; }
 }
