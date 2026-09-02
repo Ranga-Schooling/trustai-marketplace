@@ -4,8 +4,10 @@ import AnalysisResult from './components/AnalysisResult';
 import AuthForm from './components/AuthForm';
 import History from './components/History';
 import ListingForm from './components/ListingForm';
+import { useTheme } from './theme';
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
   const [view, setView] = useState('submit');
   const [result, setResult] = useState(null);
@@ -123,22 +125,62 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">Trust<span>AI</span> Marketplace</div>
-        {user ? (
-          <nav className="top-nav">
-            <button type="button" className={`nav-pill ${view === 'submit' ? 'active' : ''}`} onClick={openSubmit}>
-              New analysis
-            </button>
-            <button type="button" className={`nav-pill ${view === 'history' ? 'active' : ''}`} onClick={openHistory}>
-              History
-            </button>
-            <button type="button" className={`nav-pill ${view === 'account' ? 'active' : ''}`} onClick={openAccount}>
-              Account
-            </button>
-            <button type="button" className="ghost" onClick={signOut}>
-              Sign out
-            </button>
-          </nav>
-        ) : null}
+        <nav className="top-nav" aria-label="Application controls">
+          {user ? (
+            <>
+              <button type="button" className={`nav-pill ${view === 'submit' ? 'active' : ''}`} onClick={openSubmit}>
+                New analysis
+              </button>
+              <button type="button" className={`nav-pill ${view === 'history' ? 'active' : ''}`} onClick={openHistory}>
+                History
+              </button>
+              <button type="button" className={`nav-pill ${view === 'account' ? 'active' : ''}`} onClick={openAccount}>
+                Account
+              </button>
+              <button type="button" className="ghost" onClick={signOut}>
+                Sign out
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="ghost theme-toggle"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            onClick={toggleTheme}
+          >
+            <span
+              className="theme-toggle-icons"
+              data-theme-icon={theme === 'dark' ? 'sun' : 'moon'}
+              aria-hidden="true"
+            >
+              <svg
+                className="theme-toggle-icon theme-toggle-icon-moon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                focusable="false"
+              >
+                <path d="M20.5 14.2A8 8 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z" />
+              </svg>
+              <svg
+                className="theme-toggle-icon theme-toggle-icon-sun"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                focusable="false"
+              >
+                <circle cx="12" cy="12" r="3.5" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              </svg>
+            </span>
+            <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+        </nav>
       </header>
 
       {!user ? (
