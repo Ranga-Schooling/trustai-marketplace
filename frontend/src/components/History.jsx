@@ -16,8 +16,8 @@ export default function History({ onOpen, onNewListing }) {
   const [error, setError] = useState('');
   // D-20, issue #80: per-listing state so one retry's spinner/error doesn't
   // block or clobber another's while both sit in the failed list.
-  const [retryingId, setRetryingId] = useState(null);
-  const [retryError, setRetryError] = useState('');
+  const [retryingIds, setRetryingIds] = useState(() => new Set());
+  const [retryErrors, setRetryErrors] = useState({});
 
   useEffect(() => {
     loadHistory();
@@ -41,14 +41,28 @@ export default function History({ onOpen, onNewListing }) {
   }
 
   async function handleRetry(listingId) {
-    setRetryError('');
-    setRetryingId(listingId);
+    setRetryErrors((current) => {
+      const next = { ...current };
+      delete next[listingId];
+      return next;
+    });
+    setRetryingIds((current) => new Set(current).add(listingId));
     try {
       const analysis = await api.retryAnalysis(listingId);
       onOpen(analysis);
     } catch (err) {
-      setRetryError(err instanceof ApiError ? err.message : 'Unable to retry that listing right now.');
-      setRetryingId(null);
+      setRetryErrors((current) => ({
+        ...current,
+        [listingId]: err instanceof ApiError
+          ? err.message
+          : 'Unable to retry that listing right now.',
+      }));
+    } finally {
+      setRetryingIds((current) => {
+        const next = new Set(current);
+        next.delete(listingId);
+        return next;
+      });
     }
   }
 
@@ -71,7 +85,6 @@ export default function History({ onOpen, onNewListing }) {
           <p className="subtle">
             The AI check didn't complete for these — your listing details were still saved. Retry without re-entering anything.
           </p>
-          {retryError ? <div className="error">{retryError}</div> : null}
           <div className="history-list">
             {failedListings.map((item) => (
               <div key={item.id} className="history-card failed-listing-card">
@@ -83,14 +96,15 @@ export default function History({ onOpen, onNewListing }) {
                   <p className="subtle">
                     {item.price} {item.currency} • {formatDate(item.created_at)}
                   </p>
+                  {retryErrors[item.id] ? <div className="error">{retryErrors[item.id]}</div> : null}
                 </div>
                 <button
                   type="button"
                   className="ghost"
                   onClick={() => handleRetry(item.id)}
-                  disabled={retryingId === item.id}
+                  disabled={retryingIds.has(item.id)}
                 >
-                  {retryingId === item.id ? 'Retrying…' : 'Retry analysis'}
+                  {retryingIds.has(item.id) ? 'Retrying…' : 'Retry analysis'}
                 </button>
               </div>
             ))}
