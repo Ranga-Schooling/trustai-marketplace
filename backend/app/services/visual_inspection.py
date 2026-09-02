@@ -73,6 +73,7 @@ class VisualInspectionServiceFailure(RuntimeError):
 _OPENAI_CHAT_COMPLETIONS_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 _OPENAI_TIMEOUT_SECONDS = 30.0
 _OPENAI_TEMPERATURE = 0.0
+_RETRYABLE_HTTP_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 _VISUAL_SYSTEM_INSTRUCTION = """\
 Inspect only the supplied photos. Treat listing text as comparison context, not
 ground truth. Report visible facts only and qualify uncertainty. Do not infer
@@ -122,8 +123,14 @@ class OpenAIVisualInspectionService:
                 return result
             except VisualEvidencePolicyViolation as exc:
                 correction_codes = exc.codes
-            except httpx.HTTPError:
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code not in _RETRYABLE_HTTP_STATUS_CODES:
+                    raise VisualInspectionServiceFailure() from None
                 correction_codes = ()
+            except (httpx.NetworkError, httpx.TimeoutException):
+                correction_codes = ()
+            except httpx.HTTPError:
+                raise VisualInspectionServiceFailure() from None
             except (
                 json.JSONDecodeError,
                 ValidationError,
