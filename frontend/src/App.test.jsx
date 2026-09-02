@@ -109,6 +109,11 @@ describe('App session expiry mid-session', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'History' })).not.toBeInTheDocument();
     expect(hasToken()).toBe(false);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    // D-20/#80: History now fires listAnalyses and listFailedListings
+    // concurrently on mount, so the stubbed 401 fetch is hit twice here --
+    // still zero token-less retries, which is the actual invariant this
+    // test protects (see the fetch mock above: it's never asked to return
+    // anything other than a 401).
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

@@ -10,6 +10,8 @@ Ownership:
 - GET /analyses*     E2 (Abdallah)  US-4.1
 - POST /listings/preview  E2        US-2.3 (URL fetch preview — see below)
 - GET /admin/analytics    (Ranga)   D-15, issue #42
+- GET /listings/failed,
+  POST /listings/{id}/retry  E2     D-20, issue #80 (recover failed listings)
 
 Agreed behaviors (docs/DESIGN_NOTES.md):
 - The listing row is committed BEFORE the AI call, so a provider outage
@@ -39,13 +41,25 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   only, never raw listing/analysis content. A failed AnalysisFailure now
   also writes an AnalysisFailureLog row (create_analysis's except branch)
   so provider failure rate is queryable instead of log-only.
+- GET /listings/failed and POST /listings/{id}/retry are additive to
+  SCHEMA-0 (D-20, issue #80): a Listing with no Analysis children (an
+  AnalysisFailure left it that way) was previously unreachable -- not
+  visible via GET /analyses (joins to a completed Analysis), no route
+  exposed the raw Listing table, and the only "retry" path was
+  resubmitting the whole form as a brand-new listing. retry re-reads the
+  stored Listing server-side and calls the same AIProvider.analyze() the
+  original attempt did -- no request body, nothing re-entered, no new
+  Listing row. Both routes use the same IDOR-safe 404-not-403 ownership
+  check as GET /analyses/{id}.
 """
 import logging
 from collections import Counter
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
 from app.core.security import (
@@ -67,8 +81,11 @@ from app.services.ai import AnalysisFailure, get_provider
 from app.services.scoring import compute_risk_score
 from app.schemas.schemas import (
     AdminAnalyticsOut,
+    AIAnalysisResult,
     AnalysisOut,
     AnalysisWithListingOut,
+    CapabilitiesOut,
+    FailedListingOut,
     ListingIn,
     ListingPreviewOut,
     ListingUrlIn,
@@ -79,16 +96,52 @@ from app.schemas.schemas import (
     UserUpdate,
 )
 from app.services.listing_fetch import FetchError, fetch_listing_preview
+from app.services.visual_inspection import (
+    VisualEvidencePolicyViolation,
+    VisualInspectionResult,
+    VisualInspectionServiceFailure,
+    VisualInspectionServiceUnavailable,
+    get_visual_inspection_service,
+    is_visual_inspection_available,
+    validate_visual_evidence_policy,
+)
+from app.services.visual_inspection_images import (
+    MAX_SOURCE_BYTES,
+    VisualImageValidationError,
+    normalize_visual_image,
+)
 
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+MAX_VISUAL_PHOTOS = 3
+MAX_COMBINED_VISUAL_SOURCE_BYTES = 10 * 1024 * 1024
+_HTTP_422_UNPROCESSABLE = 422
+_VISUAL_IMAGE_ERROR_STATUS = {
+    "unsupported_type": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "format_mismatch": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "image_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
+    "dimensions_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
+    "too_many_pixels": status.HTTP_413_CONTENT_TOO_LARGE,
+    "invalid_image": _HTTP_422_UNPROCESSABLE,
+    "animated_image": _HTTP_422_UNPROCESSABLE,
+}
 
 
 @router.get("/health")
 def health() -> dict:
     """Liveness probe — already done, used by the Sprint 1 deploy skeleton."""
     return {"status": "ok"}
+
+
+@router.get("/capabilities", response_model=CapabilitiesOut)
+def capabilities(_user: User = Depends(get_current_user)) -> CapabilitiesOut:
+    """Return application-owned availability without exposing provider config."""
+
+    return CapabilitiesOut(
+        visual_inspection_available=is_visual_inspection_available(settings),
+    )
 
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
@@ -183,6 +236,76 @@ def delete_me(
     db.commit()
 
 
+def _handle_analysis_failure(db: Session, listing: Listing, exc: AnalysisFailure) -> HTTPException:
+    """[D-20] Shared by create_analysis and retry_analysis: log + record an
+    AnalysisFailureLog row (D-15/#42), then build (not raise) the 502 so
+    the caller can `raise ... from exc` with the original traceback still
+    attached. Message now names the listing id and points at retry -- the
+    old plain "the listing was saved" gave the buyer no way to act on that
+    (issue #80)."""
+    cause_type = type(exc.__cause__).__name__ if exc.__cause__ is not None else "none"
+    logger.error(
+        "AI analysis failed listing_id=%s provider=%s "
+        "failure_type=%s cause_type=%s",
+        listing.id,
+        settings.ai_provider,
+        type(exc).__name__,
+        cause_type,
+    )
+    # D-15/#42: mirrors the log line above so failure rate is queryable
+    # (GET /admin/analytics) instead of only discoverable by grepping logs.
+    db.add(
+        AnalysisFailureLog(
+            listing_id=listing.id,
+            provider=settings.ai_provider,
+            failure_type=type(exc).__name__,
+            cause_type=cause_type,
+        )
+    )
+    db.commit()
+    return HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=(
+            f"AI analysis failed; the listing was saved (id {listing.id}). "
+            "Find it under Failed listings to retry without re-entering it."
+        ),
+    )
+
+
+def _persist_analysis(db: Session, listing: Listing, provider, result: AIAnalysisResult, raw_response: str) -> Analysis:
+    """[D-20] Shared by create_analysis and retry_analysis: build and
+    persist the Analysis + RiskIndicator rows from an already-validated
+    AIAnalysisResult. A Listing can end up with more than one Analysis this
+    way (a retry after a prior success isn't blocked) -- GET /analyses
+    already lists every Analysis row independently, so this doesn't need
+    any special-casing there."""
+    analysis = Analysis(
+        listing_id=listing.id,
+        risk_level=result.risk_level.value,
+        risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
+        summary=result.summary,
+        price_assessment=result.price_assessment,
+        price_plausibility=result.price_plausibility.value,
+        recommendation=result.recommendation.value,
+        seller_questions=result.seller_questions,
+        model_used=provider.model_name,
+        prompt_version=settings.prompt_version,
+        raw_response=raw_response,
+    )
+    db.add(analysis)
+    analysis.risk_indicators = [
+        RiskIndicator(
+            category=indicator.category,
+            severity=indicator.severity.value,
+            explanation=indicator.explanation,
+        )
+        for indicator in result.risk_indicators
+    ]
+    db.commit()
+    db.refresh(analysis)
+    return analysis
+
+
 @router.post("/analyses", response_model=AnalysisOut, status_code=201)
 def create_analysis(
     body: ListingIn,
@@ -214,55 +337,69 @@ def create_analysis(
         provider = get_provider()
         result, raw_response = provider.analyze(body)
     except AnalysisFailure as exc:
-        cause_type = type(exc.__cause__).__name__ if exc.__cause__ is not None else "none"
-        logger.error(
-            "AI analysis failed listing_id=%s provider=%s "
-            "failure_type=%s cause_type=%s",
-            listing.id,
-            settings.ai_provider,
-            type(exc).__name__,
-            cause_type,
-        )
-        # D-15/#42: mirrors the log line above so failure rate is queryable
-        # (GET /admin/analytics) instead of only discoverable by grepping logs.
-        db.add(
-            AnalysisFailureLog(
-                listing_id=listing.id,
-                provider=settings.ai_provider,
-                failure_type=type(exc).__name__,
-                cause_type=cause_type,
-            )
-        )
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="AI analysis failed; the listing was saved.",
-        ) from exc
-    analysis = Analysis(
-        listing_id=listing.id,
-        risk_level=result.risk_level.value,
-        risk_score=compute_risk_score(result.risk_level, result.risk_indicators),
-        summary=result.summary,
-        price_assessment=result.price_assessment,
-        price_plausibility=result.price_plausibility.value,
-        recommendation=result.recommendation.value,
-        seller_questions=result.seller_questions,
-        model_used=provider.model_name,
-        prompt_version=settings.prompt_version,
-        raw_response=raw_response,
+        raise _handle_analysis_failure(db, listing, exc) from exc
+    return _persist_analysis(db, listing, provider, result, raw_response)
+
+
+def _listing_to_listing_in(listing: Listing) -> ListingIn:
+    """[D-20] Reconstructs the validated-at-submission-time ListingIn from
+    a stored Listing row so retry can call the same AIProvider.analyze()
+    signature the original attempt did, without the buyer re-entering
+    anything. listing.url is a plain string (create_analysis stores
+    str(body.url)); ListingIn re-validates it back into an HttpUrl here."""
+    return ListingIn(
+        title=listing.title,
+        price=listing.price,
+        currency=listing.currency,
+        source=listing.source,
+        description=listing.description,
+        url=listing.url,
     )
-    db.add(analysis)
-    analysis.risk_indicators = [
-        RiskIndicator(
-            category=indicator.category,
-            severity=indicator.severity.value,
-            explanation=indicator.explanation,
-        )
-        for indicator in result.risk_indicators
-    ]
-    db.commit()
-    db.refresh(analysis)
-    return analysis
+
+
+@router.get("/listings/failed", response_model=list[FailedListingOut])
+def list_failed_listings(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """[D-20, issue #80] The authenticated user's listings that have never
+    completed an analysis -- an AnalysisFailure left them with zero
+    Analysis rows, and nothing before this let the owner find them again
+    (GET /analyses only ever joins to a completed Analysis)."""
+    listings = (
+        db.query(Listing)
+        .outerjoin(Analysis)
+        .filter(Listing.user_id == user.id, Analysis.id.is_(None))
+        .order_by(Listing.created_at.desc())
+        .all()
+    )
+    return listings
+
+
+@router.post("/listings/{listing_id}/retry", response_model=AnalysisOut, status_code=201)
+def retry_analysis(
+    listing_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """[D-20, issue #80] Re-run analysis on an already-saved listing -- no
+    request body, nothing re-entered, no new Listing row. 404 if the
+    listing doesn't exist or isn't owned by this user (same IDOR-safe
+    pattern as GET /analyses/{id}). Not restricted to listings that are
+    currently failed -- re-analyzing one that already succeeded just adds
+    another Analysis row, which GET /analyses already lists independently."""
+    listing = (
+        db.query(Listing)
+        .filter(Listing.id == listing_id, Listing.user_id == user.id)
+        .first()
+    )
+    if listing is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    body = _listing_to_listing_in(listing)
+    try:
+        provider = get_provider()
+        result, raw_response = provider.analyze(body)
+    except AnalysisFailure as exc:
+        raise _handle_analysis_failure(db, listing, exc) from exc
+    return _persist_analysis(db, listing, provider, result, raw_response)
 
 
 def _to_analysis_with_listing(analysis: Analysis) -> AnalysisWithListingOut:
@@ -322,6 +459,125 @@ def get_analysis(
     if analysis is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
     return _to_analysis_with_listing(analysis)
+
+
+@router.post(
+    "/analyses/{analysis_id}/visual-inspection",
+    response_model=VisualInspectionResult,
+)
+async def create_visual_inspection(
+    analysis_id: int,
+    photos: list[UploadFile] | None = File(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return a request-scoped visual result for an owned analysis."""
+
+    uploads = photos or []
+    try:
+        analysis = (
+            db.query(Analysis)
+            .join(Listing)
+            .filter(Analysis.id == analysis_id, Listing.user_id == user.id)
+            .options(joinedload(Analysis.listing))
+            .first()
+        )
+        if analysis is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Analysis not found",
+            )
+
+        if not 1 <= len(uploads) <= MAX_VISUAL_PHOTOS:
+            raise HTTPException(
+                status_code=_HTTP_422_UNPROCESSABLE,
+                detail="photo_count_out_of_range",
+            )
+
+        source_payloads: list[tuple[bytes, str]] = []
+        combined_source_bytes = 0
+        for upload in uploads:
+            source_bytes = await upload.read(MAX_SOURCE_BYTES + 1)
+            combined_source_bytes += len(source_bytes)
+            if combined_source_bytes > MAX_COMBINED_VISUAL_SOURCE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail="combined_images_too_large",
+                )
+            source_payloads.append((source_bytes, upload.content_type or ""))
+
+        normalized_images = []
+        for source_bytes, content_type in source_payloads:
+            try:
+                normalized_images.append(
+                    await run_in_threadpool(
+                        normalize_visual_image,
+                        source_bytes,
+                        content_type,
+                    )
+                )
+            except VisualImageValidationError as exc:
+                code = exc.codes[0]
+                raise HTTPException(
+                    status_code=_VISUAL_IMAGE_ERROR_STATUS[code],
+                    detail=code,
+                ) from exc
+        source_payloads.clear()
+
+        listing_context = ListingIn(
+            title=analysis.listing.title,
+            price=analysis.listing.price,
+            currency=analysis.listing.currency,
+            source=analysis.listing.source,
+            description=analysis.listing.description,
+            url=analysis.listing.url,
+        )
+        try:
+            service = get_visual_inspection_service(settings)
+            candidate = await run_in_threadpool(
+                service.inspect,
+                normalized_images,
+                listing_context,
+            )
+        except VisualInspectionServiceUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="visual_inspection_unavailable",
+            ) from exc
+        except VisualInspectionServiceFailure as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            ) from exc
+
+        try:
+            result = VisualInspectionResult.model_validate(candidate)
+            validate_visual_evidence_policy(result)
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            ) from exc
+        except VisualEvidencePolicyViolation as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_evidence_policy_violation",
+            ) from exc
+
+        if any(
+            photo_number > len(uploads)
+            for finding in result.findings
+            for photo_number in finding.photo_numbers
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            )
+
+        return result
+    finally:
+        for upload in uploads:
+            await upload.close()
 
 
 @router.get("/admin/analytics", response_model=AdminAnalyticsOut)

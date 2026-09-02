@@ -43,11 +43,27 @@ The first working version of TrustAI Marketplace is expected to include:
 - Automated testing and continuous integration
 - A publicly accessible deployed application
 
+### Optional Visual Inspection
+
+On this feature branch, authenticated users can optionally add one to three
+JPEG, PNG, or WebP photos to an existing completed analysis. Visual Inspection
+reports observations grounded in visible photo evidence as a separate advisory
+channel; it does not change the text analysis, Trust score, risk level, or
+Buy/Caution/Avoid recommendation. TrustAI does not persist uploaded photos or
+Visual Inspection findings.
+
+Visual Inspection is implemented on this feature branch and validated through
+automated tests and deterministic local frontend QA. It is disabled by default,
+has not completed credentialed OpenAI evaluation, and is not deployed. See
+[D-20 in the design notes](docs/DESIGN_NOTES.md) for the detailed architecture,
+privacy, and security rationale.
+
 ### Outside the Initial MVP
 
 The following features may be considered later if the core application is complete and stable:
 
-- Image-based listing analysis
+- Automatic retrieval, scraping, or inspection of marketplace listing photos;
+  V1 requires users to explicitly select and upload photos
 - Browser extensions
 - Direct marketplace integrations
 - Mobile applications

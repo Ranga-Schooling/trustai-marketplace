@@ -1,3 +1,39 @@
+## [1.19.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.19.0...v1.19.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **history:** isolate listing retry state ([#106](https://github.com/Ranga-Schooling/trustai-marketplace/issues/106)) ([d05c060](https://github.com/Ranga-Schooling/trustai-marketplace/commit/d05c060b22e2d913a14be7d76ef61802285bdf8a))
+
+## [1.19.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.18.0...v1.19.0) (2026-09-02)
+
+
+### Features
+
+* **ai:** add transient visual inspection ([#99](https://github.com/Ranga-Schooling/trustai-marketplace/issues/99)) ([61f141a](https://github.com/Ranga-Schooling/trustai-marketplace/commit/61f141ae2f108065673eb67dd92b1c125fc5bf72))
+
+## [1.18.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.17.0...v1.18.0) (2026-09-02)
+
+
+### Features
+
+* **ui:** add dark mode ([#105](https://github.com/Ranga-Schooling/trustai-marketplace/issues/105)) ([fbea666](https://github.com/Ranga-Schooling/trustai-marketplace/commit/fbea666045afd8def267223e04bf36dba0b4887c))
+
+## [1.17.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.5...v1.17.0) (2026-09-02)
+
+
+### Features
+
+* recover listings after a failed analysis (fixes [#80](https://github.com/Ranga-Schooling/trustai-marketplace/issues/80)) ([#100](https://github.com/Ranga-Schooling/trustai-marketplace/issues/100)) ([2c662d8](https://github.com/Ranga-Schooling/trustai-marketplace/commit/2c662d80f6886cd2904f389eb28af91758a2c840))
+
+## [1.16.5](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.4...v1.16.5) (2026-09-02)
+
+
+### Bug Fixes
+
+* **ui:** correct risk gauge geometry ([#94](https://github.com/Ranga-Schooling/trustai-marketplace/issues/94)) ([c276f6c](https://github.com/Ranga-Schooling/trustai-marketplace/commit/c276f6c39080bb1e09a52ea5872c535e2049cd7a))
+* **ui:** improve mobile responsiveness ([#95](https://github.com/Ranga-Schooling/trustai-marketplace/issues/95)) ([a344d78](https://github.com/Ranga-Schooling/trustai-marketplace/commit/a344d781e2098bdba8b0121aff7676b31f2f0cca))
+
 ## [1.16.4](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.3...v1.16.4) (2026-08-29)
 
 

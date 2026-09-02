@@ -527,6 +527,169 @@ same as D-17. No frozen contract changes: `ListingIn`, `AIAnalysisResult`,
 `AIProvider`, and `POST /analyses` remain unchanged; `MockProvider` is
 unaffected since it never calls `_post_and_validate`.
 
+**Transient Visual Inspection as a separate evidence channel (D-20).** The
+established TrustAI MVP is text-based: `AIAnalysisResult` is the frozen
+text-analysis contract, and the Trust score, risk level, and recommendation are
+derived from validated text-analysis categories. D-16's deterministic
+disclosure still states that listing photos are not inspected by that analysis.
+The Capstone enhancement adds optional user-supplied photos, but folding their
+findings into `AIAnalysisResult`, deterministic scoring, or persisted analysis
+history would blur evidence provenance and expand settled contracts for a
+different kind of evidence.
+
+Visual Inspection is therefore an additive, authenticated, advisory operation
+for an existing user-owned completed analysis:
+`POST /api/analyses/{analysis_id}/visual-inspection`. The user supplies one to
+three JPEG, PNG, or WebP images. The result is request-scoped and separate from
+`AIAnalysisResult`, `AIProvider`, and deterministic Trust scoring; it creates no
+image or finding records and does not recalculate or alter the existing Trust
+score, risk level, or Buy/Caution/Avoid recommendation.
+
+*Provider boundary.* V1 supports only explicitly configured OpenAI Visual
+Inspection. `VISUAL_INSPECTION_PROVIDER` defaults to `disabled`, and
+`VISUAL_INSPECTION_MODEL` defaults to `gpt-4o-mini`; when explicitly enabled,
+the service reuses the existing `OPENAI_API_KEY`. This does not imply that
+OpenAI is enabled in production or that an authorized credential currently
+exists. A separate `OpenAIVisualInspectionService` is intentional:
+`AIProvider` has the settled `ListingIn` to `AIAnalysisResult` text-analysis
+interface, while Visual Inspection has image inputs, a private result contract,
+a separate privacy boundary, and a transient lifecycle.
+
+*Image security boundary.* The application accepts one to three source images,
+with a maximum of 4 MiB per image and 10 MiB combined. It accepts decoded JPEG,
+PNG, and WebP only, rejects corrupt, unsupported, MIME-mismatched, and animated
+images, and rejects inputs over 8,000 pixels on either axis or 25 megapixels.
+EXIF orientation is applied before normalization; metadata, including
+EXIF/GPS, ICC profiles, and comments, is stripped. Transparency is flattened
+safely, the longest normalized edge is at most 1,600 pixels, and provider input
+is an RGB JPEG. Image decoding and normalization run outside the async request
+event loop. These are application limits, not a claim that multipart bytes
+never touch temporary storage: framework multipart handling may use
+request-scoped temporary spooling before application normalization.
+
+*Privacy and lifecycle.* The implemented flow is: browser-selected image,
+multipart upload, request-scoped framework handling, bounded source read,
+normalization and metadata stripping, normalized image sent to the configured
+provider, transient validated result, then request/upload cleanup. TrustAI does
+not persist uploaded photos or Visual Inspection findings: V1 creates no image
+database record, writes neither source images nor findings to PostgreSQL or
+S3/object storage, does not use the OpenAI Files API, does not persist image
+Base64, and does not add findings to Analysis, History, or scoring. Findings
+remain React state and are discarded on navigation or reload.
+
+When explicitly enabled, normalized photos are sent to OpenAI for processing.
+The UI requires affirmative consent for each inspection, states that
+third-party processing may be subject to OpenAI's API data-handling policy, and
+warns users not to upload sensitive or personal imagery. Provider-side
+processing and retention are governed by the applicable OpenAI API data
+controls. The request's `store: false` setting is a processing bound, not a
+promise of immediate deletion or zero provider retention.
+
+*Private result and evidence boundary.* `VisualInspectionResult` contains one
+to eight findings. Each finding uses a closed visual-category enum, bounded
+observation text, and photo references restricted to the supplied photo
+numbers; extra fields are forbidden. It contains no Trust score, risk level,
+Buy/Caution/Avoid recommendation, price plausibility, authenticity or ownership
+verdict, or hidden/internal-condition verdict. Visual findings are observations,
+not another risk engine.
+
+Validation has three layers:
+1. The provider instruction limits analysis to the supplied photos, treats
+   listing text as comparison context, and requests visible evidence only.
+2. Strict structured output limits the result to closed categories and bounded
+   fields.
+3. A deterministic evidence-policy gate rejects known unsupported conclusion
+   families and uses the same one-retry, then fail-closed approach as the
+   provider boundary.
+
+Corrective retries contain safe application-owned codes only; rejected provider
+prose is not copied into retry context. The policy handles bounded
+limitation/negation and literal-visible-text contexts to avoid the known
+false-positive classes found during implementation. It remains a bounded
+known-pattern safeguard, not comprehensive semantic grounding or proof that
+every generated observation is correct.
+
+*Provider request bounds.* Normalized RGB JPEGs are sent as inline data URLs at
+`high` image detail. Requests use strict JSON Schema, `store: false`, a maximum
+of eight findings, `max_completion_tokens: 2048`, and exactly two attempts
+total. Synchronous provider execution is offloaded from the async request event
+loop. These controls bound application behavior without overstating what
+`store: false` guarantees about provider-side retention.
+
+*Frontend and consent boundary.* Visual Inspection appears separately on a
+completed analysis result. The client validates supported type, count, and size
+for early feedback, while the backend remains authoritative. Each request
+requires fresh affirmative consent. During loading, duplicate submission and
+file-selection changes are disabled; findings remain transient local state.
+Safe user-facing errors map 413, 415, 422, 502, and 503 without exposing
+provider details, and the UI explicitly states that findings do not change the
+Trust score or recommendation.
+
+*Alternatives considered.* Extending `AIAnalysisResult` was rejected because it
+would mix evidence channels and expand the frozen text contract. Reusing
+`AIProvider` was rejected because its interface is intentionally
+`ListingIn` to `AIAnalysisResult`. Persisting images or findings in V1 was
+rejected because it would add storage, privacy, retention, deletion, and
+migration obligations that the Capstone enhancement does not need. Fetching
+marketplace images automatically was rejected because URL preview and visual
+evidence have different trust boundaries, and remote-image retrieval would
+expand SSRF and privacy scope. Letting visual findings alter the Trust score was
+rejected because the deterministic score is defined over the established
+validated text-analysis categories; silently mixing a new evidence source would
+change its meaning.
+
+*Current status and validation boundary.* The implementation exists locally on
+`feat/visual-inspection-v1`. Automated backend and frontend validation has
+passed, and manual frontend visual QA used deterministic non-provider
+responses. Tests cover the result schema and evidence policy, hostile image
+validation, MIME spoofing, metadata stripping, dimension and pixel limits,
+provider payload and retry/fail-closed behavior, authentication and ownership,
+non-persistence, event-loop progress, multipart client behavior, consent,
+loading, reset, safe errors, accessibility, and preservation of the Trust score
+and recommendation.
+
+A credentialed OpenAI live evaluation has not been completed because no
+authorized OpenAI credential was available during implementation. Visual
+Inspection is not deployed and production configuration does not enable it.
+Production ingress also requires an explicit request-body limit before
+deployment, and provider configuration and credential governance must be
+resolved before live evaluation or deployment. The feature must not be called
+production-ready, and model adherence has not yet been proven.
+**Recovering failed listings (D-20, issue #80).** US-2.2's
+persist-before-analyze decision (above) already made the listing survive
+an `AnalysisFailure`, but "the listing was saved" was never actually true
+from the buyer's side: `GET /analyses` only ever joins `Listing` to a completed
+`Analysis`, so a listing with zero `Analysis` rows was invisible there; no
+route exposed the raw `Listing` table at all; and the only way to try
+again was resubmitting the whole form as a brand-new `Listing` row,
+leaving the original orphaned forever. The issue explicitly asked which
+of two shapes retry should take: reuse `POST /analyses` (would mean
+either re-sending the full `ListingIn` body redundantly, or making its
+fields conditionally optional when a listing id is present -- both add
+real complexity to the frozen contract for a case that's supposed to need
+*less* input, not a variant of the same input), or a dedicated endpoint.
+Went with dedicated: `GET /listings/failed` (the user's listings with no
+`Analysis` children, newest first) and `POST /listings/{id}/retry` (no
+request body -- re-reads the stored `Listing` server-side, rebuilds a
+`ListingIn` from it, and calls the exact same `AIProvider.analyze()` the
+original attempt did). Both are additive to SCHEMA-0: `ListingIn`,
+`AIAnalysisResult`, and `POST /analyses` are all unchanged. Retry isn't
+restricted to currently-failed listings -- retrying one that already
+succeeded just adds a second `Analysis` row, which `GET /analyses` already
+lists independently since it was never deduplicated by listing in the
+first place, so no special-casing was needed to allow this.
+
+The 502 message itself changed too (the issue's explicit "the error
+message should indicate where the listing was saved" AC): it used to be
+a dead end -- `"AI analysis failed; the listing was saved."`, no id, no
+next step. Now names the listing id and points at where to actually find
+it. The failure-handling and success-persistence logic that used to live
+solely inside `create_analysis` were pulled into two shared helpers
+(`_handle_analysis_failure`, `_persist_analysis`) so `retry_analysis`
+doesn't duplicate either -- same `AnalysisFailureLog` row (D-15/#42) gets
+written on a failed retry as on a failed first attempt, so admin failure-
+rate analytics don't undercount retries.
+
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
