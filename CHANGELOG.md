@@ -1,3 +1,10 @@
+## [1.19.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.18.0...v1.19.0) (2026-09-02)
+
+
+### Features
+
+* **ai:** add transient visual inspection ([#99](https://github.com/Ranga-Schooling/trustai-marketplace/issues/99)) ([61f141a](https://github.com/Ranga-Schooling/trustai-marketplace/commit/61f141ae2f108065673eb67dd92b1c125fc5bf72))
+
 ## [1.18.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.17.0...v1.18.0) (2026-09-02)
 
 
