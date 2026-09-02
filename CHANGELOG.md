@@ -1,3 +1,10 @@
+## [1.18.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.17.0...v1.18.0) (2026-09-02)
+
+
+### Features
+
+* **ui:** add dark mode ([#105](https://github.com/Ranga-Schooling/trustai-marketplace/issues/105)) ([fbea666](https://github.com/Ranga-Schooling/trustai-marketplace/commit/fbea666045afd8def267223e04bf36dba0b4887c))
+
 ## [1.17.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.16.5...v1.17.0) (2026-09-02)
 
 
