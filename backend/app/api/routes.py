@@ -55,9 +55,11 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
 import logging
 from collections import Counter
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
+from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
 from app.core.security import (
@@ -82,6 +84,7 @@ from app.schemas.schemas import (
     AIAnalysisResult,
     AnalysisOut,
     AnalysisWithListingOut,
+    CapabilitiesOut,
     FailedListingOut,
     ListingIn,
     ListingPreviewOut,
@@ -93,16 +96,52 @@ from app.schemas.schemas import (
     UserUpdate,
 )
 from app.services.listing_fetch import FetchError, fetch_listing_preview
+from app.services.visual_inspection import (
+    VisualEvidencePolicyViolation,
+    VisualInspectionResult,
+    VisualInspectionServiceFailure,
+    VisualInspectionServiceUnavailable,
+    get_visual_inspection_service,
+    is_visual_inspection_available,
+    validate_visual_evidence_policy,
+)
+from app.services.visual_inspection_images import (
+    MAX_SOURCE_BYTES,
+    VisualImageValidationError,
+    normalize_visual_image,
+)
 
 router = APIRouter()
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+MAX_VISUAL_PHOTOS = 3
+MAX_COMBINED_VISUAL_SOURCE_BYTES = 10 * 1024 * 1024
+_HTTP_422_UNPROCESSABLE = 422
+_VISUAL_IMAGE_ERROR_STATUS = {
+    "unsupported_type": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "format_mismatch": status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    "image_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
+    "dimensions_too_large": status.HTTP_413_CONTENT_TOO_LARGE,
+    "too_many_pixels": status.HTTP_413_CONTENT_TOO_LARGE,
+    "invalid_image": _HTTP_422_UNPROCESSABLE,
+    "animated_image": _HTTP_422_UNPROCESSABLE,
+}
 
 
 @router.get("/health")
 def health() -> dict:
     """Liveness probe — already done, used by the Sprint 1 deploy skeleton."""
     return {"status": "ok"}
+
+
+@router.get("/capabilities", response_model=CapabilitiesOut)
+def capabilities(_user: User = Depends(get_current_user)) -> CapabilitiesOut:
+    """Return application-owned availability without exposing provider config."""
+
+    return CapabilitiesOut(
+        visual_inspection_available=is_visual_inspection_available(settings),
+    )
 
 
 @router.post("/auth/register", response_model=UserOut, status_code=201)
@@ -420,6 +459,125 @@ def get_analysis(
     if analysis is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Analysis not found")
     return _to_analysis_with_listing(analysis)
+
+
+@router.post(
+    "/analyses/{analysis_id}/visual-inspection",
+    response_model=VisualInspectionResult,
+)
+async def create_visual_inspection(
+    analysis_id: int,
+    photos: list[UploadFile] | None = File(default=None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return a request-scoped visual result for an owned analysis."""
+
+    uploads = photos or []
+    try:
+        analysis = (
+            db.query(Analysis)
+            .join(Listing)
+            .filter(Analysis.id == analysis_id, Listing.user_id == user.id)
+            .options(joinedload(Analysis.listing))
+            .first()
+        )
+        if analysis is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Analysis not found",
+            )
+
+        if not 1 <= len(uploads) <= MAX_VISUAL_PHOTOS:
+            raise HTTPException(
+                status_code=_HTTP_422_UNPROCESSABLE,
+                detail="photo_count_out_of_range",
+            )
+
+        source_payloads: list[tuple[bytes, str]] = []
+        combined_source_bytes = 0
+        for upload in uploads:
+            source_bytes = await upload.read(MAX_SOURCE_BYTES + 1)
+            combined_source_bytes += len(source_bytes)
+            if combined_source_bytes > MAX_COMBINED_VISUAL_SOURCE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail="combined_images_too_large",
+                )
+            source_payloads.append((source_bytes, upload.content_type or ""))
+
+        normalized_images = []
+        for source_bytes, content_type in source_payloads:
+            try:
+                normalized_images.append(
+                    await run_in_threadpool(
+                        normalize_visual_image,
+                        source_bytes,
+                        content_type,
+                    )
+                )
+            except VisualImageValidationError as exc:
+                code = exc.codes[0]
+                raise HTTPException(
+                    status_code=_VISUAL_IMAGE_ERROR_STATUS[code],
+                    detail=code,
+                ) from exc
+        source_payloads.clear()
+
+        listing_context = ListingIn(
+            title=analysis.listing.title,
+            price=analysis.listing.price,
+            currency=analysis.listing.currency,
+            source=analysis.listing.source,
+            description=analysis.listing.description,
+            url=analysis.listing.url,
+        )
+        try:
+            service = get_visual_inspection_service(settings)
+            candidate = await run_in_threadpool(
+                service.inspect,
+                normalized_images,
+                listing_context,
+            )
+        except VisualInspectionServiceUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="visual_inspection_unavailable",
+            ) from exc
+        except VisualInspectionServiceFailure as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            ) from exc
+
+        try:
+            result = VisualInspectionResult.model_validate(candidate)
+            validate_visual_evidence_policy(result)
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            ) from exc
+        except VisualEvidencePolicyViolation as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_evidence_policy_violation",
+            ) from exc
+
+        if any(
+            photo_number > len(uploads)
+            for finding in result.findings
+            for photo_number in finding.photo_numbers
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="visual_inspection_failed",
+            )
+
+        return result
+    finally:
+        for upload in uploads:
+            await upload.close()
 
 
 @router.get("/admin/analytics", response_model=AdminAnalyticsOut)

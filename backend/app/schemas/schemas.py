@@ -175,6 +175,13 @@ class AnalysisWithListingOut(AnalysisOut):
     listing_currency: str
 
 
+# ---------- Application capabilities ----------
+class CapabilitiesOut(BaseModel):
+    """Public-safe availability only; never provider configuration or secrets."""
+
+    visual_inspection_available: bool
+
+
 class FailedListingOut(BaseModel):
     """GET /listings/failed response (D-20, issue #80): a Listing row with
     no Analysis children -- the AI call failed after the listing was

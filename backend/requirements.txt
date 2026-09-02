@@ -11,3 +11,5 @@ bcrypt>=4.2
 httpx>=0.27
 beautifulsoup4>=4.12
 lxml>=5.3
+Pillow==12.3.0
+python-multipart==0.0.32
