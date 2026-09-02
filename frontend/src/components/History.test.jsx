@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { api } from '../api';
+import { ApiError, api } from '../api';
 import History from './History';
 
 const ITEM = {
@@ -22,6 +22,22 @@ const FAILED_ITEM = {
   source: 'Gumtree',
   created_at: '2026-08-02T09:00:00Z',
 };
+
+const SECOND_FAILED_ITEM = {
+  ...FAILED_ITEM,
+  id: 8,
+  title: 'MacBook Air',
+};
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
 
 // D-20, issue #80: History now loads both endpoints on mount, so every
 // test needs both mocked -- listFailedListings defaults to empty here so
@@ -99,5 +115,63 @@ describe('History', () => {
 
     expect(await screen.findByText('Unable to retry that listing right now.')).toBeInTheDocument();
     expect(screen.getByText('iPhone 15 Pro')).toBeInTheDocument();
+  });
+
+  it('keeps every in-flight listing retry disabled independently', async () => {
+    const events = userEvent.setup();
+    const firstRetry = deferred();
+    const secondRetry = deferred();
+    vi.spyOn(api, 'listAnalyses').mockResolvedValue([]);
+    vi.spyOn(api, 'listFailedListings').mockResolvedValue([
+      FAILED_ITEM,
+      SECOND_FAILED_ITEM,
+    ]);
+    vi.spyOn(api, 'retryAnalysis').mockImplementation((listingId) => (
+      listingId === FAILED_ITEM.id ? firstRetry.promise : secondRetry.promise
+    ));
+
+    render(<History onOpen={vi.fn()} />);
+    const firstRow = (await screen.findByText(FAILED_ITEM.title)).closest('.failed-listing-card');
+    const secondRow = screen.getByText(SECOND_FAILED_ITEM.title).closest('.failed-listing-card');
+    const firstButton = within(firstRow).getByRole('button', { name: 'Retry analysis' });
+    const secondButton = within(secondRow).getByRole('button', { name: 'Retry analysis' });
+
+    await events.click(firstButton);
+    await events.click(secondButton);
+
+    expect(firstButton).toBeDisabled();
+    expect(secondButton).toBeDisabled();
+
+    firstRetry.resolve({ id: 42, risk_level: 'low' });
+    await waitFor(() => expect(firstButton).toBeEnabled());
+    expect(secondButton).toBeDisabled();
+
+    secondRetry.resolve({ id: 43, risk_level: 'low' });
+    await waitFor(() => expect(secondButton).toBeEnabled());
+  });
+
+  it('keeps simultaneous retry errors attached to their own listings', async () => {
+    const events = userEvent.setup();
+    vi.spyOn(api, 'listAnalyses').mockResolvedValue([]);
+    vi.spyOn(api, 'listFailedListings').mockResolvedValue([
+      FAILED_ITEM,
+      SECOND_FAILED_ITEM,
+    ]);
+    vi.spyOn(api, 'retryAnalysis').mockImplementation((listingId) => Promise.reject(
+      new ApiError(
+        listingId === FAILED_ITEM.id ? 'First retry failed.' : 'Second retry failed.',
+        502,
+      ),
+    ));
+
+    render(<History onOpen={vi.fn()} />);
+    const firstRow = (await screen.findByText(FAILED_ITEM.title)).closest('.failed-listing-card');
+    const secondRow = screen.getByText(SECOND_FAILED_ITEM.title).closest('.failed-listing-card');
+
+    await events.click(within(firstRow).getByRole('button', { name: 'Retry analysis' }));
+    await events.click(within(secondRow).getByRole('button', { name: 'Retry analysis' }));
+
+    expect(await within(firstRow).findByText('First retry failed.')).toBeVisible();
+    expect(await within(secondRow).findByText('Second retry failed.')).toBeVisible();
   });
 });

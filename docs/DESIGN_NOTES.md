@@ -655,6 +655,7 @@ Production ingress also requires an explicit request-body limit before
 deployment, and provider configuration and credential governance must be
 resolved before live evaluation or deployment. The feature must not be called
 production-ready, and model adherence has not yet been proven.
+
 **Recovering failed listings (D-20, issue #80).** US-2.2's
 persist-before-analyze decision (above) already made the listing survive
 an `AnalysisFailure`, but "the listing was saved" was never actually true
@@ -689,6 +690,11 @@ solely inside `create_analysis` were pulled into two shared helpers
 doesn't duplicate either -- same `AnalysisFailureLog` row (D-15/#42) gets
 written on a failed retry as on a failed first attempt, so admin failure-
 rate analytics don't undercount retries.
+
+**Integration lineage note.** The Visual Inspection and failed-listing
+recovery branches were authored in parallel and both allocated the D-20 label.
+This integration preserves both source decisions; references are disambiguated
+by feature name and, for recovery, issue #80.
 
 **Patterns used (for the rubric):** layered architecture (api / services /
 models / schemas), strategy (AI providers), dependency injection (FastAPI
