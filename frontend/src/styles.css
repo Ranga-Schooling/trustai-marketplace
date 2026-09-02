@@ -256,16 +256,30 @@ textarea { min-height: 120px; resize: vertical; }
 
 .req { color: var(--risk-high); }
 
-@media (max-width: 740px) {
-  .landing-grid, .content-grid, .row, .submit-grid { grid-template-columns: 1fr; }
-  .auth-card { max-width: none; margin-left: 0; }
-  .landing-grid { padding-top: 24px; gap: 32px; }
-}
-
 /* US-2.3: URL input + "Fetch details" button, side by side. */
 .url-fetch-row { display: flex; gap: 8px; }
 .url-fetch-row input { flex: 1; }
 .url-fetch-row button { flex-shrink: 0; }
+
+@media (max-width: 740px) {
+  .landing-grid, .content-grid, .row, .submit-grid { grid-template-columns: 1fr; }
+  .auth-card { max-width: none; margin-left: 0; }
+  .landing-grid { padding-top: 24px; gap: 32px; }
+  header.topbar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 12px; }
+  .brand { width: 100%; }
+  .top-nav {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .top-nav button { width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .url-fetch-row { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .url-fetch-row input,
+  .url-fetch-row button { width: 100%; min-width: 0; }
+}
 
 button {
   background: var(--trust);
@@ -412,9 +426,9 @@ button.ghost:hover { background: #f5f7f6; }
   stroke-linecap: round;
   opacity: 0.16;
 }
-.gauge-arc-buy { stroke: var(--risk-low); stroke-dasharray: 88 142; stroke-dashoffset: 0; }
-.gauge-arc-caution { stroke: var(--risk-medium); stroke-dasharray: 52 142; stroke-dashoffset: -88; }
-.gauge-arc-avoid { stroke: var(--risk-high); stroke-dasharray: 42 142; stroke-dashoffset: -140; }
+.gauge-arc-buy { stroke: var(--risk-low); }
+.gauge-arc-caution { stroke: var(--risk-medium); }
+.gauge-arc-avoid { stroke: var(--risk-high); }
 
 .gauge-ticks line {
   stroke: rgba(22, 35, 43, 0.2);
@@ -423,7 +437,8 @@ button.ghost:hover { background: #f5f7f6; }
 
 .gauge-needle-group {
   transform-origin: 110px 100px;
-  transition: transform 1s ease-out;
+  transform-box: view-box;
+  transition: transform 500ms ease-out;
 }
 
 .gauge-needle {
@@ -438,6 +453,10 @@ button.ghost:hover { background: #f5f7f6; }
   fill: #fff;
   stroke: var(--ink-soft);
   stroke-width: 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge-needle-group { transition: none; }
 }
 
 .gauge-copy {
@@ -878,8 +897,15 @@ button.ghost:hover { background: #f5f7f6; }
 }
 
 @media (max-width: 740px) {
-  .result-summary-row { grid-template-columns: 1fr; }
-  .result-actions { flex-direction: column; }
+  .evidence-note { width: 100%; margin: 8px 0 14px; padding: 8px 10px; }
+  .result-summary-row { grid-template-columns: 1fr; gap: 12px; margin: 14px 0 16px; }
+  .result-page .content-grid { gap: 12px; margin-bottom: 12px; }
+  .result-page .card { padding: 18px; margin-bottom: 0; }
+  .result-page .summary-box .eyebrow { margin-bottom: 8px; }
+  .result-page .recommendation-pill { padding: 8px 18px; }
+  .result-page .gauge-card { gap: 10px; }
+  .result-actions { flex-direction: column; gap: 8px; margin-top: 12px; }
+  .result-actions button { width: 100%; }
 }
 
 .questions-list { padding-left: 18px; margin: 0; color: var(--ink-soft); }
@@ -922,6 +948,14 @@ button.ghost:hover { background: #f5f7f6; }
 .history-card:hover { border-color: var(--trust); box-shadow: 0 8px 20px rgba(14, 124, 102, 0.08); }
 .history-topline { display: flex; gap: 10px; align-items: center; margin-bottom: 3px; }
 .history-card .link { color: var(--trust); font-weight: 600; }
+
+/* D-20, issue #80: failed-listing rows are a <div>, not a <button> --
+   they hold a real retry button, and buttons can't nest -- so the row
+   itself isn't clickable and shouldn't borrow .history-card's hover glow. */
+.failed-listings { margin-bottom: 20px; }
+.failed-listings > .subtle { margin-bottom: 12px; }
+.failed-listing-card { cursor: default; }
+.failed-listing-card:hover { border-color: var(--line); box-shadow: none; }
 .empty-state {
   padding: 20px 0 8px;
   text-align: center;
@@ -981,6 +1015,13 @@ button.ghost:hover { background: #f5f7f6; }
   .history-filters { grid-template-columns: 1fr; }
   .history-table { display: block; overflow-x: auto; }
   .history-actions { flex-direction: column; }
+  .panel-heading { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .history-card { flex-direction: column; align-items: stretch; gap: 8px; }
+  .history-card > div { width: 100%; min-width: 0; }
+  .history-topline { flex-wrap: wrap; row-gap: 6px; }
+  .history-topline strong { flex: 1 1 100%; min-width: 0; overflow-wrap: anywhere; }
+  .history-card .subtle { margin: 0; overflow-wrap: anywhere; }
+  .history-card .link { align-self: flex-end; }
 }
 
 .disclaimer {

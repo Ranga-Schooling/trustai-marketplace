@@ -8,18 +8,13 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 |----------|----------|
 | Deploy workflow | `.github/workflows/deploy.yml` |
 | Postgres backup workflow (same SSM pattern, separate schedule) | `.github/workflows/backup.yml` |
-| EC2 production stack | `deploy/docker-compose.yml` |
+| EC2 production stack | `deploy/docker-compose.yml`, `deploy/Caddyfile` |
 | Operational runbook (ECR, `.env`, first-time setup, backups/restore) | `deploy/README.md` |
 | Migration-on-start decision | `docs/DESIGN_NOTES.md` (D-11) |
 
 ---
 
 ## End-to-end architecture
-
-> **Diagram is stale as of the Caddy/HTTPS change below.** It still shows nginx as the public
-> listener on :80. As of that change, **Caddy** is the public listener (ports 80 + 443,
-> automatic HTTPS) and reverse-proxies to nginx, which is now internal-only. The diagram needs
-> regenerating; the table below is corrected to match the current implementation.
 
 ![Zero-Trust CI/CD Architecture (IAM + SSM)](./trustai-cicd-architecture.png)
 
@@ -30,12 +25,13 @@ This document records the TrustAI Marketplace transition from direct SSH-based d
 | Element | Implementation |
 |---------|----------------|
 | Auth | IAM user `github-actions-deployer` via GitHub Secrets (not OIDC) |
-| Images | ECR repos `trustaimarketplace/backend` and `trustaimarketplace/frontend` (`:latest` + commit SHA) |
-| Deploy | SSM `send-command` to `EC2_INSTANCE_ID` (no SSH) |
-| Verification | SSM waiter + `GetCommandInvocation`; job fails unless status is `Success` |
-| Public surface | Caddy on **:80/:443** (automatic HTTPS, `deploy/Caddyfile`); nginx and FastAPI are internal-only |
-| Config on host | `docker-compose.yml` + `.env` (`JWT_SECRET`, `POSTGRES_PASSWORD`) |
+| Images | ECR repos `trustaimarketplace/backend` and `trustaimarketplace/frontend`; pushed as `:latest` and `:${GITHUB_SHA}`; **activated on EC2 by commit SHA** (`IMAGE_TAG`) |
+| Deploy | SSM `send-command` to `EC2_INSTANCE_ID` (no SSH); syncs `docker-compose.yml` + `Caddyfile` from the repo each run |
+| Verification | SSM waiter + `GetCommandInvocation`; remote script gates on **Caddy health** (`/api/health`) before success |
+| Public surface | **Caddy** on **:80/:443** (automatic HTTPS, `deploy/Caddyfile`); nginx and FastAPI are internal-only |
+| Config on host | `.env` (`JWT_SECRET`, `POSTGRES_PASSWORD`) is local-only; compose + Caddyfile are deployed from the repo |
 | Schema | `alembic upgrade head` on backend container start (D-11) |
+| Backups | Separate scheduled workflow `backup.yml` (SSM → `pg_dump` → S3); not shown on the diagram |
 
 ---
 
@@ -69,7 +65,8 @@ The workflow now deploys through **`aws ssm send-command`**:
        │
        └── aws ssm send-command ──► EC2 (SSM agent)
                 │
-                └── remote script: ECR login → docker compose pull → up -d
+                └── remote script: sync compose + Caddyfile → validate →
+                    ECR login → pull (IMAGE_TAG=SHA) → up -d → Caddy health check
 ```
 
 **Security outcomes**
@@ -141,7 +138,7 @@ The EC2 host must:
 
 1. Run the **SSM agent** (preinstalled on Amazon Linux / Ubuntu AMIs from AWS).
 2. Have an **instance IAM role** allowing ECR pull and any local AWS CLI calls used in the deploy script — including `s3:PutObject` on `BACKUP_S3_BUCKET` for `backup.yml`'s `pg_dump | gzip | aws s3 cp`. That command runs *on* the instance via SSM, so it authenticates as this role, not as `github-actions-deployer` — `backup.yml` needs no new GitHub-side IAM permission, only this instance-role addition.
-3. Have **`deploy/docker-compose.yml`** and a local **`.env`** at `EC2_APP_DIR` (secrets are never committed to the repository).
+3. Have a local **`.env`** at `EC2_APP_DIR` (`JWT_SECRET`, `POSTGRES_PASSWORD` — never committed). `docker-compose.yml` and `Caddyfile` are transferred from the repo on each deploy; a one-time manual copy is only needed before the first successful deploy.
 
 ---
 
@@ -163,22 +160,27 @@ Workflow file: `.github/workflows/deploy.yml`
 
 The **Deploy on EC2 via SSM** step:
 
-1. Calls `aws ssm send-command` with document **`AWS-RunShellScript`**.
-2. Runs a remote script on the instance:
+1. Base64-encodes the current `deploy/docker-compose.yml` and `deploy/Caddyfile` from the checked-out commit.
+2. Calls `aws ssm send-command` with document **`AWS-RunShellScript`**.
+3. Runs a remote script on the instance (simplified):
    ```bash
    set -e
    cd $EC2_APP_DIR
+   test -f .env
+   export IMAGE_TAG=$GITHUB_SHA
+   # Write docker-compose.yml.next + Caddyfile.next from the workflow payload
    docker compose -f docker-compose.yml.next config --quiet
-   docker image prune -af
+   docker image prune -af                    # pre-pull disk cleanup
    aws ecr get-login-password … | docker login …
    docker compose -f docker-compose.yml.next pull
+   docker run … caddy validate --config Caddyfile.next
+   mv docker-compose.yml.next docker-compose.yml
+   mv Caddyfile.next Caddyfile
    docker compose up -d
-   # After the application health check succeeds:
-   docker image prune -af
-   docker container prune -f
-   docker network prune -f
+   # Poll Caddy container health (GET /api/health via :8080) — fail if not healthy
+   docker image prune -af && docker container prune -f && docker network prune -f
    ```
-3. Captures the returned **`CommandId`**.
+4. Captures the returned **`CommandId`**.
 
 ### Phase 3 — Wait and fail closed
 
@@ -188,7 +190,7 @@ Because `send-command` only **queues** work, the workflow implements an explicit
 2. **`aws ssm get-command-invocation`** — emits stdout, stderr, and status to the Actions log.
 3. **Job failure** if the waiter exits non-zero or invocation `Status` is not **`Success`**.
 
-This prevents a green GitHub Actions run when `docker compose pull` or container restart fails on the server.
+This prevents a green GitHub Actions run when config validation, `docker compose pull`, container restart, or the Caddy health gate fails on the server.
 
 ---
 
@@ -232,6 +234,7 @@ After merging deploy changes or rotating secrets:
 | Date | Change |
 |------|--------|
 | 2026-08-12 | Initial documentation of SSH → SSM zero-trust deploy model. |
-| 2026-08-17 | Caddy added as the public HTTPS listener (ports 80/443), replacing nginx as the public surface — nginx and FastAPI are now internal-only. Deploy script also switched to commit-SHA-pinned images with config validation and a full health-check gate before success. Text corrected below; diagram still needs regenerating. |
+| 2026-08-17 | Caddy added as the public HTTPS listener (ports 80/443), replacing nginx as the public surface — nginx and FastAPI are now internal-only. Deploy script also switched to commit-SHA-pinned images with config validation and a full health-check gate before success. |
+| 2026-08-30 | Regenerated `trustai-cicd-architecture.png` to match Caddy/HTTPS, commit-SHA deploy pinning, compose/Caddyfile sync, and Caddy health gate. |
 | 2026-08-17 | Added `backup.yml`, a daily scheduled Postgres backup to S3 using the same SSM `send-command` pattern. `pgdata` survives normal redeploys already (no `down -v` in `deploy.yml`), but had no protection against instance replacement or disk failure. |
 | 2026-08-17 | Fixed `deploy.yml`'s cleanup step (`docker image prune -f` → `-af`, plus container/network prune; volumes remain excluded), run on every deploy — the old command only removed dangling images, never the uniquely SHA-tagged image each deploy leaves behind, so old images accumulated on the instance's disk indefinitely. A follow-up production repair added the same unused-image cleanup before pull so a full host can recover before downloading the next images. Added per-service log rotation limits in `deploy/docker-compose.yml` (D-18). |

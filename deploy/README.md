@@ -64,9 +64,22 @@ rather than defaulting to `latest`, so a stale or bad `latest` can't silently ge
    # optional:
    # AI_PROVIDER=mock
    # GROQ_API_KEY=
+   # Visual Inspection is fail-closed unless all three values are set:
+   # OPENAI_API_KEY=
+   # VISUAL_INSPECTION_PROVIDER=disabled
+   # VISUAL_INSPECTION_MODEL=
    ```
 
    `IMAGE_TAG` is supplied by the deploy script per-run and must **not** be set in `.env`.
+   Keep `VISUAL_INSPECTION_PROVIDER=disabled` unless Visual Inspection is being deliberately
+   activated with `openai`, an explicit model, and an OpenAI key. These values do not change
+   `AI_PROVIDER`, so enabling Visual Inspection does not switch the text-analysis provider.
+   Credential values stay only in the host `.env`; they are never committed or stored in
+   GitHub Actions.
+
+   nginx grants only the Visual Inspection endpoint an 11 MiB request-body limit: 10 MiB for
+   the application-level combined image allowance plus a bounded 1 MiB for multipart framing
+   and file metadata. Other API endpoints retain nginx's existing default body limit.
 6. Open security group ports **80 and 443**. Port 80 is still needed — Caddy uses it for the
    ACME HTTP-01 challenge and to redirect plain HTTP to HTTPS, not just historical compatibility.
    Port 22 does not need to be open — SSM doesn't require inbound access.

@@ -5,6 +5,7 @@ This directory contains the project documentation for the TrustAI Marketplace MS
 ## Structure
 
 - `architecture/` – system architecture, UML, data model, and deployment diagrams
+- `ci-cd/` – zero-trust deploy pipeline (SSM, ECR, EC2) and architecture diagram
 - `decisions/` – architecture decision records
 - `meeting-minutes/` – approved meeting records
 - `requirements/` – product vision, scope, user stories, and acceptance criteria
