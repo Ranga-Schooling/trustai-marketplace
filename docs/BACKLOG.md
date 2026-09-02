@@ -213,6 +213,32 @@ Now genuinely true: all backend tests un-skipped, 0 remaining skips in
 
 (Deferred per 2-month scoping: history search/filter, PDF export.)
 
+**US-4.2 — Recover a listing after a failed analysis (issue #80)**
+As a buyer, if the AI check fails after my listing is saved, I want to
+find it and retry without retyping everything, so "the listing was
+saved" is actually true from where I'm standing.
+- AC1: A listing whose analysis failed is visible to its owner (a
+  "Failed listings" section on History) even though it has no completed
+  analysis.
+- AC2: The buyer can retry analysis on that exact listing without
+  re-entering any field.
+- AC3: A successful retry produces a normal `Analysis` and the listing
+  drops out of the failed list.
+- AC4: The 502 returned at the original failure names the listing id and
+  says where to find/retry it, instead of a dead-end "was saved".
+- Implemented: `FailedListingOut` schema, `GET /api/listings/failed`,
+  `POST /api/listings/{id}/retry`, `_handle_analysis_failure`/
+  `_persist_analysis` helpers shared with `create_analysis`, History's
+  "Failed listings" section with a retry control, tests
+  `test_failed_listing_appears_in_failed_listings`,
+  `test_successful_listing_not_in_failed_listings`,
+  `test_failed_listings_scoped_per_user`,
+  `test_retry_analysis_succeeds_and_clears_failed_list`,
+  `test_retry_still_failing_provider_returns_502_with_listing_id`,
+  `test_retry_unknown_listing_returns_404`,
+  `test_retry_listing_not_owned_returns_404`. Decision log:
+  `docs/DESIGN_NOTES.md` D-20.
+
 ---
 
 ## EPIC 5 — DevOps & CI/CD (Must)
@@ -285,6 +311,6 @@ can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
 
 | Priority | Stories |
 |---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1, 5.1–5.3, 6.1–6.3 |
+| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1–4.2, 5.1–5.3, 6.1–6.3 |
 | Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
 | Could (future) | PDF export, browser extension, reverse image search |
