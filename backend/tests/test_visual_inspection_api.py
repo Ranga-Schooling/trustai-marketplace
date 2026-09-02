@@ -24,7 +24,7 @@ from app.models.db import (
     SessionLocal,
     User,
 )
-from app.schemas.schemas import ListingIn
+from app.schemas.schemas import ListingIn, RiskLevel
 from app.services import visual_inspection
 from app.services.visual_inspection import (
     VisualInspectionResult,
@@ -733,7 +733,7 @@ def test_visual_configuration_does_not_change_text_analysis_contract(
     analysis = _create_analysis(client, headers)
 
     assert analysis["risk_score"] == 0
-    assert analysis["risk_level"] == "low"
+    assert analysis["risk_level"] == RiskLevel.low.value
 
 
 @pytest.mark.anyio
