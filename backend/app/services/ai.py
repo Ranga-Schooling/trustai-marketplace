@@ -29,10 +29,13 @@ Design decisions already agreed (docs/DESIGN_NOTES.md):
   off-platform contact, suspiciously low price...).
 
 """
+import hashlib
 import json
 import logging
+import time
 from collections.abc import Callable
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import httpx
@@ -57,6 +60,7 @@ from app.services.evaluation_validators import (
 )
 from app.services.normalization_parser import (
     DuplicateJsonKeyError,
+    ExactJsonNumber,
     StrictJsonPayloadError,
     parse_strict_json_payload,
 )
@@ -151,6 +155,24 @@ guarantee that the listing or seller is safe."""
 
 class AnalysisFailure(Exception):
     """Raised when a provider cannot produce a valid structured result."""
+
+
+@dataclass(frozen=True)
+class GPTAnalysisObservation:
+    """Safe, content-free metadata from one terminal OpenAI analysis attempt."""
+
+    safe_finish_reason: str
+    physical_provider_attempts: int
+    retry_count: int
+    http_status: int | None
+    latency_seconds: float
+    provider_usage: dict[str, int | None] | None
+    parser_result: str
+    schema_result: str
+    validator_result: str
+    evidence_policy_result: str
+    ai_analysis_result_mapping_result: str
+    raw_response_hash: str | None
 
 
 class AIProvider(Protocol):
@@ -345,9 +367,8 @@ def _require_exact_analysis_shape(candidate: Any) -> dict[str, Any]:
     return candidate
 
 
-def _extract_responses_semantic(body: bytes, expected_model: str) -> str:
-    """Extract one completed assistant output_text from exact response bytes."""
-    envelope = parse_strict_json_payload(body).value
+def _extract_responses_semantic(envelope: Any, expected_model: str) -> str:
+    """Extract one completed assistant output_text from a parsed envelope."""
     if type(envelope) is not dict:
         raise ValueError("responses_envelope")
     if (
@@ -382,13 +403,66 @@ def _extract_responses_semantic(body: bytes, expected_model: str) -> str:
     return raw_json
 
 
-def _validate_responses_analysis(raw_json: str) -> AIAnalysisResult:
-    parsed = parse_strict_json_payload(raw_json.encode("utf-8", errors="strict"))
-    candidate = _require_exact_analysis_shape(parsed.value)
-    result = AIAnalysisResult.model_validate(candidate)
-    validate_text_cross_fields(result.model_dump(mode="json"))
-    validate_evidence_policy(result)
-    return result
+def _responses_usage(envelope: Any) -> dict[str, int | None] | None:
+    """Return documented usage counters, or None when absent/malformed."""
+    if type(envelope) is not dict or type(envelope.get("usage")) is not dict:
+        return None
+    usage = envelope["usage"]
+
+    def nonnegative_integer(value: Any) -> int | None:
+        if type(value) is not ExactJsonNumber:
+            return None
+        exact = value.exact_decimal
+        if (
+            exact != exact.to_integral_value()
+            or not 0 <= exact <= 9_007_199_254_740_991
+        ):
+            return None
+        return int(exact)
+
+    input_tokens = nonnegative_integer(usage.get("input_tokens"))
+    output_tokens = nonnegative_integer(usage.get("output_tokens"))
+    if input_tokens is None or output_tokens is None:
+        return None
+
+    input_details = usage.get("input_tokens_details")
+    output_details = usage.get("output_tokens_details")
+    if input_details is not None and type(input_details) is not dict:
+        return None
+    if output_details is not None and type(output_details) is not dict:
+        return None
+    cached_tokens = (
+        nonnegative_integer(input_details.get("cached_tokens"))
+        if input_details is not None and "cached_tokens" in input_details
+        else None
+    )
+    reasoning_tokens = (
+        nonnegative_integer(output_details.get("reasoning_tokens"))
+        if output_details is not None and "reasoning_tokens" in output_details
+        else None
+    )
+    if (
+        input_details is not None
+        and "cached_tokens" in input_details
+        and cached_tokens is None
+    ):
+        return None
+    if (
+        output_details is not None
+        and "reasoning_tokens" in output_details
+        and reasoning_tokens is None
+    ):
+        return None
+    if cached_tokens is not None and cached_tokens > input_tokens:
+        return None
+    if reasoning_tokens is not None and reasoning_tokens > output_tokens:
+        return None
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_input_tokens": cached_tokens,
+        "reasoning_tokens": reasoning_tokens,
+    }
 
 
 def build_openai_responses_payload(
@@ -548,7 +622,12 @@ class GPTProvider:
     MAXIMUM_ATTEMPTS = 2
     MAXIMUM_OUTPUT_TOKENS = 2048
 
-    def __init__(self, *, maximum_attempts: int = MAXIMUM_ATTEMPTS) -> None:
+    def __init__(
+        self,
+        *,
+        maximum_attempts: int = MAXIMUM_ATTEMPTS,
+        observation_callback: Callable[[GPTAnalysisObservation], None] | None = None,
+    ) -> None:
         if not settings.openai_api_key:
             logger.error(
                 "AI provider configuration invalid provider=openai "
@@ -560,10 +639,47 @@ class GPTProvider:
         self.api_key = settings.openai_api_key
         self.model_name = settings.openai_model
         self._maximum_attempts = maximum_attempts
+        self._observation_callback = observation_callback
 
     def request_payload(self, listing: ListingIn) -> dict[str, Any]:
         """Build the exact provider request without accessing the network."""
         return build_openai_responses_payload(listing, self.model_name)
+
+    def _observe(
+        self,
+        *,
+        safe_finish_reason: str,
+        physical_provider_attempts: int,
+        http_status: int | None,
+        latency_seconds: float,
+        provider_usage: dict[str, int | None] | None = None,
+        parser_result: str = "not_reached",
+        schema_result: str = "not_reached",
+        validator_result: str = "not_reached",
+        evidence_policy_result: str = "not_reached",
+        ai_analysis_result_mapping_result: str = "not_reached",
+        raw_response_hash: str | None = None,
+    ) -> None:
+        if self._observation_callback is None:
+            return
+        self._observation_callback(
+            GPTAnalysisObservation(
+                safe_finish_reason=safe_finish_reason,
+                physical_provider_attempts=physical_provider_attempts,
+                retry_count=physical_provider_attempts - 1,
+                http_status=http_status,
+                latency_seconds=latency_seconds,
+                provider_usage=provider_usage,
+                parser_result=parser_result,
+                schema_result=schema_result,
+                validator_result=validator_result,
+                evidence_policy_result=evidence_policy_result,
+                ai_analysis_result_mapping_result=(
+                    ai_analysis_result_mapping_result
+                ),
+                raw_response_hash=raw_response_hash,
+            )
+        )
 
     def analyze(self, listing: ListingIn) -> tuple[AIAnalysisResult, str]:
         payload = self.request_payload(listing)
@@ -572,6 +688,7 @@ class GPTProvider:
             "Content-Type": "application/json",
         }
         for attempt in range(1, self._maximum_attempts + 1):
+            started = time.monotonic()
             try:
                 response = httpx.post(
                     self.ENDPOINT,
@@ -581,6 +698,7 @@ class GPTProvider:
                     follow_redirects=False,
                 )
             except (httpx.TimeoutException, httpx.TransportError) as exc:
+                latency_seconds = max(0.0, time.monotonic() - started)
                 logger.warning(
                     "AI provider attempt failed provider=openai model=%s "
                     "attempt=%d/%d error_type=%s http_status=none",
@@ -590,13 +708,25 @@ class GPTProvider:
                     type(exc).__name__,
                 )
                 if attempt == self._maximum_attempts:
+                    self._observe(
+                        safe_finish_reason=(
+                            "timeout"
+                            if isinstance(exc, httpx.TimeoutException)
+                            else "transport_error"
+                        ),
+                        physical_provider_attempts=attempt,
+                        http_status=None,
+                        latency_seconds=latency_seconds,
+                    )
                     raise AnalysisFailure(
                         "OpenAI could not produce a valid analysis after "
                         f"{self._maximum_attempts} attempt(s)"
                     ) from exc
                 continue
 
+            latency_seconds = max(0.0, time.monotonic() - started)
             status_code = response.status_code
+            raw_response_hash = hashlib.sha256(response.content).hexdigest()
             if status_code != 200:
                 logger.warning(
                     "AI provider attempt failed provider=openai model=%s "
@@ -611,10 +741,19 @@ class GPTProvider:
                     and attempt < self._maximum_attempts
                 ):
                     continue
+                self._observe(
+                    safe_finish_reason="http_error",
+                    physical_provider_attempts=attempt,
+                    http_status=status_code,
+                    latency_seconds=latency_seconds,
+                    raw_response_hash=raw_response_hash,
+                )
                 raise AnalysisFailure(
                     "OpenAI could not produce a valid analysis"
                 )
 
+            provider_usage: dict[str, int | None] | None = None
+            failure_reason = "invalid_content_type"
             try:
                 content_type = response.headers.get("content-type", "")
                 media_type = content_type.split(";", 1)[0].strip().lower()
@@ -623,12 +762,28 @@ class GPTProvider:
                     or media_type.endswith("+json")
                 ):
                     raise ValueError("responses_content_type")
-                raw_json = _extract_responses_semantic(
-                    response.content,
-                    self.model_name,
+
+                failure_reason = "parser_failed"
+                envelope = parse_strict_json_payload(response.content).value
+                provider_usage = _responses_usage(envelope)
+
+                failure_reason = "response_contract_failed"
+                raw_json = _extract_responses_semantic(envelope, self.model_name)
+
+                failure_reason = "parser_failed"
+                parsed = parse_strict_json_payload(
+                    raw_json.encode("utf-8", errors="strict")
                 )
-                result = _validate_responses_analysis(raw_json)
-                return result, raw_json
+
+                failure_reason = "schema_failed"
+                candidate = _require_exact_analysis_shape(parsed.value)
+                result = AIAnalysisResult.model_validate(candidate)
+
+                failure_reason = "validator_failed"
+                validate_text_cross_fields(result.model_dump(mode="json"))
+
+                failure_reason = "evidence_policy_failed"
+                validate_evidence_policy(result)
             except (
                 UnicodeError,
                 StrictJsonPayloadError,
@@ -641,6 +796,39 @@ class GPTProvider:
                 TypeError,
                 ValueError,
             ) as exc:
+                stage_evidence: dict[str, str] = {}
+                if failure_reason == "parser_failed":
+                    stage_evidence["parser_result"] = "failed"
+                elif failure_reason == "schema_failed":
+                    stage_evidence.update(
+                        parser_result="passed",
+                        schema_result="failed",
+                        ai_analysis_result_mapping_result="failed",
+                    )
+                elif failure_reason == "validator_failed":
+                    stage_evidence.update(
+                        parser_result="passed",
+                        schema_result="passed",
+                        validator_result="failed",
+                        ai_analysis_result_mapping_result="passed",
+                    )
+                elif failure_reason == "evidence_policy_failed":
+                    stage_evidence.update(
+                        parser_result="passed",
+                        schema_result="passed",
+                        validator_result="passed",
+                        evidence_policy_result="failed",
+                        ai_analysis_result_mapping_result="passed",
+                    )
+                self._observe(
+                    safe_finish_reason=failure_reason,
+                    physical_provider_attempts=attempt,
+                    http_status=status_code,
+                    latency_seconds=latency_seconds,
+                    provider_usage=provider_usage,
+                    raw_response_hash=raw_response_hash,
+                    **stage_evidence,
+                )
                 logger.warning(
                     "AI provider attempt failed provider=openai model=%s "
                     "attempt=%d/%d error_type=%s http_status=200",
@@ -649,9 +837,22 @@ class GPTProvider:
                     self._maximum_attempts,
                     type(exc).__name__,
                 )
-                raise AnalysisFailure(
-                    "OpenAI returned an invalid analysis"
-                ) from exc
+                raise AnalysisFailure("OpenAI returned an invalid analysis") from exc
+
+            self._observe(
+                safe_finish_reason="completed",
+                physical_provider_attempts=attempt,
+                http_status=status_code,
+                latency_seconds=latency_seconds,
+                provider_usage=provider_usage,
+                parser_result="passed",
+                schema_result="passed",
+                validator_result="passed",
+                evidence_policy_result="passed",
+                ai_analysis_result_mapping_result="passed",
+                raw_response_hash=raw_response_hash,
+            )
+            return result, raw_json
 
         raise AssertionError("unreachable")
 
