@@ -9,7 +9,8 @@
 #   IMAGE_TAG=<commit-sha> docker compose up -d
 #
 # Required in .env beside this file: JWT_SECRET, POSTGRES_PASSWORD
-# Optional: GROQ_API_KEY, AI_PROVIDER
+# Optional: GROQ_API_KEY, AI_PROVIDER. Visual Inspection remains disabled
+# unless its provider, model, and OpenAI credential are all set explicitly.
 # IMAGE_TAG is supplied by the deployment command and is not stored in .env.
 
 # Docker's default json-file log driver has no size cap -- left alone, a
@@ -58,6 +59,9 @@ services:
       DATABASE_URL: postgresql+psycopg2://trustai:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/trustai
       AI_PROVIDER: ${AI_PROVIDER:-mock}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      VISUAL_INSPECTION_PROVIDER: ${VISUAL_INSPECTION_PROVIDER:-disabled}
+      VISUAL_INSPECTION_MODEL: ${VISUAL_INSPECTION_MODEL:-}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
     depends_on:
       db:
