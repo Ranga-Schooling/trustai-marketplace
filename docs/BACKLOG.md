@@ -166,10 +166,12 @@ configuration, so we're not locked to one vendor.
   each real provider fails fast (`AnalysisFailure`) if its own API key
   isn't configured.
 - AC2: All three real providers satisfy the same `AIProvider` Protocol and
-  external contract (validate into `AIAnalysisResult`, one retry, then
-  `AnalysisFailure`) — swapping providers changes no other code.
-- AC3: Groq and GPT share implementation (`OpenAICompatibleProvider`) since
-  their APIs are the same shape; Gemini doesn't, since its API isn't.
+  external `AIAnalysisResult` contract. Groq/Gemini retain their historical
+  bounded retry flow; D-21 gives the production OpenAI path transient-only
+  retries and strict deterministic failure handling.
+- AC3: Groq uses the OpenAI-compatible Chat Completions base; GPT uses OpenAI
+  Responses under D-21; Gemini remains distinct because its API is not
+  OpenAI-shaped.
 - Implemented: `OpenAICompatibleProvider`/`GroqProvider`/`GPTProvider`/
   `GeminiProvider` in `services/ai.py`, `config.py`
   gemini/openai settings, tests `test_gpt_provider_*`,

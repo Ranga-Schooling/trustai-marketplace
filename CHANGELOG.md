@@ -1,3 +1,10 @@
+## [1.20.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.19.1...v1.20.0) (2026-09-02)
+
+
+### Features
+
+* **ai:** integrate Terra with strict response validation ([#107](https://github.com/Ranga-Schooling/trustai-marketplace/issues/107)) ([4acd147](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4acd1470dbf723edb393bd8c25e82ab77d2476ae)), closes [#108](https://github.com/Ranga-Schooling/trustai-marketplace/issues/108)
+
 ## [1.19.1](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.19.0...v1.19.1) (2026-09-02)
 
 
