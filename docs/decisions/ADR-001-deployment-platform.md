@@ -86,7 +86,9 @@ The decision is intended to:
 - **Platform**: Render Web Service
 - **Source**: Python FastAPI application in `backend/` directory  
 - **Runtime**: Python 3.11+
-- **Dependencies**: Installed from `backend/requirements.txt`
+- **Dependencies**: Installed from `backend/requirements-application.txt`,
+  which includes the frozen evaluation transport requirements plus application
+  feature dependencies
 - **Environment**: Configuration via environment variables (see `backend/app/core/config.py`)
 - **Deployment**: Automatically triggered on main branch push via GitHub integration
 - **Port**: Configured to listen on `0.0.0.0:8000`
