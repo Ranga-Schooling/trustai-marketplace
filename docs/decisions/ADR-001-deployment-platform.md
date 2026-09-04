@@ -2,7 +2,14 @@
 
 ## Status
 
-Accepted
+**Superseded by [ADR-003](ADR-003-aws-ec2-deployment.md) (August 8, 2026).**
+
+This ADR records the team's original July decision to deploy on Render. That
+decision was reversed during Sprint 2 when the deployment work actually
+started; the application is deployed on AWS EC2, not Render. The record is
+kept unedited below because the reasoning — and the reason it did not
+survive contact with implementation — is part of the project's decision
+history. **Do not treat the Render details below as current.**
 
 ## Date
 
