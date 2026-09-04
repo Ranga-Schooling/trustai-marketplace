@@ -10,6 +10,25 @@ This project is being developed as part of the Quantic Master of Science in Soft
 
 ---
 
+## Capstone Deliverables
+
+| Deliverable | Link |
+|---|---|
+| **Live application** | **https://trustai.mandalawi.ca** |
+| **Agile task board** (Trello) | **https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board** |
+| Design & testing document | [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md) — architecture decisions, patterns, deployment recommendation and cost analysis, testing strategy |
+| Testing guide and evidence | [docs/testing/README.md](docs/testing/README.md) |
+| User story backlog | [docs/BACKLOG.md](docs/BACKLOG.md) |
+| Sprint reports | [docs/sprint-reports/](docs/sprint-reports/) |
+| Architecture decision records | [docs/decisions/](docs/decisions/) |
+
+The live application is deployed on AWS EC2 behind Caddy, which terminates
+HTTPS with an automatically renewed Let's Encrypt certificate. Deployment is
+fully automated from `main` — see [deploy/README.md](deploy/README.md) and
+[docs/ci-cd/zero-trust-pipeline.md](docs/ci-cd/zero-trust-pipeline.md).
+
+---
+
 ## Product Goals
 
 The project aims to:
@@ -26,7 +45,7 @@ The project aims to:
 
 ## MVP Scope
 
-The first working version of TrustAI Marketplace is expected to include:
+The MVP is complete and deployed. It includes:
 
 - User registration and login
 - Submission of listing text, URLs, or structured product details
@@ -45,16 +64,17 @@ The first working version of TrustAI Marketplace is expected to include:
 
 ### Optional Visual Inspection
 
-On this feature branch, authenticated users can optionally add one to three
-JPEG, PNG, or WebP photos to an existing completed analysis. Visual Inspection
-reports observations grounded in visible photo evidence as a separate advisory
-channel; it does not change the text analysis, Trust score, risk level, or
-Buy/Caution/Avoid recommendation. TrustAI does not persist uploaded photos or
-Visual Inspection findings.
+Authenticated users can optionally add one to three JPEG, PNG, or WebP photos
+to an existing completed analysis. Visual Inspection reports observations
+grounded in visible photo evidence as a separate advisory channel; it does not
+change the text analysis, Trust score, risk level, or Buy/Caution/Avoid
+recommendation. TrustAI does not persist uploaded photos or Visual Inspection
+findings.
 
-Visual Inspection is implemented on this feature branch and validated through
-automated tests and deterministic local frontend QA. It is disabled by default,
-has not completed credentialed OpenAI evaluation, and is not deployed. See
+Visual Inspection is merged to `main` and validated through automated tests and
+deterministic local frontend QA. It is **disabled by default**
+(`VISUAL_INSPECTION_PROVIDER=disabled`) and is not enabled on the deployed
+instance, because it has not completed credentialed provider evaluation. See
 [D-20 in the design notes](docs/DESIGN_NOTES.md) for the detailed architecture,
 privacy, and security rationale.
 
@@ -73,18 +93,22 @@ The following features may be considered later if the core application is comple
 
 ---
 
-## Planned Architecture
+## Architecture
 
-The MVP will use a containerized architecture consisting of:
+The MVP uses a containerized architecture consisting of:
 
-- A React frontend
+- A React frontend, served by nginx
 - A FastAPI backend
 - A PostgreSQL database
 - Docker Compose for running the application services together
 - Caddy as the reverse proxy and HTTPS manager
-- A single VPS for the initial deployed environment
+- A single AWS EC2 instance for the deployed environment
 
-The deployment setup will be documented and stored in this repository so that it can be reproduced by more than one team member.
+The deployment setup is documented in this repository ([deploy/README.md](deploy/README.md))
+so that it can be reproduced by more than one team member. Architecture
+diagrams are in [docs/architecture/](docs/architecture/), and the decisions
+behind these choices — including why the platform moved from Render to AWS —
+are recorded in [docs/decisions/](docs/decisions/).
 
 GitHub will remain the source of truth for:
 
@@ -102,9 +126,9 @@ GitHub will remain the source of truth for:
 
 ### Frontend
 
-- React
-- TypeScript
+- React (JavaScript/JSX)
 - Vite
+- Vitest + React Testing Library
 
 ### Backend
 
@@ -123,18 +147,17 @@ GitHub will remain the source of truth for:
 
 ### Testing
 
-- Pytest
-- API and integration testing
-- Frontend testing
-- End-to-end testing
-- Automated quality checks through GitHub Actions
+- Pytest (unit, acceptance, integration and contract layers)
+- Vitest + React Testing Library for frontend component tests
+- Automated quality checks through GitHub Actions, with a coverage floor
 
 ### Deployment and Infrastructure
 
 - Docker
 - Docker Compose
-- Caddy
-- Hetzner VPS for the MVP
+- Caddy (HTTPS termination, automatic Let's Encrypt certificates)
+- AWS EC2 for the deployed MVP, with images published to Amazon ECR
+- AWS Systems Manager (SSM) for keyless deployment — no inbound SSH
 - GitHub Actions for CI/CD
 
 ### Project Management and Collaboration
@@ -184,14 +207,15 @@ trustai-marketplace/
 ├── frontend/               # React web application
 ├── backend/                # FastAPI application and business logic
 ├── docs/                   # Project and engineering documentation
-│   ├── architecture/
-│   ├── decisions/
-│   ├── meeting-minutes/
-│   ├── requirements/
-│   ├── sprint-reports/
-│   └── testing/
+│   ├── architecture/       # System, bounded-context and E2E diagrams
+│   ├── ci-cd/              # Zero-trust deploy pipeline documentation
+│   ├── decisions/          # Architecture decision records (ADRs)
+│   ├── requirements/       # Product requirements index
+│   ├── sprint-reports/     # Per-sprint planning, delivery and retrospective
+│   └── testing/            # Testing strategy and quality evidence
+├── deploy/                 # Production Compose file, Caddyfile, deploy runbook
 ├── .github/
 │   └── workflows/          # CI/CD workflows
-├── docker-compose.yml      # Local and deployed service orchestration
+├── docker-compose.yml      # Local development service orchestration
 ├── README.md
 └── LICENSE
