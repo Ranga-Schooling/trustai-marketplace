@@ -311,8 +311,41 @@ can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
 
 ## Priority summary
 
-| Priority | Stories |
+Status as of 2026-09-04. The live task board — including per-task ownership
+and movement across sprints — is the Trello board linked from the
+[README](../README.md#capstone-deliverables); this table is the
+repository-side summary.
+
+| Priority | Stories | Status |
+|---|---|---|
+| Must | US-1.1–1.5, US-2.1–2.3, US-3.1–3.6, US-4.1–4.2, US-5.1–5.3, US-6.1–6.5 | **All shipped** |
+| Should | Admin RBAC + analytics dashboard, multi-provider LLM abstraction, scheduled Postgres backups, dark mode, failed-analysis recovery | **Shipped** (delivered in Sprint 3; tracked as GitHub issues rather than US-numbered stories — see below) |
+| Should | Saved-history search, runtime provider switching without redeploy | Not started — [#92](https://github.com/Ranga-Schooling/trustai-marketplace/issues/92) |
+| Could | PDF export, browser extension, reverse image search | Not started (out of MVP scope) |
+
+### Work delivered outside the US-numbered backlog
+
+From Sprint 3 onward, incremental work was tracked as GitHub issues and pull
+requests rather than as new user stories, because it refined delivered
+stories rather than adding new user-facing capability. For traceability:
+
+| Work | Tracked as | Merged |
+|---|---|---|
+| Admin RBAC + analytics dashboard | issue [#42](https://github.com/Ranga-Schooling/trustai-marketplace/issues/42), D-15 | PR #91 |
+| Multi-LLM provider abstraction (GPT, Gemini) | Card #20 | PR #46 |
+| Categorical price plausibility | Card #28 | PR #41 |
+| Deterministic 0–100 risk score | Card #27, D-09 | PR #43 |
+| Scheduled Postgres backups to S3 | — | PR #76 |
+| Transient Visual Inspection (disabled by default) | D-20 | PR #99 |
+| Dark mode | — | PR #105 |
+| Terra text analysis + strict response validation | D-21 | PR #107, #108 |
+| Recover listings after a failed analysis | issue [#80](https://github.com/Ranga-Schooling/trustai-marketplace/issues/80) | PR #100 |
+
+### Known open items at submission
+
+| Item | Issue |
 |---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1–4.2, 5.1–5.3, 6.1–6.3 |
-| Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
-| Could (future) | PDF export, browser extension, reverse image search |
+| Retired `gemini-2.0-flash` default model | [#97](https://github.com/Ranga-Schooling/trustai-marketplace/issues/97) |
+| Runtime AI provider switching | [#92](https://github.com/Ranga-Schooling/trustai-marketplace/issues/92) |
+| Postgres backup recovery verification | [#88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88) |
+| Password change + re-authentication | [#66](https://github.com/Ranga-Schooling/trustai-marketplace/issues/66) |
