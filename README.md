@@ -210,6 +210,7 @@ trustai-marketplace/
 │   ├── architecture/       # System, bounded-context and E2E diagrams
 │   ├── ci-cd/              # Zero-trust deploy pipeline documentation
 │   ├── decisions/          # Architecture decision records (ADRs)
+│   ├── meeting-minutes/    # Where the team's decision record lives
 │   ├── requirements/       # Product requirements index
 │   ├── sprint-reports/     # Per-sprint planning, delivery and retrospective
 │   └── testing/            # Testing strategy and quality evidence
