@@ -748,9 +748,9 @@ contract changes. The frozen decision report plus this established design log
 are the authoritative chronology, so a separate ADR would duplicate rather
 than clarify the decision.
 
-**Patterns used (for the rubric):** layered architecture (api / services /
-models / schemas), strategy (AI providers), dependency injection (FastAPI
-`Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
+**Patterns used:** layered architecture (api / services / models / schemas),
+strategy (AI providers), dependency injection (FastAPI `Depends` for DB
+sessions and auth), repository-lite via SQLAlchemy sessions.
 
 ## Deployment recommendation
 
