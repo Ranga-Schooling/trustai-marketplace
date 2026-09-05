@@ -818,11 +818,17 @@ rewritten to match the finished product.
   `__init__.py` to every package under `app/` so `services/ai.py` is
   honestly counted rather than silently excluded. The gate is set as a
   floor with headroom, not a target.
-- **Current measured state (2026-09-04).** Backend: **449 tests passing,
-  96% statement coverage** against the 85% gate. Frontend: **76 tests
-  passing across 9 files** (Vitest + React Testing Library). Both suites
-  run on every push and pull request; neither requires a network call or
-  an API key, because CI runs the `MockProvider` only.
+- **Current measured state (2026-09-04, `v1.20.0`).** Backend: **449 tests
+  passing, 96.35% statement coverage** against the 85% gate. Frontend:
+  **76 tests passing across 9 files** (Vitest + React Testing Library).
+  Both suites run on every push and pull request.
+- **No test makes a live provider request.** CI sets `AI_PROVIDER=mock`, so
+  the application path runs against the deterministic `MockProvider`. The
+  provider adapters themselves are still exercised — `test_ai_provider.py`
+  and `test_visual_inspection_openai.py` drive the real adapter code against
+  mocked transports and test credentials. So the accurate boundary is not
+  "only the mock provider runs", but that no suite requires network access
+  or a real API key, and none reaches a provider endpoint.
 - **Still not covered.** Two gaps remain open and are stated here rather
   than glossed over:
   - **Load testing.** The analysis endpoint has never been tested under
@@ -852,20 +858,26 @@ MVP, verified against `main` as of 2026-09-04.
   implemented.
 - **CORS is open** — `allow_origins=["*"]` in `app/main.py`, carried over
   from local development. It should be restricted to the deployed frontend
-  origin. Low practical impact given token-authenticated endpoints, but it is
-  not the correct production setting.
+  origin. It is not the correct production setting.
 - **Test database is SQLite, production is Postgres.** JSON column behavior
   differs subtly between them, so a class of bug remains possible that the
   suite structurally cannot catch. Running the integration layer against
   Postgres via Compose would close this.
-- **Single instance, single database.** Durability depends on the daily S3
-  dump (`.github/workflows/backup.yml`), not on replication. See
-  [ADR-003](decisions/ADR-003-aws-ec2-deployment.md).
+- **Single instance, single database, and backup automation is configured
+  rather than proven.** There is no replication. A scheduled dump workflow
+  exists (`.github/workflows/backup.yml`), but successful off-instance backup
+  and an isolated restore have not been verified — the latest observed run
+  failed because `BACKUP_S3_BUCKET` was not configured. Tracked in
+  [issue #88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88).
+  See [ADR-003](decisions/ADR-003-aws-ec2-deployment.md).
 - **Visual Inspection findings are advisory and never persisted.** The
   feature is enabled on the deployed instance and was browser-verified on
   2026-09-04, but a finding cannot change the risk level, Trust score or
-  recommendation, and neither the photos nor the findings survive the
-  request (D-20). Re-opening an analysis from History shows the text result
+  recommendation, and TrustAI itself does not persist the uploaded photos or
+  the findings — request-scoped uploads are closed after processing (D-20).
+  Provider-side processing and retention are governed by the provider's
+  applicable data policy, which is outside our control and not a claim we
+  make. Re-opening an analysis from History shows the text result
   and an empty upload form. The exact Visual model in production is not
   exposed by the application and is therefore not verifiable from the
   client — see
