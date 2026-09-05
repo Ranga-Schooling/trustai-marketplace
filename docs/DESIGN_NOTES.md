@@ -861,8 +861,15 @@ MVP, verified against `main` as of 2026-09-04.
 - **Single instance, single database.** Durability depends on the daily S3
   dump (`.github/workflows/backup.yml`), not on replication. See
   [ADR-003](decisions/ADR-003-aws-ec2-deployment.md).
-- **Visual Inspection is not enabled in production.** It is merged, tested
-  and disabled by default pending credentialed provider evaluation (D-20).
+- **Visual Inspection findings are advisory and never persisted.** The
+  feature is enabled on the deployed instance and was browser-verified on
+  2026-09-04, but a finding cannot change the risk level, Trust score or
+  recommendation, and neither the photos nor the findings survive the
+  request (D-20). Re-opening an analysis from History shows the text result
+  and an empty upload form. The exact Visual model in production is not
+  exposed by the application and is therefore not verifiable from the
+  client — see
+  [FINAL_PRODUCTION_VALIDATION.md](capstone/FINAL_PRODUCTION_VALIDATION.md).
 
 ## Fixed: clean `docker compose up --build` startup (2026-08-01)
 
