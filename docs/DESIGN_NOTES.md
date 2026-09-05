@@ -818,10 +818,15 @@ rewritten to match the finished product.
   `__init__.py` to every package under `app/` so `services/ai.py` is
   honestly counted rather than silently excluded. The gate is set as a
   floor with headroom, not a target.
-- **Current measured state (2026-09-04, `v1.20.0`).** Backend: **449 tests
-  passing, 96.35% statement coverage** against the 85% gate. Frontend:
-  **76 tests passing across 9 files** (Vitest + React Testing Library).
-  Both suites run on every push and pull request.
+- **Measured state at `v1.20.0`.** Backend: **449 tests passing, 96.49%
+  statement coverage** (1451 statements, 51 uncovered) against the 85% gate.
+  Frontend: **76 tests passing across 9 files** (Vitest + React Testing
+  Library). Both suites run on every push and pull request.
+
+  These figures are quoted from the CI run on `5ebc757`, which is the
+  authoritative environment: CI pins **Python 3.12**, and the statement total
+  is interpreter-dependent — a local run on 3.14 counts 1398 statements and
+  reports 96.35% from the same 51 uncovered lines. Quote CI, not a laptop.
 - **No test makes a live provider request.** CI sets `AI_PROVIDER=mock`, so
   the application path runs against the deterministic `MockProvider`. The
   provider adapters themselves are still exercised — `test_ai_provider.py`
