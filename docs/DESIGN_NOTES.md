@@ -1,8 +1,18 @@
-# TrustAI Marketplace — Design & Testing Notes (working draft)
+# TrustAI Marketplace — Design Decision Log
 
-A starting point for the capstone design and testing document. Expand each
-section as the project evolves; the rubric requires reasons for choices, not
-just the choices themselves.
+> **The consolidated design and testing report for the Capstone submission is
+> [docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md](capstone/CAPSTONE_DESIGN_AND_TESTING.md).**
+> Start there. This file is the chronological decision log it draws on.
+
+This is the project's running record of design decisions, written as they
+were taken rather than reorganised afterwards. Each numbered entry (D-01,
+D-02, …) states a decision, the alternatives weighed, and the reasoning —
+including the ones that were later revised, which are kept rather than
+rewritten.
+
+Platform-level decisions with wider consequences are recorded separately as
+ADRs in [docs/decisions/](decisions/). Testing procedure and evidence are in
+[docs/testing/README.md](testing/README.md).
 
 ## Architecture decisions
 
@@ -742,14 +752,25 @@ than clarify the decision.
 models / schemas), strategy (AI providers), dependency injection (FastAPI
 `Depends` for DB sessions and auth), repository-lite via SQLAlchemy sessions.
 
-## Deployment recommendation (rubric-required section)
+## Deployment recommendation
 
-Cloud, free tier: Render web service for the API (Docker), Render static
-site for the frontend, managed Postgres on Neon/Supabase. Relative cost:
-$0/month at capstone scale versus meaningful fixed cost and ops burden for
-on-premises; the trade-off is cold starts and modest resource limits, both
-acceptable here. If this were a production product, the first paid steps
-would be a dedicated Postgres instance and an always-on API instance.
+TrustAI Marketplace is deployed to a **single AWS EC2 instance**, with images
+published to Amazon ECR and deployment executed over AWS Systems Manager —
+no inbound SSH. Caddy terminates HTTPS with an automatically renewed Let's
+Encrypt certificate. The live application is at
+**https://trustai.mandalawi.ca**.
+
+The decision itself, the alternatives considered, and their **relative cost
+implications** are recorded in
+[ADR-003](decisions/ADR-003-aws-ec2-deployment.md), which is the single
+authoritative statement of the deployment choice. This section deliberately
+does not restate those figures, so there is only one cost claim in the
+repository to keep accurate.
+
+Earlier planning recommended Render;
+[ADR-001](decisions/ADR-001-deployment-platform.md) preserves that decision
+and ADR-003 records why the released architecture differs. Neither is
+rewritten to match the finished product.
 
 ## Testing strategy
 
@@ -794,29 +815,54 @@ would be a dedicated Postgres instance and an always-on API instance.
   anywhere, which meant `coverage` silently excluded never-imported
   files (`services/ai.py`) from its report instead of counting them as
   0% — an easy way to end up with a misleadingly high number. Added
-  `__init__.py` to every package under `app/` so `services/ai.py`
-  (currently 0%, its two providers are still `NotImplementedError`
-  stubs) is honestly counted. Real total today is 89%; the gate is set
-  a few points below that as a floor with headroom, not a target — it
-  should ratchet up as US-2.1/US-3.1/US-3.3 land and those stubs get
-  implemented and tested.
-- **Not yet covered (candidates for Sprint 3):** frontend component tests,
-  load-testing the analysis endpoint, and a contract test replaying an
-  *actual captured* Groq response (with real-world quirks: key ordering,
-  whitespace, occasional extra fields). `test_contract.py`'s
-  `test_groq_shaped_response_replays_through_the_validator` replays a
-  hand-authored payload through the same validator, which is useful but
-  not a substitute for a real capture — don't read it as this item
-  being done.
+  `__init__.py` to every package under `app/` so `services/ai.py` is
+  honestly counted rather than silently excluded. The gate is set as a
+  floor with headroom, not a target.
+- **Current measured state (2026-09-04).** Backend: **449 tests passing,
+  96% statement coverage** against the 85% gate. Frontend: **76 tests
+  passing across 9 files** (Vitest + React Testing Library). Both suites
+  run on every push and pull request; neither requires a network call or
+  an API key, because CI runs the `MockProvider` only.
+- **Still not covered.** Two gaps remain open and are stated here rather
+  than glossed over:
+  - **Load testing.** The analysis endpoint has never been tested under
+    concurrency. Its latency is dominated by an external LLM call, so the
+    interesting failure mode — provider rate-limiting under parallel
+    requests — is precisely the one the mock provider cannot exercise.
+  - **A contract test replaying a real captured provider response.**
+    `test_contract.py`'s `test_groq_shaped_response_replays_through_the_validator`
+    replays a *hand-authored* payload through the real validator. That is
+    useful, but a hand-authored fixture cannot surprise us the way a real
+    capture would (key ordering, whitespace, unexpected extra fields), so
+    this should not be read as the item being done.
 
-## Known limitations (state these honestly in the final doc)
+## Known limitations
 
-- Heuristic/LLM analysis can miss scams and flag legitimate listings.
-- No rate limiting yet on `/api/analyses`; a deployed instance exposes the
-  LLM key's quota to abuse. Planned: simple per-user daily cap.
-- CORS is wide open for development; restrict to the deployed frontend origin.
-- SQLite JSON column behavior differs subtly from Postgres; integration tests
-  against Postgres (via compose) are worth adding before final submission.
+These are stated deliberately. Each is a real limitation of the delivered
+MVP, verified against `main` as of 2026-09-04.
+
+- **Analysis accuracy.** Heuristic and LLM analysis can both miss scams and
+  flag legitimate listings. This is why the product is framed throughout as
+  decision support and never as a verdict, and why the recommendation
+  vocabulary is Proceed / Proceed with caution / Avoid rather than
+  safe/unsafe.
+- **No rate limiting** on `/api/analyses` (`app/api/routes.py`). A deployed
+  instance therefore exposes the configured LLM key's quota to abuse by any
+  registered user. The intended fix is a simple per-user daily cap; it is not
+  implemented.
+- **CORS is open** — `allow_origins=["*"]` in `app/main.py`, carried over
+  from local development. It should be restricted to the deployed frontend
+  origin. Low practical impact given token-authenticated endpoints, but it is
+  not the correct production setting.
+- **Test database is SQLite, production is Postgres.** JSON column behavior
+  differs subtly between them, so a class of bug remains possible that the
+  suite structurally cannot catch. Running the integration layer against
+  Postgres via Compose would close this.
+- **Single instance, single database.** Durability depends on the daily S3
+  dump (`.github/workflows/backup.yml`), not on replication. See
+  [ADR-003](decisions/ADR-003-aws-ec2-deployment.md).
+- **Visual Inspection is not enabled in production.** It is merged, tested
+  and disabled by default pending credentialed provider evaluation (D-20).
 
 ## Fixed: clean `docker compose up --build` startup (2026-08-01)
 
