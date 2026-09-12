@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Superseded operationally by
+[ADR-003](ADR-003-aws-ec2-deployment.md). This ADR remains the historical
+record of the July 10 Render/GitHub Pages direction. Deployment later evolved
+incrementally to AWS, beginning with ECR/EC2 automation on August 8 and adding
+Systems Manager and Caddy/HTTPS in later changes; ADR-003 records the released
+architecture without rewriting this original decision.
 
 ## Date
 
@@ -84,7 +89,7 @@ The decision is intended to:
 
 ### Backend (FastAPI)
 - **Platform**: Render Web Service
-- **Source**: Python FastAPI application in `backend/` directory  
+- **Source**: Python FastAPI application in `backend/` directory
 - **Runtime**: Python 3.11+
 - **Dependencies**: Installed from `backend/requirements.txt`
 - **Environment**: Configuration via environment variables (see `backend/app/core/config.py`)
@@ -102,7 +107,7 @@ The decision is intended to:
 ### CI/CD Integration
 - **Trigger**: GitHub Actions runs on push to `main` branch
 - **Workflow**: `.github/workflows/release.yml`
-- **Deployment Automation**: 
+- **Deployment Automation**:
   - Pull requests must pass all CI checks before merge
   - Main branch changes automatically trigger Render deployments
   - GitHub Releases created automatically via semantic-release

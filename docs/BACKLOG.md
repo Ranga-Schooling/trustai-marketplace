@@ -8,9 +8,10 @@ the repository stay traceable to each other.
 
 Scope decisions applied throughout: risk is **categorical** (low/medium/high)
 derived from named indicators — never a raw LLM-invented number; the AI
-provider sits behind an interface so tests and CI run without network access
-or API keys; a listing is persisted even when analysis fails, matching the
-error branch added to the sequence diagram during design review.
+provider sits behind an interface so CI and provider-boundary tests require no
+provider credentials and make no live provider requests; a listing is
+persisted even when analysis fails, matching the error branch added to the
+sequence diagram during design review.
 
 ---
 
@@ -121,8 +122,8 @@ diffed instead of guessed at.
 - Implemented: `Analysis` model columns, populated in `routes.create_analysis`.
 
 **US-3.3 — Provider-independent testing**
-As the team, we want tests and CI to run with zero network access and no API
-keys.
+As the team, we want provider tests and CI to run without provider credentials
+or live provider requests.
 - AC1: `AI_PROVIDER=mock` selects a deterministic heuristic provider satisfying the same contract.
 - Implemented: `MockProvider`, provider selection in `get_provider()`, CI env config.
 
@@ -257,10 +258,13 @@ production build before merge.
 - Implemented: `.github/workflows/ci.yml`.
 
 **US-5.3 — Twelve-factor configuration**
-As the team, we want all secrets and environment differences injected via env
-vars so one image runs locally, in CI, and on Render.
-- AC1: DATABASE_URL, JWT_SECRET, AI_PROVIDER, GROQ_API_KEY all env-driven with safe local defaults.
-- Implemented: `core/config.py`, `.env.example`.
+As the team, we want secrets and environment differences injected through
+environment variables so deployment images contain no environment-specific
+credentials.
+- AC1: Database, session, provider, model, and Visual Inspection configuration
+  are environment-driven; local/CI defaults do not make live provider calls.
+- Implemented: `core/config.py`, `.env.example`, and
+  `deploy/docker-compose.yml`.
 
 Tasks completed: Dockerfile · compose stack · CI workflow with per-directory
 defaults · settings module · env example file.
@@ -271,7 +275,11 @@ defaults · settings module · env example file.
 
 **US-6.1 — Automated test suite**
 - AC1: Tests cover auth (register, login, duplicate, bad credentials), authorization isolation, analysis happy path, categorical risk derivation, input validation, and the AI failure branch.
-- Result: 10 tests, all passing (`pytest backend/tests`).
+- Initial acceptance slice: 10 tests. The immutable `v1.20.0` release record is
+  70 contract-selection tests passed, 449 backend tests passed at 96.49%
+  coverage, 76 frontend tests passed across 9 files, and a successful frontend
+  production build with 39 modules transformed; see
+  `docs/capstone/FINAL_PRODUCTION_VALIDATION.md`.
 
 **US-6.2 — Honest product framing**
 As the product owner, I want the app to state its limits, so users are not
@@ -311,8 +319,34 @@ can't ship past CI the way #68 did (`App.jsx` calling `api.updateMe`/
 
 ## Priority summary
 
-| Priority | Stories |
-|---|---|
-| Must (shipped) | US-1.1–1.4, 2.1–2.2, 3.1–3.5, 4.1–4.2, 5.1–5.3, 6.1–6.3 |
-| Should (next sprint) | Admin/demo page, saved-history search, deploy step in CI |
-| Could (future) | PDF export, browser extension, reverse image search |
+This is a repository-side status summary for release `v1.20.0`. It does not
+claim that Trello ownership or card movement was maintained contemporaneously;
+the final board reconciliation and its evidence boundary are documented in
+`docs/capstone/sprints/README.md`.
+
+| Priority | Scope | Final repository state |
+|---|---|---|
+| Must | US-1.1–1.5, US-2.1–2.3, US-3.1–3.6, US-4.1–4.2, US-5.1–5.3, US-6.1–6.5 | Implemented and released in `v1.20.0` |
+| Should | Admin RBAC and aggregate analytics endpoint; automated deployment; failed-analysis recovery; dark mode | Implemented and released; there is no admin dashboard or runtime provider-switching UI |
+| Should — operationally open | Scheduled PostgreSQL-to-S3 backup | Workflow implemented; production backup and isolated restore verification remain OPEN under issue [#88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88) |
+| Should — deferred | Saved-history search; runtime provider switching without restart; password change/re-authentication | Deferred under issues [#92](https://github.com/Ranga-Schooling/trustai-marketplace/issues/92) and [#66](https://github.com/Ranga-Schooling/trustai-marketplace/issues/66), or retained as future scope |
+| Could | PDF export, browser extension, reverse image search | Deferred beyond the Capstone release |
+
+### Selected implementation traceability
+
+These links establish merged implementation, not historical sprint placement or
+contemporaneous task-board movement.
+
+| Delivered work | Evidence | Final-state boundary |
+|---|---|---|
+| ECR/EC2 deployment, Systems Manager activation, and Caddy HTTPS | PRs [#37](https://github.com/Ranga-Schooling/trustai-marketplace/pull/37), [#50](https://github.com/Ranga-Schooling/trustai-marketplace/pull/50), and [#63](https://github.com/Ranga-Schooling/trustai-marketplace/pull/63); [ADR-003](decisions/ADR-003-aws-ec2-deployment.md) | Implemented incrementally; final architecture was not complete on August 8 |
+| Categorical price plausibility | Trello card #28, PR [#41](https://github.com/Ranga-Schooling/trustai-marketplace/pull/41), D-08 | Qualitative category; not verified live/current market pricing |
+| Deterministic 0–100 Trust score | Trello card #27, PR [#43](https://github.com/Ranga-Schooling/trustai-marketplace/pull/43), D-09 | Computed by application code from validated categorical output; not model-generated |
+| Config-selectable provider adapters | Trello card #20, PR [#46](https://github.com/Ranga-Schooling/trustai-marketplace/pull/46), D-10 | Runtime switching without configuration change/restart remains deferred |
+| Admin RBAC and aggregate analytics endpoint | PR [#91](https://github.com/Ranga-Schooling/trustai-marketplace/pull/91), D-15 | Endpoint delivered; no admin dashboard or runtime provider-selection control |
+| PostgreSQL-to-S3 backup automation | PRs [#76](https://github.com/Ranga-Schooling/trustai-marketplace/pull/76) and [#89](https://github.com/Ranga-Schooling/trustai-marketplace/pull/89) | Workflow exists; successful production backup/restore readiness remains OPEN in issue [#88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88) |
+| Failed-listing recovery | Issue [#80](https://github.com/Ranga-Schooling/trustai-marketplace/issues/80), PR [#100](https://github.com/Ranga-Schooling/trustai-marketplace/pull/100) | Implemented and issue closed |
+| Transient Visual Inspection | PR [#99](https://github.com/Ranga-Schooling/trustai-marketplace/pull/99), D-20 | Advisory and application-non-persistent; cannot change text-analysis outcomes |
+| Dark mode | PR [#105](https://github.com/Ranga-Schooling/trustai-marketplace/pull/105) | Implemented with light/dark/system behavior |
+| Per-listing retry-state isolation | PR [#106](https://github.com/Ranga-Schooling/trustai-marketplace/pull/106) | Frontend history retries are isolated per listing |
+| Terra text path and strict response validation | PR [#108](https://github.com/Ranga-Schooling/trustai-marketplace/pull/108) merged into the `feat/ai-response-validation` branch; PR [#107](https://github.com/Ranga-Schooling/trustai-marketplace/pull/107) then merged the combined head to `main`; D-21 | Formal evaluation remained a tie/no clear winner; Terra was a later engineering selection |
