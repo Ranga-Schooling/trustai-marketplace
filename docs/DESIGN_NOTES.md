@@ -809,8 +809,9 @@ rewritten to match the finished product.
   synthetic fixture, same category as `test_ai_provider.py`'s fakes — see
   the "not yet covered" note below, which is still open); and the frozen
   HTTP surface (paths, status codes, `AnalysisOut`'s field set) behaves
-  as `routes.py` documents. All run on `MockProvider` only, same as
-  everything else in CI.
+  as `routes.py` documents. These run against `MockProvider`; see the
+  provider-boundary note below for the adapter tests, which exercise the
+  real adapter code against mocked transports.
 - **Coverage gate (`--cov-fail-under=85`).** `app` had no `__init__.py`
   anywhere, which meant `coverage` silently excluded never-imported
   files (`services/ai.py`) from its report instead of counting them as
