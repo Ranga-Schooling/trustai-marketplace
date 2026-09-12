@@ -4,8 +4,8 @@ Workstream: E6 Testing & QA (owner: Samar) maintains this suite; each
 context owner un-skips the tests for their stories as they implement.
 A story's Definition of Done includes its tests passing here and in CI.
 
-Every test below is currently skipped. The skip reason names the story.
-Do NOT weaken assertions to make tests pass — change the implementation.
+Every test below is implemented and runs; none are skipped. Do NOT
+weaken assertions to make tests pass — change the implementation.
 
 Test env vars (DATABASE_URL, AI_PROVIDER, JWT_SECRET) are set in
 conftest.py, not here -- see that file for why it has to happen there.
