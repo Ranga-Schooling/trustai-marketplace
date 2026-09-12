@@ -748,6 +748,38 @@ contract changes. The frozen decision report plus this established design log
 are the authoritative chronology, so a separate ADR would duplicate rather
 than clarify the decision.
 
+**Abuse guardrails on the provider-consuming routes (D-22).** The deployed
+API is publicly reachable and every analysis spends a real provider call, so
+two development-era settings were closed.
+
+`CORSMiddleware` was configured with `allow_origins=["*"]`. The deployed
+frontend is served from the same origin as the API and the Vite dev server
+proxies `/api`, so no legitimate caller actually needed a wildcard. Allowed
+origins now come from `CORS_ALLOW_ORIGINS` and default to the two local dev
+origins; production needs no entry at all, and `CORS_ALLOW_ORIGINS="*"`
+restores the previous behaviour if a cross-origin client is ever introduced.
+
+`POST /analyses` and `POST /listings/{id}/retry` now enforce a per-user
+rolling-24-hour cap (`MAX_ANALYSES_PER_DAY`, default 50). The count includes
+recorded failures as well as stored analyses: counting successes only would
+let a failing provider be driven without limit, which is the case that costs
+money fastest. Retry is included for the same reason -- one saved listing
+could otherwise be retried indefinitely. The window is rolling rather than
+calendar-based so it cannot be reset by waiting for midnight in the server's
+timezone, and the check runs before the Listing row is written, so a refused
+submission leaves nothing behind.
+
+This adds **429** to the response vocabulary of those two routes. That is a
+contract addition rather than a change: no existing status code, path, or
+response model moves, and no client that stays inside the cap can observe a
+difference. It is recorded here because SCHEMA-0 freezes the route contract,
+and `backend/tests/test_rate_limit.py` pins the behaviour.
+
+What this does not solve: account creation is not itself rate limited, so a
+determined abuser can still register additional accounts to obtain additional
+quota. Closing that needs either registration throttling or a global ceiling,
+and neither is implemented.
+
 **Patterns used:** layered architecture (api / services / models / schemas),
 strategy (AI providers), dependency injection (FastAPI `Depends` for DB
 sessions and auth), repository-lite via SQLAlchemy sessions.
@@ -858,13 +890,14 @@ MVP, verified against `main` as of 2026-09-04.
   decision support and never as a verdict, and why the recommendation
   vocabulary is Proceed / Proceed with caution / Avoid rather than
   safe/unsafe.
-- **No rate limiting** on `/api/analyses` (`app/api/routes.py`). A deployed
-  instance therefore exposes the configured LLM key's quota to abuse by any
-  registered user. The intended fix is a simple per-user daily cap; it is not
-  implemented.
-- **CORS is open** — `allow_origins=["*"]` in `app/main.py`, carried over
-  from local development. It should be restricted to the deployed frontend
-  origin. It is not the correct production setting.
+- **Rate limiting is per user, not global** (D-22). `/api/analyses` and the
+  retry route enforce a rolling 24-hour cap per account, but registration is
+  not throttled, so additional accounts still yield additional quota. A global
+  ceiling or registration throttle would close that; neither is implemented.
+- **CORS is configuration-dependent** (D-22). `allow_origins` now comes from
+  `CORS_ALLOW_ORIGINS` and defaults to the local dev origins. A deployment that
+  serves the frontend from a different origin to the API must set it
+  explicitly, and setting it to `*` restores the previous open behaviour.
 - **Test database is SQLite, production is Postgres.** JSON column behavior
   differs subtly between them, so a class of bug remains possible that the
   suite structurally cannot catch. Running the integration layer against

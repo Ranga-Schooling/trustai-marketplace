@@ -487,9 +487,16 @@ and waits for application health. Branch controls and required CI are described
 in ADR-002. These are observable controls, not a claim that the environment is
 invulnerable.
 
-Two material security/operations limitations remain. CORS currently allows all
-origins and should be restricted for a more hardened service. The text-provider
-selector falls back to mock on an unknown value rather than failing startup.
+Cross-origin access and provider spend are both bounded by configuration
+(D-22). Allowed browser origins come from `CORS_ALLOW_ORIGINS` and default to
+the local development origins; the deployed frontend shares the API's origin
+and needs no entry. `POST /analyses` and the retry route enforce a per-user
+rolling-24-hour cap (`MAX_ANALYSES_PER_DAY`) that counts recorded failures as
+well as stored analyses, so a failing provider cannot be driven for free.
+
+Two limitations remain. Account creation is not itself throttled, so additional
+accounts still yield additional quota. The text-provider selector falls back to
+mock on an unknown value rather than failing startup.
 
 ## 10. Testing strategy and rationale
 
@@ -701,7 +708,9 @@ The most material limitations are architectural rather than cosmetic:
   bucket configuration is absent, and restore readiness is not established.
 - **Single-host state and manual rollback.** PostgreSQL and the application run
   on one EC2 host; no automatic failover or rollback exists.
-- **Development-oriented CORS.** All origins are currently permitted.
+- **Quota is per account, not global.** The per-user daily cap (D-22) bounds
+  one account's provider spend, but registration is not throttled, so more
+  accounts still mean more quota.
 - **Authentication is intentionally minimal.** Password recovery/verification,
   MFA, refresh-token rotation, and account-delete re-authentication are absent.
 - **Testing substitutions remain.** Automated API tests principally use SQLite,
