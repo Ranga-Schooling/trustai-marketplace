@@ -39,6 +39,22 @@ class Settings(BaseSettings):
     # Basic abuse guardrails for the public analysis endpoint.
     max_description_chars: int = 4000
 
+    # Provider-consuming attempts allowed per user per rolling 24 hours
+    # (D-22). Counts both stored analyses and recorded failures, so a
+    # failing provider cannot be used to bypass the cap.
+    max_analyses_per_day: int = 50
+
+    # Comma-separated browser origins allowed to call the API cross-origin
+    # (D-22). The default covers the Vite dev server; the deployed frontend
+    # is served from the same origin as the API and needs no entry here.
+    # Set CORS_ALLOW_ORIGINS="*" to restore the previous open behaviour.
+    cors_allow_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Parsed, whitespace-tolerant view of `cors_allow_origins`."""
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+
     class Config:
         env_file = ".env"
         # pydantic-settings forbids unrecognized keys by default, so any

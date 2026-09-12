@@ -52,6 +52,7 @@ Agreed behaviors (docs/DESIGN_NOTES.md):
   Listing row. Both routes use the same IDOR-safe 404-not-403 ownership
   check as GET /analyses/{id}.
 """
+import datetime as dt
 import logging
 from collections import Counter
 
@@ -76,6 +77,7 @@ from app.models.db import (
     RiskIndicator,
     User,
     get_db,
+    utcnow,
 )
 from app.services.ai import AnalysisFailure, get_provider
 from app.services.scoring import compute_risk_score
@@ -236,6 +238,41 @@ def delete_me(
     db.commit()
 
 
+def _enforce_daily_analysis_quota(db: Session, user: User) -> None:
+    """[D-22] Cap provider-consuming attempts per user per rolling 24 hours.
+
+    Counts stored analyses *and* recorded failures, because both spend a
+    provider call -- counting only successes would let a failing provider be
+    driven without limit. Both routes that call a provider check this, so the
+    retry path can't be used to bypass the cap either. The window is rolling
+    rather than calendar-based so the cap can't be reset by waiting for
+    midnight in whatever timezone the server happens to run in.
+    """
+    since = utcnow() - dt.timedelta(hours=24)
+    analyses = (
+        db.query(func.count(Analysis.id))
+        .join(Listing, Analysis.listing_id == Listing.id)
+        .filter(Listing.user_id == user.id, Analysis.created_at >= since)
+        .scalar()
+        or 0
+    )
+    failures = (
+        db.query(func.count(AnalysisFailureLog.id))
+        .join(Listing, AnalysisFailureLog.listing_id == Listing.id)
+        .filter(Listing.user_id == user.id, AnalysisFailureLog.created_at >= since)
+        .scalar()
+        or 0
+    )
+    if analyses + failures >= settings.max_analyses_per_day:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Daily analysis limit reached ({settings.max_analyses_per_day} "
+                "in 24 hours). Existing analyses remain available."
+            ),
+        )
+
+
 def _handle_analysis_failure(db: Session, listing: Listing, exc: AnalysisFailure) -> HTTPException:
     """[D-20] Shared by create_analysis and retry_analysis: log + record an
     AnalysisFailureLog row (D-15/#42), then build (not raise) the 502 so
@@ -315,12 +352,15 @@ def create_analysis(
     """[US-2.1, US-2.2, US-3.1] Persist the listing, run the AI provider,
     persist the validated analysis with audit columns, return it.
     Enforce settings.max_description_chars with 413. 502 on AnalysisFailure
-    (listing already saved)."""
+    (listing already saved). 429 once the caller's daily quota is spent
+    (D-22) -- checked before the listing is written, so a rejected request
+    leaves nothing behind."""
     if len(body.description) > settings.max_description_chars:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Description exceeds {settings.max_description_chars} characters",
         )
+    _enforce_daily_analysis_quota(db, user)
     listing = Listing(
         user_id=user.id,
         title=body.title,
@@ -392,6 +432,11 @@ def retry_analysis(
     )
     if listing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Listing not found")
+
+    # D-22: retry spends a provider call like any other analysis, so it has
+    # to sit behind the same quota -- otherwise one saved listing could be
+    # retried without limit.
+    _enforce_daily_analysis_quota(db, user)
 
     body = _listing_to_listing_in(listing)
     try:
