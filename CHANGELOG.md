@@ -1,3 +1,10 @@
+## [1.21.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.20.0...v1.21.0) (2026-09-12)
+
+
+### Features
+
+* **api:** bound cross-origin access and per-user provider spend ([#113](https://github.com/Ranga-Schooling/trustai-marketplace/issues/113)) ([4dca47b](https://github.com/Ranga-Schooling/trustai-marketplace/commit/4dca47b44afc1e64e05cd0afbbd1012a38b8ceb4))
+
 ## [1.20.0](https://github.com/Ranga-Schooling/trustai-marketplace/compare/v1.19.1...v1.20.0) (2026-09-02)
 
 
