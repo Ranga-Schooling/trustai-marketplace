@@ -293,7 +293,6 @@ successful result.
 
 ## Planned coverage (not yet built)
 
-- Frontend component tests
 - Load-testing `/api/analyses`
 - End-to-end tests (Playwright or similar) driving the deployed app
 - Integration tests against Postgres (via compose), not just SQLite —
