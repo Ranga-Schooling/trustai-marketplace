@@ -1,13 +1,11 @@
-# Meeting Minutes
+# Meeting Records
 
-This directory contains approved meeting minutes for the TrustAI Marketplace capstone team.
+**The authoritative meeting records are
+[docs/capstone/meetings/README.md](../capstone/meetings/README.md).**
 
-Each record should include:
+That index links the dated meeting PDFs covering 1 July 2026 through
+3 September 2026, together with attendees, decisions and action items for
+each.
 
-- meeting date and purpose
-- attendees
-- discussion points
-- decisions
-- action items and owners
-- open questions
-- next meeting information
+This directory is retained only so existing links do not break. No meeting
+records are stored here.

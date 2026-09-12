@@ -15,9 +15,9 @@ Start with [the Capstone evidence portal](capstone/README.md). It identifies the
 - [`architecture/`](architecture/) — architecture source material; some plan-era pages require historical labeling in the final report.
 - [`ci-cd/`](ci-cd/) — AWS/ECR/Systems Manager deployment design and operational evidence.
 - [`decisions/`](decisions/) — architecture decision records; older ADRs describe the decision at that time and are not silently rewritten to match later deployment choices. [ADR-003](decisions/ADR-003-aws-ec2-deployment.md) retrospectively records the incremental AWS deployment evolution.
-- [`meeting-minutes/`](meeting-minutes/) — historical meeting-record conventions; the six canonical dated PDFs and their evidence index are under [`capstone/meetings/`](capstone/meetings/).
-- [`requirements/`](requirements/) — product vision, scope, user stories, and acceptance criteria.
-- [`sprint-reports/`](sprint-reports/) — sprint-planning and reporting material where present.
+- [`meeting-minutes/`](meeting-minutes/) — redirect only; the dated meeting PDFs and their evidence index live under [`capstone/meetings/`](capstone/meetings/).
+- [`requirements/`](requirements/) — index of where the product definition lives: vision, scope, stories, acceptance criteria and the frozen output contract.
+- [`sprint-reports/`](sprint-reports/) — redirect only; the sprint history lives under [`capstone/sprints/`](capstone/sprints/).
 - [`testing/`](testing/) — test strategy and engineering evidence; the final Capstone report must reconcile any pre-release statements with `v1.20.0`.
 
 ## Evidence conventions
