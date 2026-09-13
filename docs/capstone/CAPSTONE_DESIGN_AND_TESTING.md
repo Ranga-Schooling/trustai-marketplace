@@ -759,14 +759,8 @@ evidence.
 | What is the final release? | VERIFIED | [`v1.20.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.20.0) |
 | Did automated gates pass? | VERIFIED | [CI run 33678086754](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33678086754) |
 | Did the released stack pass configured deployment health? | VERIFIED, container-local boundary | [Deployment run 33687682316](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33687682316) |
-| Is the public browser critical path verified? | OPEN | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
-| Is Terra active and successful through deployed production? | OPEN in repository evidence | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
-| Is Visual Inspection active and successful through deployed production? | OPEN in repository evidence | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
+| Is the public browser critical path verified? | VERIFIED, 2026-09-04 | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
+| Is Terra active and successful through deployed production? | VERIFIED at the application boundary | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
+| Is Visual Inspection active and successful through deployed production? | VERIFIED at the application boundary | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
 | Are backup and restore operationally verified? | OPEN | [Issue #88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88) |
-| Are meeting, sprint, Trello, presentation, handbook-source, agreement, and grader-access artifacts indexed? | OPEN/PARTIAL | [Capstone portal](README.md), [Rubric matrix](RUBRIC_EVIDENCE_MATRIX.md) |
-
-The Quantic handbook requirements recorded in the rubric matrix are treated as
-authoritative project requirements based on Product Owner review. Exact page
-references and evidence ownership are indexed in
-`HANDBOOK_REQUIREMENTS_INDEX.md`; the authoritative Handbook PDF remains an
-external submission source rather than a repository artifact.
+| Are meeting, sprint, sprint-demo and task-board records indexed? | VERIFIED | [Project documentation index](README.md), [sprint history](sprints/README.md), [meeting records](meetings/README.md) |

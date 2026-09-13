@@ -19,9 +19,23 @@ These sources do not carry the same evidentiary weight:
 - **Unverified** means the expected artifact or independent evidence has not
   been located.
 
-No dedicated TrustAI sprint-end working-software demonstration recording has
-been verified. Meeting records, architectural walkthroughs, release-readiness
-discussions, and presentation rehearsals are not relabeled as sprint demos.
+Two sprint-end working-software demonstration recordings exist, for Sprint 1
+and Sprint 2; they are listed under
+[Sprint demonstration recordings](#sprint-demonstration-recordings). No
+recording exists for Sprint 0 or Sprint 3. Meeting records, architectural
+walkthroughs, release-readiness discussions, and presentation rehearsals are
+not relabeled as sprint demos.
+
+## Sprint demonstration recordings
+
+| Sprint | Recording | Access |
+|---|---|---|
+| Sprint 1 — core architecture and initial implementation | [Sprint 01 Demo.mp4](https://drive.google.com/file/d/1l-uEhqc1cLOjBVVbbR0fyS6La1ja-5MO/view?usp=sharing) | Google Drive, anyone with the link |
+| Sprint 2 — core feature delivery and integration | [Sprint 02 Demo_B.mp4](https://drive.google.com/file/d/1TP8iNuoXNYQwQi9sbmVZjddSIp4J06qx/view?usp=sharing) | Google Drive, anyone with the link |
+| Sprint 0 | None recorded | — |
+| Sprint 3 | None recorded | — |
+
+Both links were confirmed viewable without signing in on 13 September 2026.
 
 The confirmed final roster and official names are recorded in the
 [meeting-evidence name reconciliation](../meetings/README.md#name-reconciliation).
@@ -83,8 +97,9 @@ The repository verifies sustained pull-request delivery, CI, documentation,
 releases, and deployment work. The live [Trello board](https://trello.com/b/wUqCGA2T)
 was reconciled during final submission closeout, but that final state does not
 reconstruct the historical date of every movement or prove that every original
-item met the planned Definition of Done. A complete series of formal reviews/
-retrospectives and dedicated sprint-demo recordings remains unverified.
+item met the planned Definition of Done. Sprint demonstration recordings exist
+for Sprints 1 and 2; a complete series of formal reviews/retrospectives, and
+recordings for Sprints 0 and 3, are not preserved.
 
 ### Other planned operating assumptions
 
@@ -181,8 +196,9 @@ entered `main` on August 8, while URL preview did not merge until August 17.
 This is direct evidence that the planned Sprint 1 scope crossed later windows.
 
 **Ceremony and demo status.** Sprint 1 alignment and the July 22 progress
-stand-up are documented. A separate Sprint 1 review, retrospective, sprint
-report, or dedicated working-software demo recording is not verified.
+stand-up are documented, and the Sprint 1 working-software demonstration was
+recorded: [Sprint 01 Demo.mp4](https://drive.google.com/file/d/1l-uEhqc1cLOjBVVbbR0fyS6La1ja-5MO/view?usp=sharing).
+A separate Sprint 1 review, retrospective, or sprint report is not preserved.
 
 ### Sprint 2 — core feature delivery and integration
 
@@ -223,8 +239,9 @@ implementation kept price plausibility qualitative; it did not add verified
 live market-price research or the workbook's proposed external currency-data
 normalization.
 
-**Ceremony and demo status.** No separate Sprint 2 review, retrospective,
-sprint report, or dedicated end-to-end demo recording is verified.
+**Ceremony and demo status.** The Sprint 2 working-software demonstration was
+recorded: [Sprint 02 Demo_B.mp4](https://drive.google.com/file/d/1TP8iNuoXNYQwQi9sbmVZjddSIp4J06qx/view?usp=sharing).
+No separate Sprint 2 review, retrospective, or sprint report is preserved.
 
 ### Sprint 3 — hardening, recovery, deployment and release readiness
 
@@ -334,7 +351,7 @@ task-board maintenance.
 | Planning assumption | Actual evidence-backed outcome |
 |---|---|
 | Sprint 0 would end July 12 | The July 15 record treats Sprint 0 as closing that day, with setup carryover. |
-| The Handbook and project plan expected a recorded working-software demonstration at each sprint end | No dedicated TrustAI sprint-demo recording is verified. Meeting records are not substitutes, and the Handbook does not identify these recordings as final-submission links. |
+| The Handbook and project plan expected a recorded working-software demonstration at each sprint end | Sprint 1 and Sprint 2 demonstrations were recorded and are linked above. No recording exists for Sprint 0 or Sprint 3. Meeting records are not substitutes. |
 | The project plan expected a retrospective at each sprint end | Sprint 0 review/retrospective is documented; the complete local retrospective series is not verified. Retrospectives are not stated as a Handbook requirement. |
 | Trello would be the continuously updated execution record | Meetings report Trello use and later drift. The live [canonical board](https://trello.com/b/wUqCGA2T) now has a reconciled final state, while explicitly retrospective records and Git/PR dates preserve the fact that closeout reconciliation is not proof of continuous historical maintenance. The supplied workbook remains an all-`Backlog`, owner-empty planning baseline. |
 | Frontend would be live on GitHub Pages from Sprint 0 | ADR-001 recorded Render as an early alternative; August recovery shifted deployment toward AWS; the released pipeline uses ECR, EC2, SSM, Caddy, nginx, and Docker Compose. |
@@ -353,24 +370,7 @@ task-board maintenance.
 | Later sprint recovery/planning | **CONFIRMED** | August 6 documents recovery, overlapping work, deployment direction, and Trello drift. |
 | Complete Sprint 1–3 review series | **UNVERIFIED** | No complete formal review record set is present. |
 | Complete retrospective series | **UNVERIFIED — project convention** | Only the Sprint 0 review/retrospective is directly documented; the Handbook does not mandate retrospectives. |
-| Dedicated sprint-end application demos | **UNVERIFIED** | No authentic TrustAI recording has been verified; unrelated recordings are excluded. |
-| Final Trello state | **PARTIAL** | The [canonical board](https://trello.com/b/wUqCGA2T) was authenticated, inventoried, and reconciled against `v1.20.0`. It is Private and had no grader member during the access audit, so independent grader access remains OPEN. The Handbook does not require public visibility or a named Trello account. |
+| Sprint-end application demos | **PARTIAL** | Sprint 1 and Sprint 2 recordings are linked under [Sprint demonstration recordings](#sprint-demonstration-recordings); Sprints 0 and 3 were not recorded. |
+| Final Trello state | **CONFIRMED** | The [canonical board](https://trello.com/b/wUqCGA2T) was reconciled against `v1.20.0` and is readable without signing in. |
 | Final presentation/submission | **OPEN** | Planning and rehearsal discussions exist; completion evidence does not yet. |
 
-## Remaining evidence needed
-
-1. Make the reconciled Private [Trello board](https://trello.com/b/wUqCGA2T)
-   accessible to the grader and verify access. Membership is the minimally
-   disruptive option, not a specific Handbook-prescribed mechanism.
-2. Locate and verify any authentic TrustAI sprint-end application demo before
-   linking it. If none exists, retain the explicit limitation.
-3. Add any missing Sprint 1–3 review artifact only if it is contemporaneous and
-   authentic. Preserve retrospectives if found for historical completeness,
-   but do not treat them as a Handbook requirement or reconstruct ceremonies.
-4. Record the final presentation and submission only after each occurs and its
-   access can be verified.
-
-This reconstruction intentionally leaves those gaps visible. The available
-planning, meeting, Git, PR, CI, release, and deployment evidence is strong
-enough to explain how TrustAI evolved, but not to claim a cleaner ceremony
-record than the project preserved.

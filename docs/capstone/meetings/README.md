@@ -9,8 +9,8 @@ Together, the records document project selection, planning, sprint alignment,
 architecture and ownership evolution, risks and blockers, integration and
 deployment direction, release readiness, evidence closeout, and presentation
 preparation. They document team meetings and recorded decisions; they are not
-substitutes for dedicated sprint-end application demonstrations. No dedicated
-TrustAI sprint-end application-demo recording is currently verified.
+substitutes for sprint-end application demonstrations, which are recorded
+separately — see [Sprint demonstration recordings](../sprints/README.md#sprint-demonstration-recordings).
 
 Git history, pull requests, reviews, issues, CI, releases, and deployment runs
 remain the authoritative evidence for delivered engineering work. Meeting
@@ -237,13 +237,10 @@ paths as independently verified.
 ## Meeting records versus demonstration recordings
 
 These six PDFs document seven dated team meetings because record 03 covers two
-dates. They are not dedicated sprint-end working-software demonstration
-recordings. No dedicated TrustAI sprint-end application-demo recording has been
-verified for this repository package. Unrelated externally supplied recordings
-are intentionally excluded.
+dates. They are not sprint-end working-software demonstration recordings.
 
-Planned walkthroughs, rehearsals, and demonstrations remain accurately labeled
-as plans unless a separate authentic recording and its contents are verified.
+The Sprint 1 and Sprint 2 demonstrations were recorded separately and are
+linked in the [sprint history](../sprints/README.md#sprint-demonstration-recordings).
 
 ## Integrity and handling
 

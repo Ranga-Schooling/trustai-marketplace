@@ -76,13 +76,3 @@ production environment or provider transport. The provider-neutral evaluation
 work remains preserved separately in PR #103 and was not merged wholesale into
 production.
 
-## Evidence still needed to complete the chronology
-
-1. Independent grader access to the reconciled Private [Trello board](https://trello.com/b/wUqCGA2T); final disposition is now visible to authorized members, but the closeout state does not reconstruct historical movement dates.
-2. Any authentic TrustAI sprint-end working-software demonstration recording,
-   if one is located; no dedicated recording is currently verified.
-3. Any authentic later-sprint review or retrospective records. The Handbook
-   requires an end-of-sprint recorded software demonstration for the Product
-   Owner's review, but does not state that retrospectives are mandatory; only
-   the Sprint 0 review/retrospective is directly documented.
-4. The final presentation and submission timestamp after they occur.
