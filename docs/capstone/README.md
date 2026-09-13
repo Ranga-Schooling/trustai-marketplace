@@ -1,12 +1,8 @@
-# TrustAI Marketplace Capstone Evidence Portal
+# TrustAI Marketplace Project Documentation
 
-This directory is the grader-facing evidence index for the TrustAI Marketplace
-Quantic MSSE Capstone. It points to the authoritative implementation and
-historical records without treating plans as proof that work was delivered.
-The [Handbook requirements index](HANDBOOK_REQUIREMENTS_INDEX.md) identifies the
-audited assignment source and exact PDF pages; the
-[requirements/evidence matrix](RUBRIC_EVIDENCE_MATRIX.md) is the authoritative
-submission-control view derived from it.
+This directory indexes the design, testing, delivery and process records for
+TrustAI Marketplace, and points to the implementation and historical records
+that support them.
 
 ## Project at a glance
 
@@ -29,13 +25,8 @@ hidden condition, or a verified current market price.
 | Immutable release commit | **VERIFIED** — `5ebc757ba66ff647944602245c18bedf6631680e` | [Commit](https://github.com/Ranga-Schooling/trustai-marketplace/commit/5ebc757ba66ff647944602245c18bedf6631680e) |
 | Source repository | **VERIFIED PUBLIC** | [Ranga-Schooling/trustai-marketplace](https://github.com/Ranga-Schooling/trustai-marketplace) |
 | Documented production URL | **VERIFIED** — logged-out HTTPS/browser reachability checked on 2026-09-04 | [https://trustai.mandalawi.ca](https://trustai.mandalawi.ca) |
-| Agile task board | **PARTIAL** — the [canonical board](https://trello.com/b/wUqCGA2T) and final closeout state are verified; the board is Private and no grader member was present during the access audit | Make the board link accessible to the grader and verify access before submission; the Handbook does not prescribe public visibility or a named Trello account |
-| Final presentation | **OPEN** — the [runbook](PRESENTATION_RUNBOOK.md) is ready with human confirmations; recording/hosting/submission have not occurred | Add the reviewed recording link only after it exists |
-
-The repository is public, but the Handbook separately requires sharing it with
-the named `quantic-grader` account (Handbook PDF pp. 4 and 8). That access step
-is still OPEN; the current collaborator lookup does not find the account. The
-Handbook does not state the required permission level or retention period.
+| Agile task board | **VERIFIED** — readable without signing in | [TrustAI Marketplace Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) |
+| Sprint demonstrations | **VERIFIED** — Sprint 1 and Sprint 2 recordings | [Sprint demonstration recordings](sprints/README.md#sprint-demonstration-recordings) |
 
 ## Delivered product evidence
 
@@ -62,7 +53,6 @@ The implemented story-level traceability is in the
 
 | Area | Primary evidence | What it establishes |
 |---|---|---|
-| Authoritative assignment source | [Handbook requirements index](HANDBOOK_REQUIREMENTS_INDEX.md) | Source identity, page convention, required deliverables, process rules, presentation/submission requirements, and maximum-score criteria |
 | Requirements and delivery | [Backlog](../BACKLOG.md) | User stories, acceptance criteria, implementation pointers, and deliberate deferrals |
 | Project evolution | [Project timeline](PROJECT_TIMELINE.md) | Chronological separation of planning, implementation, hardening, and release |
 | Architecture and decisions | [Design notes](../DESIGN_NOTES.md), [architecture artifacts](../architecture/), [ADRs](../decisions/) | Architectural boundaries, decisions, alternatives, and historical context |
@@ -73,9 +63,8 @@ The implemented story-level traceability is in the
 | Final presentation plan | [Presentation runbook](PRESENTATION_RUNBOOK.md) | Five-person roles, exact 17:30 timing, deployed demo sequence, fallbacks, rehearsal, Handbook controls, and post-recording QA |
 | AI/model decision | [D-21](../DESIGN_NOTES.md), [research PR #103](https://github.com/Ranga-Schooling/trustai-marketplace/pull/103) | Why Terra was selected for the Capstone production workload; research history remains separate from production |
 | Team meetings | [Meeting index](meetings/README.md) | Six authoritative PDFs covering seven dated meetings, with source-grounded chronology and evidence boundaries |
-| Sprint/process evidence | [Sprint history](sprints/README.md), [Git workflow](../GIT_WORKFLOW.md) | July planning baseline, actual Git/PR/release progression, carryover, sprint drift, and missing ceremony/demo boundaries |
-| Agile task board | [Canonical Trello board](https://trello.com/b/wUqCGA2T) | Active/Done/deferred/cancelled work reconciled against `v1.20.0` during submission closeout; historical drift and late reconciliation remain explicit |
-| Rubric closure | [Authoritative requirements/evidence matrix](RUBRIC_EVIDENCE_MATRIX.md) | Handbook-page-grounded PASS/PARTIAL/OPEN status and remaining submission actions |
+| Sprint/process evidence | [Sprint history](sprints/README.md), [Git workflow](../GIT_WORKFLOW.md) | July planning baseline, actual Git/PR/release progression, carryover, and the Sprint 1 and Sprint 2 demonstration recordings |
+| Agile task board | [Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) | Done, active, deferred and cancelled work reconciled against `v1.20.0` |
 
 The backlog, design notes, architecture artifacts, ADRs, and testing guide are
 chronological engineering records and contain some planning or pre-release
@@ -138,27 +127,6 @@ live application-level text, history, and Visual outcomes in the
   [issue #88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88).
 - The non-production Gemini default is tracked for replacement under
   [issue #97](https://github.com/Ranga-Schooling/trustai-marketplace/issues/97).
-
-## Final submission checklist
-
-- [x] Public GitHub repository identified.
-- [x] Final release and immutable commit identified.
-- [x] Automated CI and deployment-health evidence linked.
-- [x] Authoritative Handbook, requirements, architecture, testing, process, and timeline indexes created.
-- [x] Verify the production URL from a logged-out browser and record the result.
-- [x] Import and index the six authoritative meeting records without changing their historical content.
-- [x] Reconcile the external Project Management Plan and Sprint Backlog planning baselines against actual Git/PR/release history without importing them.
-- [ ] Locate and verify any authentic TrustAI sprint-end working-software demonstration recordings; the Handbook requires one at every sprint end for the Product Owner's sprint review, but does not state that these recordings are final-submission links.
-- [x] Reconcile the final Trello state against `v1.20.0` and add the canonical board URL.
-- [ ] Make the Private Trello board accessible to the grader and independently verify access. Membership is the minimally disruptive option, but the Handbook does not prescribe a specific Trello account or public visibility.
-- [x] Complete the final-release [design and testing report](CAPSTONE_DESIGN_AND_TESTING.md).
-- [x] Record a secret-free final Terra-labelled text and Visual application-level E2E validation with its evidence boundaries.
-- [x] Author the final presentation runbook with exact timing, five-person participation, demo fallbacks, rehearsal, and Handbook QA controls.
-- [ ] Resolve or explicitly accept the production-backup limitation in issue #88.
-- [ ] Share the repository with `quantic-grader` and verify the account's access.
-- [ ] Locate and verify the final Group Project Agreement page completed and signed by every member.
-- [ ] Close the runbook's recording-role/demo-state confirmations, verify the Agreement and signatures, rehearse, then record one 15–20 minute all-member presentation, complete the required government-ID checks, host the compliant video on Google Drive with link-view access, and submit its link.
-- [ ] Confirm the designated group submitter and complete the final link/access audit.
 
 ## Evidence-handling rule
 
