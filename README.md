@@ -1,86 +1,121 @@
 # TrustAI Marketplace
 
-TrustAI Marketplace is an AI-assisted decision-support application for assessing online marketplace listings. It combines structured text analysis, deterministic risk scoring, saved history and recovery, and optional photo inspection whose photos and findings are not persisted by the TrustAI application.
+AI-assisted decision support for online marketplace buyers. Paste a listing or its URL and TrustAI returns a structured risk assessment — named scam indicators, a price-plausibility judgement, a deterministic 0–100 Trust score, a Buy / Caution / Avoid recommendation, and questions to ask the seller before paying.
 
-> TrustAI does not determine whether a seller or listing is legitimate, provide financial advice, or guarantee a safe transaction. Its output is advisory and should be combined with independent checks.
+[![CI](https://github.com/Ranga-Schooling/trustai-marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/Ranga-Schooling/trustai-marketplace/actions/workflows/ci.yml)
+[![Deploy](https://github.com/Ranga-Schooling/trustai-marketplace/actions/workflows/deploy.yml/badge.svg)](https://github.com/Ranga-Schooling/trustai-marketplace/actions/workflows/deploy.yml)
+[![Release](https://img.shields.io/github/v/release/Ranga-Schooling/trustai-marketplace)](https://github.com/Ranga-Schooling/trustai-marketplace/releases)
 
-## Final Capstone release
-
-| Item | Evidence |
+| | |
 |---|---|
-| Release | `v1.20.0` |
-| Immutable source | `5ebc757ba66ff647944602245c18bedf6631680e` |
-| Repository | [Ranga-Schooling/trustai-marketplace](https://github.com/Ranga-Schooling/trustai-marketplace) |
-| Documented production URL | [https://trustai.mandalawi.ca](https://trustai.mandalawi.ca) |
-| Agile task board | [TrustAI Marketplace Trello board](https://trello.com/b/wUqCGA2T) — Private; grader access must be established before submission |
-| Capstone evidence portal | [docs/capstone/README.md](docs/capstone/README.md) |
+| **Live application** | **https://trustai.mandalawi.ca** |
+| **Agile task board** | [Trello — TrustAI Marketplace Sprint Board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) |
+| **Design and testing report** | [docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md](docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md) |
+| **Sprint history and demo recordings** | [docs/capstone/sprints/README.md](docs/capstone/sprints/README.md) |
+| **Team meeting records** | [docs/capstone/meetings/README.md](docs/capstone/meetings/README.md) |
+| **Full documentation** | [docs/README.md](docs/README.md) |
 
-The release's automated CI and deployment health gates passed. A separate September 4 controlled browser check verified logged-out HTTPS reachability and the application-level Terra-labelled text, History, and Visual paths within the evidence boundaries recorded in [the production-validation record](docs/capstone/FINAL_PRODUCTION_VALIDATION.md).
+Built by a five-person team as the Quantic MSSE capstone project.
 
-## Delivered product
+---
 
-The `v1.20.0` codebase implements:
+## Features
 
-- registration, login, profile update, account deletion, JWT sessions, and per-user ownership controls;
-- manual listing entry and server-side URL preview with SSRF guardrails and user confirmation;
-- structured AI text analysis with a summary, categorical risk, price-plausibility guidance, named indicators, seller questions, and a Buy/Caution/Avoid recommendation;
-- an application-computed 0–100 Trust score that remains consistent with the categorical risk result;
-- saved per-user history, retained failed listings, and isolated retry/recovery behavior;
-- responsive desktop/mobile layouts plus light, dark, and system theme preferences;
-- optional Visual Inspection for one to three JPEG, PNG, or WebP uploads, protected by explicit consent, strict image validation, capability gating, and no TrustAI application persistence of photos or findings; and
-- an administrative aggregate-analytics API protected by role-based access.
+**Listing analysis**
+- Submit a listing by pasting its details, or paste a URL and have the title, price, currency, description and seller details extracted and pre-filled for review
+- Structured AI analysis: plain-English summary, categorical risk level, named indicators with severities, price plausibility, seller questions, and a recommendation
+- A 0–100 Trust score computed server-side by `compute_risk_score` from the validated categorical result — the model never produces a number
+- Every provider response passes strict JSON parsing, schema validation, cross-field consistency checks and an evidence policy before it is stored
 
-Price plausibility is categorical and based on the submitted listing context. TrustAI does not yet perform live market-price research or claim a precise market valuation.
+**Visual Inspection**
+- Optionally add one to three JPEG, PNG or WebP photos to a completed analysis for photo-grounded observations
+- Explicit consent before upload; images are validated, normalised and stripped of metadata; photos and findings are never stored
 
-## AI behavior and safety boundaries
+**Accounts and history**
+- Registration, sign-in, profile editing and account deletion
+- Per-user analysis history, with failed analyses retained and retryable individually
+- Admin-only aggregate analytics behind role-based access
 
-Text analysis is provider-independent at the application boundary. The implemented OpenAI adapter targets GPT-5.6 Terra through the Responses API and uses prompt version `v4`, strict structured output, deterministic cross-field validation, evidence-policy checks, and transient-only retry classification. Source code establishes that implementation and default; it does not prove the contents of private production configuration. CI uses the deterministic mock provider, and provider tests require no provider credentials and make no live provider requests.
+**Experience**
+- Responsive desktop and mobile layouts
+- Light, dark and system themes
 
-Visual Inspection is configured independently from text analysis. Availability requires the supported `openai` provider plus non-empty configured key and model values. The authenticated capabilities endpoint does not validate the credential or provider-side model usability; those can be established only by an attempted provider request. When the local availability predicate fails, the endpoint reports only `visual_inspection_available: false`, and the frontend hides the feature. Provider names, models, and keys are not exposed through that response.
-
-Visual results are a separate advisory channel: they do not change the text analysis, Trust score, categorical risk, or recommendation. Uploaded photos and visual findings are not persisted by the TrustAI application; provider-side handling is governed by the provider's applicable data policy.
+---
 
 ## Architecture
 
 ```text
-Browser
-  │ HTTPS
-  ▼
-Caddy reverse proxy
-  ▼
-nginx / React + JavaScript (Vite)
-  │ /api
-  ▼
-FastAPI / Pydantic / SQLAlchemy / Alembic
-  ├── PostgreSQL
-  ├── configured text-analysis provider
-  └── independently configured Visual Inspection provider
+Browser ── HTTPS ──▶ Caddy (TLS, Let's Encrypt)
+                       │
+                       ▼
+                     nginx ── serves React build
+                       │ /api
+                       ▼
+                     FastAPI ── Pydantic ── SQLAlchemy / Alembic ──▶ PostgreSQL 16
+                       │
+                       ├──▶ AIProvider  (mock · Groq · OpenAI · Gemini)
+                       └──▶ Visual Inspection provider
 ```
 
-Production images are built by GitHub Actions, stored in Amazon ECR, and activated on EC2 through AWS Systems Manager. Deployments use immutable commit-SHA image tags and gate success on the Caddy → nginx → backend health path. PostgreSQL data is stored in a named Docker volume. The scheduled S3 backup workflow exists, but its latest observed run failed because `BACKUP_S3_BUCKET` was not configured; backup/restore readiness remains open in [issue #88](https://github.com/Ranga-Schooling/trustai-marketplace/issues/88).
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, JavaScript (JSX), Vite, Vitest + React Testing Library |
+| Backend | Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic |
+| Database | PostgreSQL 16 (SQLite for tests) |
+| AI | Provider-agnostic `AIProvider` protocol; production text analysis on OpenAI GPT-5.6 Terra via the Responses API, prompt `v4` |
+| Edge | Caddy (automatic HTTPS), nginx |
+| Infrastructure | Docker Compose on AWS EC2, images in Amazon ECR, deployment via AWS Systems Manager |
+| CI/CD | GitHub Actions, semantic-release, gitStream |
 
-Detailed engineering records are in [docs/DESIGN_NOTES.md](docs/DESIGN_NOTES.md), [docs/decisions](docs/decisions), [docs/ci-cd](docs/ci-cd), and [deploy/README.md](deploy/README.md).
+### Key design decisions
 
-## Verified automated quality gates
+| Decision | Implementation | Why |
+|---|---|---|
+| Risk is categorical, never model-generated as a number | `AIAnalysisResult` has no numeric field; pinned by `test_contract.py` (D-05) | LLM-produced scores are uncalibrated and drift between runs |
+| Deterministic Trust score | `compute_risk_score` in `services/scoring.py`, disjoint tier bands 0–33 / 34–66 / 67–100 (D-09) | The number can never contradict the risk level it derives from |
+| Provider abstraction | `AIProvider` protocol, selected by `AI_PROVIDER` | Swap providers without touching the API contract; tests run with no network or API key |
+| Fail-closed output validation | `services/ai_response_validation.py` | Malformed model output is rejected rather than repaired or guessed at |
+| Ownership on every query | `Depends(get_current_user)` plus `.filter(Listing.user_id == user.id)` | One user can never read another user's analysis by guessing an ID |
+| Persist before analyse | Listing committed before the provider call | A provider outage never loses user input |
+| SSRF-guarded URL preview | `services/listing_fetch.py` resolves and validates every redirect hop, then pins the connection to that IP | Stops a pasted URL reaching internal infrastructure |
+| Bounded public API | `CORS_ALLOW_ORIGINS` allow-list and a rolling 24-hour per-user analysis quota (D-22) | Protects provider spend on a publicly reachable deployment |
+| Keyless deployment | GitHub Actions → ECR → Systems Manager Run Command | No inbound SSH and no SSH keys stored in GitHub |
 
-The authoritative CI run for release `v1.20.0` is [GitHub Actions run 33678086754](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33678086754):
+Full rationale: [design and testing report](docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md) · [decision log](docs/DESIGN_NOTES.md) · [ADRs](docs/decisions/)
 
-- contract gate: 70 passed, 379 deselected, 8 warnings;
-- full backend: 449 passed, 140 warnings;
-- backend coverage: 96.49%, above the required 85% gate;
-- frontend: 76 passed across 9 test files; and
-- frontend production build: passed, 39 modules transformed.
+---
 
-The latest observed deployment run for this SHA, [run 33687682316](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33687682316), passed image-identity and service-health checks. These results do not, by themselves, prove a complete logged-out browser journey or a real-provider transaction.
+## Quality
 
-## Local development
+Release [`v1.21.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.21.0) — [CI run 34706000817](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/34706000817):
+
+| Suite | Result |
+|---|---|
+| Backend (pytest) | **457 passed** |
+| Backend coverage | **96.52%** — enforced floor `--cov-fail-under=85` |
+| Contract tests | **70 passed** |
+| Frontend (Vitest) | **76 passed** across 9 files |
+| Frontend build | Passed |
+
+Tests are layered as unit, acceptance, integration and contract suites. CI runs the application against a deterministic mock provider, and provider adapters are tested against mocked transports, so no test needs network access or a real API key. See the [testing guide](docs/testing/README.md).
+
+---
+
+## Getting started
 
 ### Prerequisites
 
 - Python 3.12
-- Node.js 22 for CI and local frontend development; the production frontend
-  image currently builds its static assets with Node.js 18
-- Docker with the Compose plugin (for the full stack)
+- Node.js 22
+- Docker with the Compose plugin
+
+### Run the full stack
+
+```bash
+docker compose up --build
+```
+
+Open http://localhost:5173. With no configuration the backend uses the deterministic mock AI provider, so the app works end to end without an API key.
 
 ### Backend
 
@@ -91,8 +126,6 @@ python -m venv .venv
 .venv/bin/python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=85
 ```
 
-The application defaults to local SQLite and the deterministic mock AI provider when deployment-specific settings are absent. Copy `backend/.env.example` to `backend/.env` only when local environment configuration is needed. Never commit credentials.
-
 ### Frontend
 
 ```bash
@@ -102,59 +135,67 @@ npm run test:ci
 npm run build
 ```
 
-### Full local stack
+### Configuration
 
-```bash
-docker compose up --build
-```
+Copy `backend/.env.example` to `backend/.env` to override defaults. Never commit `.env`.
 
-Then open `http://localhost:5173`. The root Compose stack loads `backend/.env` if present and supplies its own local PostgreSQL connection.
-
-## Configuration overview
-
-The primary runtime settings are environment-driven:
-
-| Setting | Purpose | Safe default |
+| Variable | Purpose | Default |
 |---|---|---|
-| `DATABASE_URL` | Database connection | Local SQLite outside Compose |
-| `JWT_SECRET` | JWT signing secret | Development placeholder; must be replaced in production |
-| `AI_PROVIDER` | `mock`, `groq`, `gpt`, or `gemini` text provider | `mock` |
-| `OPENAI_API_KEY` | OpenAI credential for explicitly selected OpenAI-backed features | Empty |
-| `OPENAI_MODEL` | OpenAI text model | `gpt-5.6-terra` |
-| `VISUAL_INSPECTION_PROVIDER` | Independent visual provider control | `disabled` |
-| `VISUAL_INSPECTION_MODEL` | Required explicit visual model when enabled | Empty in application/production defaults |
+| `DATABASE_URL` | Database connection | Local SQLite |
+| `JWT_SECRET` | JWT signing secret | Development placeholder |
+| `AI_PROVIDER` | Text provider: `mock`, `groq`, `gpt`, `gemini` | `mock` |
+| `OPENAI_API_KEY` / `OPENAI_MODEL` | OpenAI credential and text model | — / `gpt-5.6-terra` |
+| `VISUAL_INSPECTION_PROVIDER` / `VISUAL_INSPECTION_MODEL` | Visual Inspection provider and model | `disabled` / — |
+| `CORS_ALLOW_ORIGINS` | Comma-separated allowed browser origins | Local dev origins |
+| `MAX_ANALYSES_PER_DAY` | Rolling 24-hour analysis quota per user | `50` |
 
-Production secrets belong only in the private host environment described by [deploy/README.md](deploy/README.md). `IMAGE_TAG` is supplied by the deployment workflow and must not be stored in the host `.env`.
+---
 
-## Repository guide
+## Deployment
+
+Every merge to `main` runs [`deploy.yml`](.github/workflows/deploy.yml):
+
+1. Build backend and frontend images and push them to Amazon ECR, tagged with the commit SHA
+2. Send the production Compose and Caddy configuration to the EC2 host through AWS Systems Manager
+3. Validate the configuration, pull the pinned images and start the stack
+4. Gate success on a health check that traverses Caddy → nginx → FastAPI
+
+Releases are versioned automatically by [semantic-release](docs/RELEASE_STRATEGY.md) from conventional commits. Runbook: [deploy/README.md](deploy/README.md) · pipeline design: [docs/ci-cd/zero-trust-pipeline.md](docs/ci-cd/zero-trust-pipeline.md).
+
+---
+
+## Project structure
 
 ```text
-backend/                 FastAPI application, migrations, scripts, and tests
-frontend/                React/Vite application, nginx configuration, and tests
-deploy/                  Production Compose, Caddy, and EC2/ECR runbook
-docs/                    Requirements, decisions, architecture, testing, and Capstone evidence
-.github/workflows/       CI, release, deployment, and backup automation
-docker-compose.yml       Local development stack
+backend/               FastAPI application, Alembic migrations, tests
+frontend/              React application, nginx config, tests
+deploy/                Production Compose file, Caddyfile, deployment runbook
+docs/                  Design and testing report, decisions, sprints, meetings
+.github/workflows/     CI, release, deploy and backup automation
+docker-compose.yml     Local development stack
 ```
 
-Useful entry points:
+---
 
-- [Capstone evidence portal](docs/capstone/README.md)
-- [Canonical Trello board](https://trello.com/b/wUqCGA2T) — final state reconciled during submission closeout; grader access remains OPEN
-- [User-story backlog and implementation traceability](docs/BACKLOG.md)
-- [Design decisions](docs/DESIGN_NOTES.md)
-- [Testing guide](docs/testing/README.md)
-- [Deployment runbook](deploy/README.md)
-- [Git and review workflow](docs/GIT_WORKFLOW.md)
+## How we worked
 
-## Known limitations and deferred work
+- **Scrum** across Sprint 0–3 and a final release phase, planned and tracked on the [Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board)
+- **Sprint demonstrations** recorded for Sprint 1 and Sprint 2 — [linked in the sprint history](docs/capstone/sprints/README.md#sprint-demonstration-recordings)
+- **Meeting records** from kickoff on 1 July 2026 through 3 September 2026 — [indexed here](docs/capstone/meetings/README.md)
+- **Every change through a reviewed pull request** — `main` is protected by a ruleset requiring one approving review, passing checks and linear history; see [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) and [ADR-002](docs/decisions/ADR-002-branch-protection-ruleset.md)
+- **Decisions recorded as they were made** — numbered D-01 onward in the [decision log](docs/DESIGN_NOTES.md), with platform-level choices as [ADRs](docs/decisions/)
 
-- The September 4 browser record verifies the deployed application boundary; it does not independently attest private provider transport details or the exact Visual model.
-- Scheduled database backups are not operational until the S3 bucket and associated IAM/lifecycle configuration are completed and restore-tested.
-- CORS currently permits all origins and should be restricted for a hardened production service.
-- Password change and admin-controlled runtime provider switching remain deferred.
-- Visual Inspection is user-initiated, photo-limited, and advisory. Photos and findings are not persisted by the TrustAI application; provider-side handling is governed by the provider's applicable data policy. It does not inspect marketplace media automatically.
-- The repository contains historical plan-era documents that do not all describe the final release. The [Capstone evidence portal](docs/capstone/README.md) identifies the authoritative final evidence and remaining access/validation work.
+### Team
+
+| Name | Role |
+|---|---|
+| Ahmed Al-Mandalawi | Product Owner · AI Analysis Lead |
+| Mulima Chibuye | Project Manager · Scrum Master |
+| Rangarirai Revivalist Nyamadzawo | Backend Lead — Auth, Listings & Data |
+| Adrin Kudakwashe Muchatibaya | Frontend Lead |
+| Samar Salah Elghandour | QA & DevOps Lead |
+
+---
 
 ## License
 
