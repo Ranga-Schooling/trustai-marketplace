@@ -24,8 +24,8 @@ engineering decisions, and stays inside the verified evidence boundary.
 
 The source hierarchy for this runbook is:
 
-1. the [Handbook requirements index](HANDBOOK_REQUIREMENTS_INDEX.md) for
-   presentation and submission controls;
+1. the [Handbook controls](#handbook-controls) section below for presentation
+   and submission requirements;
 2. release `v1.20.0` source and the
    [final production validation](FINAL_PRODUCTION_VALIDATION.md) for current
    product behavior;
@@ -795,12 +795,11 @@ These are real external gaps, not documentation defects:
    timekeeper, fallback controller, QA owner, and one Quantic submitter.
 4. **Demo state:** confirm saved Case B/C, sanitized fallbacks, and approved PV1
    are ready immediately before recording.
-5. **Dedicated sprint demos:** no authentic complete sprint-end demonstration
-   set is verified. Do not reconstruct or relabel one for the presentation.
-6. **GitHub grader sharing:** independently verify the Handbook-required
-   `quantic-grader` repository access before submission.
-7. **Trello grader access:** the canonical board is Private; provide and verify
-   the required grader access without rewriting historical board activity.
+5. **Sprint demos:** Sprint 1 and Sprint 2 recordings exist and are linked in
+   the [sprint history](sprints/README.md#sprint-demonstration-recordings);
+   Sprints 0 and 3 were not recorded. Do not reconstruct or relabel one.
+6. **GitHub sharing:** `quantic-grader` is a repository collaborator — done.
+7. **Trello access:** the board is readable without signing in — done.
 8. **Backup limitation:** production backup/restore remains open under issue
    #88. Accept it explicitly as a disclosed limitation or close it with real
    evidence; do not imply it is complete.
