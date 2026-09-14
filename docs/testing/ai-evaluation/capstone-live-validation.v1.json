@@ -1,0 +1,133 @@
+{
+  "artifact_id": "capstone_live_validation_v1",
+  "artifact_version": "v1",
+  "status": "ready_awaiting_explicit_user_authorization",
+  "purpose": "Bound one real-provider Capstone integration observation without changing or satisfying the strict research pilot.",
+  "execution_class": "capstone_live_validation",
+  "provider_neutral_frozen_primitives_reused": true,
+  "source_contracts": {
+    "experiment": "experiment.v1.json@v1",
+    "pilot_fixtures": "pilot-fixtures.v1.json@v1",
+    "prompt_templates": "prompt-templates.v1.json@v1",
+    "output_schemas": "output-schemas.v1.json@v1",
+    "normalization_parser": "normalization-parser.v1.json@v1",
+    "provider_role_mappings": "provider-role-mappings.v1.json@v1",
+    "provider_adapters": "provider-adapters.v1.json@v1",
+    "request_configurations": "request-configurations.v1.json@v1",
+    "pricing_snapshot": "pricing-snapshot.v1.json@v1"
+  },
+  "strict_separation": {
+    "strict_pilot_authorization_api_allowed": false,
+    "strict_pilot_ledger_interaction_allowed": false,
+    "strict_pilot_record_creation_allowed": false,
+    "scored_record_creation_allowed": false,
+    "pending_cost_reconciliation_mutation_allowed": false,
+    "strict_execution_state_mutation_allowed": false,
+    "winner_state_mutation_allowed": false,
+    "result_promotion_into_pilot_or_scored_results_allowed": false
+  },
+  "execution_policy": {
+    "maximum_provider_calls_per_authorization": 1,
+    "maximum_lifetime_provider_calls": 1,
+    "automatic_retry_count": 0,
+    "stop_after_every_provider_call": true,
+    "automatic_next_case_allowed": false,
+    "explicit_live_confirmation_flag": "--confirm-live",
+    "default_state": "blocked_awaiting_explicit_user_authorization",
+    "live_state_directory": ".capstone-live-validation/capstone-live-validation-v1",
+    "reservation_marker_must_precede_provider_invocation": true,
+    "existing_reservation_marker_blocks_execution": true
+  },
+  "spend_guard": {
+    "currency": "USD",
+    "arithmetic": "exact_decimal",
+    "maximum_fraction_digits": 8,
+    "total_validation_spend_ceiling_usd": "1.00000000",
+    "strict_pilot_budget_is_not_a_source_or_sink": true,
+    "unknown_provider_billing_must_not_be_reconciled_to_zero": true,
+    "conservative_reservation_remains_the_capstone_exposure_bound": true
+  },
+  "credential_policy": {
+    "resolution_timing": "provider_specific_immediately_before_transport",
+    "environment_variable_by_provider": {
+      "OpenAI": "OPENAI_API_KEY",
+      "Google Gemini": "GEMINI_API_KEY",
+      "Groq": "GROQ_API_KEY"
+    },
+    "value_printing_allowed": false,
+    "value_hashing_allowed": false,
+    "value_persistence_allowed": false,
+    "value_logging_allowed": false
+  },
+  "case_order": [
+    "capval-openai-terra-pt1-v1"
+  ],
+  "cases": [
+    {
+      "validation_case_id": "capval-openai-terra-pt1-v1",
+      "source_call_id": "call-0003",
+      "candidate_id": "openai_unified_balanced_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-terra",
+      "api_family": "Responses API",
+      "fixture_id": "PT1",
+      "workload_stage": "text_analysis",
+      "request_configuration_id": "openai_terra_text_pilot_v1",
+      "request_configuration_hash": "0eca58d264b7af9e48af182f8d3ce8a0a417db8201328b70fdab77b6a4bae893",
+      "request_hash": "97f8752bb33994a00018a15ff62d79419069397b223cc5f60770def973ebc266",
+      "request_body_bytes": 6249,
+      "schema_id": "text_output_schema_v1",
+      "schema_hash": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d",
+      "role_mapping_id": "openai_responses_terra_v1",
+      "adapter_id": "openai_responses_adapter_v1",
+      "observed_input_tokens": 1018,
+      "conservative_reservation_usd": "0.05169700",
+      "remaining_after_reservation_usd": "0.94830300",
+      "live_eligible": true
+    }
+  ],
+  "sequence_policy": {
+    "first_case": "capval-openai-terra-pt1-v1",
+    "pt2_may_be_considered_only_after_pt1_success": true,
+    "additional_case_requires_reviewed_contract_version": true,
+    "search_validation_deferred": true,
+    "visual_validation_deferred_until_text_stable": true,
+    "groq_text_deferred_reason": "The supplied 8000 TPM limit cannot yet be defended against the frozen maximum request without inventing tokenizer or provider-accounting semantics.",
+    "openai_sol_deferred_reason": "No exact frozen input-token count currently supports a sub-USD-1 conservative reservation for this request.",
+    "gemini_deferred_reason": "The minimum first observation is the already token-counted Terra PT1 request; Gemini remains a later bounded free-tier observation if separately frozen and authorized."
+  },
+  "authorization_policy": {
+    "hash_bound": true,
+    "required_false_authorities": [
+      "strict_pilot_execution_authorized",
+      "scored_execution_authorized",
+      "winner_selection_authorized",
+      "production_deployment_authorized"
+    ],
+    "credential_readiness_value": "privately_confirmed",
+    "provider_control_confirmation_value": "confirmed",
+    "timestamp_format": "canonical_utc_seconds"
+  },
+  "record_policy": {
+    "record_type": "capstone_live_validation_result",
+    "raw_provider_response_persisted": false,
+    "semantic_provider_output_persisted": false,
+    "restricted_provider_prose_persisted": false,
+    "provider_request_id_ordinary_projection": null,
+    "hashes_and_safe_status_only": true,
+    "result_is_pilot_record": false,
+    "result_is_scored_record": false
+  },
+  "execution_boundary": {
+    "provider_calls_allowed_by_artifact": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "winner_selected": false,
+    "production_deployment_authorized": false
+  },
+  "specification_identity": {
+    "semantic_hash_algorithm": "sha256_canonical_json_with_semantic_hash_null",
+    "semantic_hash": "389c8e4c693fc9bcff353f9704c104f8ec64ba98de05c3a6d9c0cd7e6eec7564"
+  }
+}

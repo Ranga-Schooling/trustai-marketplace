@@ -1,0 +1,154 @@
+{
+  "artifact_id": "retry_policy_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Freeze the provider-neutral pilot attempt budget, per-attempt transport deadline, closed safe retry reasons, and deterministic run-level retry decision without authorizing provider execution.",
+  "provider_neutral": true,
+  "governance_decision": {
+    "decision_date": "2026-08-31",
+    "maximum_physical_attempts_per_run": 2,
+    "timeout_seconds_per_physical_attempt": 120,
+    "retry_scope": "transient_infrastructure_or_provider_availability_only",
+    "never_retry_scope": "semantic_security_contract_configuration_or_preflight_failures",
+    "retry_reason_owner": "application",
+    "retry_reason_vocabulary_closed": true
+  },
+  "retry_series_identity": {
+    "source": "result-record.v1.json#/attempt_key",
+    "fields_in_order": [
+      "evaluation_id",
+      "fixture_id",
+      "candidate_id",
+      "provider",
+      "model",
+      "component_topology",
+      "workload",
+      "run_number"
+    ],
+    "attempt_number_excluded_from_series_identity": true,
+    "different_workload_or_component_series_have_independent_attempt_budgets": true
+  },
+  "attempt_budget": {
+    "maximum_physical_attempts_per_run": 2,
+    "maximum_retries_per_run": 1,
+    "attempt_numbers": [1, 2],
+    "first_attempt_number": 1,
+    "retry_attempt_number": 2,
+    "every_started_physical_attempt_consumes_one_attempt": true,
+    "preflight_failure_creates_attempt": false,
+    "preflight_failure_consumes_attempt": false,
+    "third_attempt_forbidden": true
+  },
+  "per_attempt_timeout": {
+    "timeout_seconds": 120,
+    "clock": "monotonic_elapsed_time",
+    "deadline_rule": "expired_when_elapsed_seconds_greater_than_or_equal_to_120",
+    "scope_start": "immediately_before_the_physical_provider_transport_operation_begins",
+    "scope_end": "when_the_complete_provider_transport_surface_for_that_attempt_is_received",
+    "local_post_transport_normalization_included": false,
+    "timeout_terminal_outcome": "provider_timeout",
+    "timeout_retry_reason": "provider_timeout",
+    "provider_specific_longer_timeout_allowed": false,
+    "provider_specific_shorter_timeout_allowed": false
+  },
+  "retryable_failures": {
+    "attempt_outcomes_in_order": [
+      "provider_connection_error",
+      "provider_timeout",
+      "http_provider_error"
+    ],
+    "safe_retry_reasons_in_order": [
+      "transient_provider_connection_error",
+      "provider_attempt_timeout",
+      "provider_rate_limited",
+      "provider_service_unavailable"
+    ],
+    "allowed_retry_reasons_by_attempt_outcome": {
+      "provider_connection_error": [
+        "transient_provider_connection_error"
+      ],
+      "provider_timeout": [
+        "provider_attempt_timeout"
+      ],
+      "http_provider_error": [
+        "provider_rate_limited",
+        "provider_service_unavailable"
+      ]
+    },
+    "reason_values_are_application_owned": true,
+    "provider_error_prose_in_reason_forbidden": true,
+    "explicit_application_classification_required": true,
+    "attempt_outcome_alone_authorizes_retry": false,
+    "future_provider_adapters_must_freeze_documented_mapping_to_safe_reason": true,
+    "missing_or_ambiguous_safe_reason_retryable": false,
+    "unknown_or_ambiguous_failure_retryable": false,
+    "generic_http_provider_error_retryable_without_safe_reason": false,
+    "generic_tool_error_or_timeout_retryable": false,
+    "future_provider_or_tool_subclassification_may_expand_v1": false
+  },
+  "nonretryable_attempt_outcomes_in_order": [
+    "provider_safety_block",
+    "provider_native_refusal",
+    "tool_error",
+    "tool_timeout",
+    "failed_transport_extraction",
+    "failed_resource_limit",
+    "failed_utf8_decode",
+    "failed_duplicate_key",
+    "failed_strict_parse",
+    "failed_canonical_validation",
+    "failed_cross_field_validation",
+    "failed_evidence_trace_coherence",
+    "failed_trace_validation",
+    "failed_url_security_validation",
+    "failed_retrieval_coherence",
+    "failed_evidence_policy",
+    "internal_harness_error"
+  ],
+  "decision_model": {
+    "accepted_attempt": "run_terminal_accepted",
+    "first_retryable_failure": "one_retry_allowed_only_with_exact_application_owned_safe_reason_mapped_to_the_attempt_outcome",
+    "first_potentially_retryable_failure_without_safe_reason": "run_terminal_failed",
+    "first_nonretryable_failure": "run_terminal_failed",
+    "second_attempt_any_outcome": "run_terminal_with_second_attempt_outcome",
+    "missing_first_attempt_before_second": "fail_closed",
+    "noncontiguous_attempt_number": "fail_closed",
+    "retry_reason_missing_or_not_exact_mapping": "fail_closed",
+    "retry_after_nonretryable_failure": "fail_closed",
+    "retry_after_accepted_attempt": "fail_closed",
+    "attempt_beyond_budget": "fail_closed",
+    "preflight_failure": "run_blocked_without_attempt_or_retry",
+    "unknown_attempt_outcome": "fail_closed"
+  },
+  "result_record_binding": {
+    "attempt_record": "result-record.v1.json",
+    "attempt_outcome_source": "normalization_audit.attempt_outcome",
+    "attempt_outcome_must_equal_terminal_outcome": true,
+    "attempt_number_sources": [
+      "attempt_key.attempt_number",
+      "pilot_envelope.attempt_number"
+    ],
+    "retry_count_source": "pilot_envelope.retry_count",
+    "retry_reason_source": "pilot_envelope.retry_reason",
+    "first_attempt_retry_count": 0,
+    "first_attempt_retry_reason": null,
+    "second_attempt_retry_count": 1,
+    "failed_attempt_record_rewritten_by_retry": false,
+    "run_outcome_uses_last_permitted_attempt": true
+  },
+  "execution_boundary": {
+    "contract_grants_provider_execution_authority": false,
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "winner_selected": false,
+    "provider_adapter_transport_enforcement_status": "pending_pre_pilot_and_execution_blocking",
+    "authoritative_execution_gate": "experiment.v1.json#/execution_gate"
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "a4e08ef3b92232cbbf1542aa37b30c87697da60c42bcf72d71876098d0251c4b"
+  }
+}

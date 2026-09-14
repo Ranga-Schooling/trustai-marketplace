@@ -1,0 +1,140 @@
+{
+  "artifact_id": "url_security_operational_origin_rule_registry_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Exact positive public-origin rules required only for the PS1 Capstone pilot.",
+  "provider_neutral": true,
+  "scope": {
+    "fixture_ids": [
+      "PS1"
+    ],
+    "internet_wide_allowlist": false,
+    "wildcards_allowed": false,
+    "regex_allowed": false,
+    "fuzzy_host_matching_allowed": false,
+    "runtime_normalization_allowed": false,
+    "provider_assertions_authoritative": false
+  },
+  "source_contracts": {
+    "url_security_policy_id": "url_security_policy_v1",
+    "url_security_policy_version": "v1",
+    "url_security_policy_hash": "fcc37b299f84cccb7522c2db150022e3e92f04430c50e01b94bb7f7fa6e5b44e"
+  },
+  "registry_entries": [
+    {
+      "registry_entry_id": "ps1_logitech_public_product_v1",
+      "source_type": "manufacturer",
+      "pilot_origin": "https://www.logitech.com:443",
+      "official_reference_url": "https://www.logitech.com/en-us/shop/p/mx-master-3s.910-006557",
+      "origin_rule": {
+        "status": "matched_positive_rule",
+        "rule_id": "ps1_logitech_public_product_v1",
+        "rule_version": "v1",
+        "origin_identity": {
+          "scheme": "https",
+          "host_kind": "dns",
+          "host": "www.logitech.com",
+          "effective_port": 443
+        },
+        "path_match": {
+          "type": "exact_raw_allowlist",
+          "values": [
+            "/en-us/shop/p/mx-master-3s.910-006557"
+          ]
+        },
+        "query_match": {
+          "type": "exact_presence_and_raw_allowlist",
+          "values": [
+            {
+              "present": false,
+              "raw": ""
+            },
+            {
+              "present": true,
+              "raw": "gQT=1"
+            }
+          ]
+        },
+        "fragment_match": {
+          "type": "exact_presence_and_raw_allowlist",
+          "values": [
+            {
+              "present": false,
+              "raw": ""
+            }
+          ]
+        },
+        "public_shareability_established": true,
+        "exact_url_disclosure_grants_access": false,
+        "rule_hash": "c93c99b6e1f4e8fe455b48c761339023eddd7a37fef751b4e0da46032e6ceec6"
+      }
+    },
+    {
+      "registry_entry_id": "ps1_office_depot_public_product_v1",
+      "source_type": "established_retailer",
+      "pilot_origin": "https://www.officedepot.com:443",
+      "official_reference_url": "https://www.officedepot.com/a/products/2083831/Logitech-MX-Master-3S-Wireless-Performance/",
+      "origin_rule": {
+        "status": "matched_positive_rule",
+        "rule_id": "ps1_office_depot_public_product_v1",
+        "rule_version": "v1",
+        "origin_identity": {
+          "scheme": "https",
+          "host_kind": "dns",
+          "host": "www.officedepot.com",
+          "effective_port": 443
+        },
+        "path_match": {
+          "type": "exact_raw_allowlist",
+          "values": [
+            "/a/products/2083831/Logitech-MX-Master-3S-Wireless-Performance/"
+          ]
+        },
+        "query_match": {
+          "type": "exact_presence_and_raw_allowlist",
+          "values": [
+            {
+              "present": false,
+              "raw": ""
+            }
+          ]
+        },
+        "fragment_match": {
+          "type": "exact_presence_and_raw_allowlist",
+          "values": [
+            {
+              "present": false,
+              "raw": ""
+            }
+          ]
+        },
+        "public_shareability_established": true,
+        "exact_url_disclosure_grants_access": false,
+        "rule_hash": "8b1b54cb6e34599bff4daa6388e4d9026cfa2c6200507ef88e309d8167b8d6cc"
+      }
+    }
+  ],
+  "matching": {
+    "selection": "exactly one registry origin_rule must return public_safe for the complete scalar URL input",
+    "zero_matches": "origin_rule_missing_and_public_shareability_indeterminate",
+    "multiple_matches": "origin_rule_ambiguous_and_public_shareability_indeterminate",
+    "same_day_operational_verification_required": true,
+    "rule_change_requires_new_version_and_hash": true
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "sha256",
+    "hash_input": "canonical compact UTF-8 JSON with specification_identity.semantic_hash replaced by null",
+    "semantic_hash": "dd93fb8942742cc0677c757ff3f3b0bede03249daa24b9a6dcbb28242d869171"
+  }
+}

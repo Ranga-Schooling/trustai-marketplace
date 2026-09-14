@@ -1,0 +1,444 @@
+{
+  "artifact_id": "provider_data_handling_review_v1",
+  "artifact_kind": "provider_neutral_evaluation_data_governance_policy",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "provider_neutral": true,
+  "specification_only": false,
+  "purpose": "Freeze the ordinary-versus-restricted provider-evaluation data boundary, its mechanical projection rules, and the pre-execution privacy blockers without authorizing provider execution or defining persistence infrastructure.",
+  "authority": {
+    "governance_decision": "approved",
+    "authoritative_for": [
+      "provider-evaluation data classes",
+      "ordinary and restricted projection boundaries",
+      "restricted access class",
+      "restricted retention class",
+      "restricted evidence deletion lifecycle",
+      "safe transport metadata allowlist",
+      "restricted transport metadata rules",
+      "hash and linkage classification",
+      "credential boundary",
+      "regional binding requirement",
+      "fail-closed privacy classification"
+    ],
+    "not_authoritative_for": [
+      "provider API mappings",
+      "provider request parameters",
+      "retry settings",
+      "pricing",
+      "model selection",
+      "source classification",
+      "objective support",
+      "execution authorization",
+      "persistence or external storage APIs"
+    ]
+  },
+  "data_classes": {
+    "ordinary_shareable": {
+      "access_class": "project_evaluation_readers",
+      "retention_class": "project_indefinite",
+      "restricted_descendants_allowed": false,
+      "raw_provider_response_bytes_allowed": false,
+      "restricted_exact_url_allowed": false,
+      "credential_material_allowed": false
+    },
+    "restricted_evaluation_evidence": {
+      "access_class": "authorized_evaluation_operators_least_privilege",
+      "retention_class": "restricted_lifecycle_group_30_days_after_final_model_selection_decision",
+      "ordinary_application_user_access": false,
+      "broad_project_or_team_access_by_default": false,
+      "actual_credentials_allowed": false
+    },
+    "credential_material": {
+      "allowed_surfaces": [
+        "external runtime environment or secret mechanism under least privilege"
+      ],
+      "forbidden_surfaces": [
+        "Git",
+        "evaluation fixtures",
+        "evaluation result records",
+        "ordinary logs",
+        "frozen artifact content",
+        "ordinary hashes",
+        "restricted result records"
+      ]
+    }
+  },
+  "raw_provider_response_policy": {
+    "classification": "restricted_evaluation_evidence",
+    "ordinary_projection_allowed": false,
+    "grading_allowed": false,
+    "synthesis_allowed": false,
+    "git_allowed": false,
+    "ordinary_logs_allowed": false,
+    "raw_response_sha256_classification": "ordinary_shareable",
+    "hash_authorizes_raw_disclosure": false,
+    "hash_algorithm": "SHA-256",
+    "hash_encoding": "64 lowercase hexadecimal characters"
+  },
+  "exact_url_policy": {
+    "requested_final_and_redirect_urls_default_classification": "restricted_evaluation_evidence",
+    "ordinary_projection_exception_requires": [
+      "classification public_safe under url_security_policy_v1",
+      "a frozen downstream contract that explicitly permits canonical public representation"
+    ],
+    "frozen_downstream_public_representation_contracts": [
+      "retrieval_evidence_bundle_v1",
+      "safe_search_tool_record_v1"
+    ],
+    "sensitive_or_indeterminate_url_forbidden_surfaces": [
+      "ordinary results",
+      "grading",
+      "synthesis",
+      "Git",
+      "safe error output"
+    ],
+    "restricted_exact_url_hash_classification": "restricted_evaluation_evidence",
+    "ordinary_unkeyed_restricted_url_hash_allowed": false
+  },
+  "restricted_trace_reference": {
+    "classification": "ordinary_shareable",
+    "scope": "run-local",
+    "generation": "exactly 16 independently random bytes rendered as lowercase hexadecimal after the rtr-v1- prefix",
+    "format": "rtr-v1- followed by exactly 32 lowercase hexadecimal characters",
+    "url_independent": true,
+    "may_encode": [],
+    "must_not_encode": [
+      "URL",
+      "host",
+      "path",
+      "query",
+      "fragment",
+      "classification",
+      "reason",
+      "provider credential",
+      "authentication state",
+      "provider identity"
+    ],
+    "controlled_mapping_required_for_reversal": true
+  },
+  "safe_transport_metadata": {
+    "default": "deny",
+    "allowlist_closed": true,
+    "arbitrary_metadata_map_allowed": false,
+    "generic_header_passthrough_allowed": false,
+    "unknown_field_result": "excluded_or_failed_closed",
+    "field_definitions": {
+      "provider": {
+        "type": "safe_identifier",
+        "format": "ASCII letter or digit followed by at most 127 ASCII letters digits periods underscores colons slashes plus signs or hyphens",
+        "source": "rubric.v1.json result_record_fields",
+        "semantics": "provider identifier"
+      },
+      "model": {
+        "type": "safe_identifier",
+        "format": "ASCII letter or digit followed by at most 127 ASCII letters digits periods underscores colons slashes plus signs or hyphens",
+        "source": "rubric.v1.json result_record_fields",
+        "semantics": "model identifier"
+      },
+      "model_version_or_snapshot": {
+        "type": "safe_identifier_when_present",
+        "format": "ASCII letter or digit followed by at most 127 ASCII letters digits periods underscores colons slashes plus signs or hyphens",
+        "source": "rubric.v1.json result_record_fields"
+      },
+      "provider_request_id": {
+        "type": "non_empty_string_when_present",
+        "source": "rubric.v1.json result_record_fields and raw_provider_response_policy_v1",
+        "runtime_acceptance": "blocked_until_provider_specific_non_secret_verifier_is_frozen",
+        "verification_requirements": [
+          "format verified locally as non-secret",
+          "contains no credential user or private data",
+          "needed for reproducibility or traceability"
+        ]
+      },
+      "http_or_result_status": {
+        "type": "closed_status_object",
+        "exact_keys": [
+          "kind",
+          "value"
+        ],
+        "kind_values": [
+          "http_status",
+          "terminal_outcome"
+        ],
+        "http_status_value": "integer from 100 through 599",
+        "terminal_outcome_value": "one frozen normalization terminal outcome"
+      },
+      "started_at": {
+        "type": "UTC RFC3339 timestamp with millisecond precision and Z suffix"
+      },
+      "completed_at": {
+        "type": "UTC RFC3339 timestamp with millisecond precision and Z suffix"
+      },
+      "latency_measurements": {
+        "type": "closed_non_negative_integer_millisecond_object",
+        "allowed_keys": [
+          "end_to_end_latency_ms",
+          "provider_latency_ms",
+          "time_to_first_result_ms_if_available",
+          "search_latency_ms",
+          "image_normalization_latency_ms",
+          "visual_latency_ms"
+        ],
+        "unknown_key_result": "failed_closed"
+      },
+      "input_token_usage": {
+        "type": "non_negative_integer"
+      },
+      "output_token_usage": {
+        "type": "non_negative_integer"
+      },
+      "reasoning_usage_if_exposed": {
+        "type": "non_negative_integer"
+      },
+      "image_usage_if_exposed": {
+        "type": "non_negative_integer"
+      },
+      "finish_or_stop_reason": {
+        "type": "frozen_application_owned_terminal_outcome",
+        "allowed_values_source": "normalization-parser.v1.json terminal_outcomes",
+        "provider_prose_allowed": false
+      },
+      "attempt_number": {
+        "type": "positive_integer"
+      },
+      "retry_count": {
+        "type": "non_negative_integer"
+      }
+    },
+    "deferred_or_excluded_fields": {
+      "provider_request_id": "excluded until an exact provider-specific non-secret verifier is frozen",
+      "rate_limit_and_service_metadata_if_exposed": "excluded because the existing composite field is not a closed non-secret structure",
+      "estimated_cost": "excluded until pricing and cost-record contracts are frozen",
+      "search_and_tool_calls": "owned by safe_search_tool_record_v1 as a separate exact ordinary/restricted projection; never accepted as arbitrary safe transport metadata"
+    }
+  },
+  "explicitly_forbidden_ordinary_metadata": [
+    "Authorization headers",
+    "cookies",
+    "Set-Cookie",
+    "request headers wholesale",
+    "response headers wholesale",
+    "signed URLs",
+    "API keys",
+    "session identifiers",
+    "credential material",
+    "arbitrary provider metadata maps",
+    "provider diagnostic prose",
+    "raw tool arguments",
+    "raw response fragments",
+    "private URL components",
+    "authentication tokens",
+    "secret-bearing correlation data"
+  ],
+  "restricted_transport_metadata": {
+    "classification": "restricted_evaluation_evidence",
+    "default_runtime_acceptance": "blocked_until_later_explicit_provider_binding",
+    "credential_material_allowed": false,
+    "arbitrary_capture_allowed": false,
+    "unknown_fields_allowed": false
+  },
+  "ordinary_projection": {
+    "provider_data_projection_exact_keys": [
+      "raw_provider_response_hash",
+      "restricted_trace_reference",
+      "public_safe_canonical_urls",
+      "safe_transport_metadata"
+    ],
+    "additional_result_record_classes_owned_elsewhere": [
+      "approved attempt and result state",
+      "safe failure code",
+      "approved prompt schema parser and policy identities",
+      "semantic candidate and final hashes where frozen and available",
+      "safe canonical provenance permitted by the retrieval contract"
+    ],
+    "restricted_descendant_scan_required": true,
+    "semantic_repair_allowed": false
+  },
+  "restricted_projection": {
+    "exact_keys": [
+      "raw_provider_response",
+      "exact_url_traces",
+      "restricted_url_hashes",
+      "restricted_transport_metadata"
+    ],
+    "actual_credentials_allowed": false,
+    "provider_binding_required_for_restricted_transport_metadata": true,
+    "ordinary_projection_is_not_a_substitute": true
+  },
+  "hash_and_linkage_classification": {
+    "ordinary": [
+      "raw-provider-response SHA-256",
+      "approved semantic hashes",
+      "approved artifact and configuration hashes",
+      "opaque run-local URL-independent restricted trace reference"
+    ],
+    "restricted": [
+      "hashes of private sensitive indeterminate authenticated signed session-bound or otherwise restricted exact URLs",
+      "credential-derived identifiers",
+      "secret-bearing linkage",
+      "identifiers permitting reconstruction or unauthorized correlation"
+    ],
+    "classification_rule": "classify according to what the identity or linkage can expose",
+    "ambiguous_result": "restricted_or_excluded"
+  },
+  "access_policy": {
+    "restricted_material_principals": [
+      "authorized evaluation operators"
+    ],
+    "least_privilege_required": true,
+    "ordinary_application_user_access": false,
+    "broad_project_or_team_access_by_default": false
+  },
+  "retention_policy": {
+    "restricted_retention_days": 30,
+    "clock_starts_at": "final_model_selection_decision_at",
+    "before_expiration_state": "retained",
+    "at_expiration_state": "deletion_due",
+    "after_expiration_state": "deletion_overdue",
+    "missing_final_decision_state": "blocked_pending_final_model_selection_decision",
+    "missing_final_decision_blocks": "expiration computation and deletion scheduling only; this retention assessment does not authorize or deny provider execution",
+    "ordinary_sanitized_record_retention": "project_indefinite"
+  },
+  "deletion_lifecycle": {
+    "group_id": "restricted_evaluation_evidence_lifecycle_group_v1",
+    "members": [
+      "raw provider responses",
+      "restricted exact URL traces",
+      "restricted transport metadata",
+      "restricted linkage material",
+      "raw search queries",
+      "raw tool arguments"
+    ],
+    "delete_as_one_lifecycle_group": true,
+    "partial_deletion_allowed": false,
+    "auditable": true,
+    "fail_closed": true,
+    "external_storage_API_defined_here": false
+  },
+  "credential_boundary": {
+    "credential_source": "external runtime environment or secret mechanism under least privilege",
+    "credential_loading_interface_status": "not_created_and_not_authorized_here",
+    "credential_hash_in_ordinary_records_allowed": false,
+    "credential_in_restricted_result_record_allowed": false,
+    "credential_key_or_field_detection_result": "reject projection"
+  },
+  "regional_binding": {
+    "restricted_evidence_must_match_approved_execution_storage_region": true,
+    "unnecessary_cross_region_replication_allowed": false,
+    "actual_region": null,
+    "status": "blocked_pending_region_binding",
+    "future_pre_execution_governance_binding_required": true,
+    "provider_or_cloud_region_invented_here": false
+  },
+  "fail_closed_policy": {
+    "ambiguous_privacy_classification_result": "restricted_or_excluded",
+    "heuristic_absence_of_secret_authorizes_ordinary_projection": false,
+    "unknown_metadata_result": "excluded_or_failed_closed",
+    "invalid_metadata_result": "failed_closed",
+    "semantic_repair_allowed": false
+  },
+  "implementation_contract": {
+    "implementation_id": "provider_data_handling_enforcement_v1",
+    "provider_neutral": true,
+    "immutable_value_objects_required": true,
+    "persistence_defined": false,
+    "provider_adapters_defined": false,
+    "network_access_allowed": false,
+    "provider_calls_allowed": false,
+    "required_mechanical_checks": [
+      "closed safe metadata validation",
+      "raw bytes restricted and raw SHA-256 ordinary",
+      "exact URL restriction",
+      "public-safe downstream disclosure capability",
+      "opaque trace-reference capability",
+      "restricted URL hash rejection",
+      "credential rejection",
+      "retention and grouped-deletion state validation",
+      "regional readiness validation",
+      "deep immutable projection"
+    ]
+  },
+  "cross_contract_compatibility": {
+    "normalization_parser_v1": {
+      "status": "compatible_external_dependency_resolution",
+      "embedded_parser_identity_changed": false,
+      "raw_provider_response_hash_requirement_preserved": true,
+      "restricted_trace_reference_rule_preserved": true,
+      "ordinary_restricted_url_hash_prohibition_preserved": true
+    },
+    "url_security_policy_v1": {
+      "status": "compatible",
+      "public_safe_classification_required_for_public_representation": true,
+      "sensitive_or_indeterminate_exact_url_remains_restricted": true
+    },
+    "safe_search_tool_record_v1": {
+      "status": "compatible",
+      "raw_search_query_and_tool_arguments_remain_restricted_local_only": true,
+      "public_safe_url_capability_required_for_ordinary_disclosure": true,
+      "restricted_lifecycle_and_region_binding_preserved": true
+    },
+    "rubric_v1": {
+      "status": "compatible",
+      "safe_field_names_derived_from_result_record_fields": true,
+      "composite_or_ambiguous_metadata_restricted_or_excluded": true
+    },
+    "experiment_v1": {
+      "status": "execution_still_blocked",
+      "privacy_review_resolution_does_not_authorize_execution": true,
+      "regional_binding_still_pending": true
+    }
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "provider_calls_completed": 0,
+  "specification_identity": {
+    "policy_id": "provider_data_handling_review_v1",
+    "policy_version": "v1",
+    "semantic_identity": {
+      "identity_domain": "trustai.provider_data_handling_review.v1",
+      "hash_algorithm": "SHA-256",
+      "digest_encoding": "exactly 64 lowercase hexadecimal characters",
+      "canonicalization_policy_id": "canonical_parser_policy_json_v1",
+      "canonicalization_policy_version": "v1",
+      "envelope_exact_keys": [
+        "identity_domain",
+        "policy_id",
+        "policy_version",
+        "content"
+      ],
+      "content_definition": "Complete parsed policy after removing exactly the declared semantic exclusion pointers.",
+      "semantic_excluded_json_pointers": [
+        "/provider_calls_completed",
+        "/specification_identity/derived_hash_cache/policy_semantic_hash"
+      ],
+      "exclusion_list_closed": true,
+      "wildcard_exclusions_allowed": false,
+      "missing_exclusion_pointer_result": "preflight_invalid",
+      "canonical_bytes": "canonical_parser_policy_json_v1 serialization of the domain-separated envelope without a trailing newline",
+      "digest": "SHA-256 of the exact canonical bytes",
+      "stored_hash_authoritative": false,
+      "recomputation_authoritative": true
+    },
+    "derived_hash_cache": {
+      "authoritative": false,
+      "policy_semantic_hash": "e3c909e117177208eac123986318d5ba448479ef4d68d226c00d656b7e3e47a5"
+    }
+  },
+  "final_invariants": [
+    "Raw provider responses never enter ordinary records grading synthesis Git or ordinary logs.",
+    "Restricted exact URLs and their URL-specific unkeyed hashes never enter ordinary records.",
+    "Only a frozen public-safe capability plus a permitted downstream contract can disclose a canonical URL ordinarily.",
+    "Unknown or ambiguous metadata is excluded or fails closed.",
+    "Actual credentials enter neither ordinary nor restricted result projections.",
+    "Restricted evidence is retained as one lifecycle group until 30 days after the final model-selection decision and then deletion is due.",
+    "An unresolved execution/storage region remains a pre-execution blocker.",
+    "This artifact does not authorize provider pilot or scored execution."
+  ]
+}

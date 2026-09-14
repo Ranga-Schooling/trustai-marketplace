@@ -1,0 +1,63 @@
+{
+  "artifact_id": "pilot_region_binding_v1",
+  "artifact_version": "v1",
+  "status": "frozen",
+  "purpose": "Bind the approved United States pilot operation and restricted local-storage boundary without asserting provider-internal processing location or authorizing execution.",
+  "provider_neutral": true,
+  "source_contracts": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "data_handling_policy": "provider-data-handling-review.v1.json",
+    "safe_search_tool_record": "safe-search-tool-record.v1.json",
+    "governance_decision": "approved balanced pilot region decision dated 2026-08-31"
+  },
+  "operation_binding": {
+    "operator_country_code": "US",
+    "provider_service_mode": "standard_global",
+    "provider_processing_location_asserted": false,
+    "provider_processing_location_requirement": "not_asserted_in_standard_global_mode",
+    "provider_residency_guarantee_claimed": false
+  },
+  "storage_binding": {
+    "restricted_storage_country_code": "US",
+    "restricted_storage_topology": "local_operator_controlled",
+    "local_us_storage_allowed": true,
+    "cloud_infrastructure_required": false,
+    "cross_region_replication_allowed": false,
+    "replication_country_code_allowlist": [],
+    "restricted_evidence_must_remain_within_approved_storage_country": true,
+    "ordinary_sanitized_records_are_outside_this_restricted_storage_binding": true
+  },
+  "retention_binding": {
+    "restricted_retention_days": 30,
+    "retention_clock_starts_at": "final_model_selection_decision_at",
+    "delete_as_one_lifecycle_group": true,
+    "longer_independent_retention_allowed": false
+  },
+  "validation": {
+    "storage_country_must_equal_restricted_storage_country_code": true,
+    "storage_topology_must_equal_restricted_storage_topology": true,
+    "replication_country_codes_must_equal_closed_allowlist": true,
+    "unknown_or_unbound_storage_location_result": "preflight_failure",
+    "provider_processing_location_must_not_be_inferred_from_operator_or_storage_country": true,
+    "same_day_provider_lifecycle_and_availability_preflight_still_required": true
+  },
+  "execution_boundary": {
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "semantic_hash_algorithm": "SHA-256",
+    "canonicalization": "UTF-8 JSON with lexicographically sorted object keys, no insignificant whitespace, ensure_ascii=false, allow_nan=false",
+    "semantic_hash_excluded_json_pointers": [
+      "/specification_identity/semantic_hash"
+    ],
+    "semantic_hash": "0c79df332d87bfdf1c902df26df9701bf531100f691650286eb7d5dd38627555"
+  }
+}

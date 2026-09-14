@@ -1,0 +1,181 @@
+{
+  "artifact_id": "live_provider_certification_2026_09_01",
+  "artifact_version": "v1",
+  "status": "documentation_verified_user_controls_credentials_and_authorization_pending",
+  "purpose": "Record the public-documentation portion of the same-day pilot certification without credentials, authenticated console access, execution authority, or provider calls.",
+  "observation_date": "2026-09-01",
+  "observed_at_utc": "2026-09-01T11:34:14Z",
+  "freshness": {
+    "valid_on_date_only": "2026-09-01",
+    "later_date_result": "blocked_requires_official_documentation_refresh",
+    "time_zone_for_date_comparison": "UTC"
+  },
+  "frozen_bindings": {
+    "repository_head_reviewed": "ccf26a2710c55ff94972c2af52d95bd971aa1796",
+    "request_configuration_set_hash": "1aaca1df3d67f51c3d9c1e5638d63b541bd947a1301aa509291cc7445e60b152",
+    "budget_control_hash": "7e4065dd69809f581ca475a3a9da8d4669b5961274da0c43574b844f3c12f824",
+    "region_binding_hash": "0c79df332d87bfdf1c902df26df9701bf531100f691650286eb7d5dd38627555",
+    "pricing_snapshot_hash": "0467643eafbe55e6e2215c9ad0e0576dac2d0d157a94418eef23382b0ec09282",
+    "pricing_snapshot_file_sha256": "fd0c89ccb138a708be58c2744fb72e65554c803a545de56f8f1b764bfbc72c8a",
+    "provider_adapter_file_sha256": "6d140074656231100ff5371263ab7391501e5c8c1b3a9e7923887fa6d0b8ca98",
+    "provider_role_mapping_file_sha256": "6ea279f406111876896ca78dd8d5d8e7231a036cedacc2f4ea4e5c99ff3f194e"
+  },
+  "official_sources": [
+    {
+      "source_id": "openai_models_2026_09_01",
+      "provider": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/models"
+    },
+    {
+      "source_id": "openai_responses_create_2026_09_01",
+      "provider": "OpenAI",
+      "url": "https://developers.openai.com/api/reference/cli/resources/responses/methods/create"
+    },
+    {
+      "source_id": "openai_project_spend_limits_2026_09_01",
+      "provider": "OpenAI",
+      "url": "https://help.openai.com/en/articles/6614457"
+    },
+    {
+      "source_id": "gemini_latest_model_2026_09_01",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/gemini-api/docs/latest-model"
+    },
+    {
+      "source_id": "gemini_interactions_v1_2026_09_01",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/api/interactions-api-v1"
+    },
+    {
+      "source_id": "gemini_interactions_migration_2026_09_01",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026"
+    },
+    {
+      "source_id": "gemini_pricing_2026_09_01",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing"
+    },
+    {
+      "source_id": "gemini_billing_2026_09_01",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/gemini-api/docs/billing"
+    },
+    {
+      "source_id": "groq_gpt_oss_120b_2026_09_01",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/model/openai/gpt-oss-120b"
+    },
+    {
+      "source_id": "groq_qwen_3_8_27b_2026_09_01",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/model/qwen/qwen3.8-27b"
+    },
+    {
+      "source_id": "groq_api_reference_2026_09_01",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/api-reference"
+    },
+    {
+      "source_id": "groq_deprecations_2026_09_01",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/deprecations"
+    },
+    {
+      "source_id": "groq_spend_limits_2026_09_01",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/spend-limits"
+    }
+  ],
+  "provider_certifications": [
+    {
+      "provider": "OpenAI",
+      "models": ["gpt-5.6-sol", "gpt-5.6-terra"],
+      "lifecycle_status": "current_documented_production_api_models_no_deprecation_observed",
+      "api_status": "responses_api_post_v1_responses_compatible",
+      "capability_status": "text_image_structured_output_and_web_search_documented",
+      "pricing_status": "unchanged_from_frozen_snapshot",
+      "region_status": "standard_global_compatible_no_residency_claim",
+      "provider_control_documentation_status": "project_spend_limit_and_alert_controls_documented_user_confirmation_pending",
+      "source_ids": [
+        "openai_models_2026_09_01",
+        "openai_responses_create_2026_09_01",
+        "openai_project_spend_limits_2026_09_01"
+      ],
+      "blockers": []
+    },
+    {
+      "provider": "Google Gemini",
+      "models": ["gemini-3.7-flash"],
+      "lifecycle_status": "current_documented_ga_production_model_no_deprecation_observed",
+      "api_status": "interactions_v1beta_current_steps_schema_compatible_after_operational_request_shape_correction",
+      "capability_status": "text_image_and_json_schema_response_format_documented_native_search_remains_ineligible",
+      "pricing_status": "unchanged_from_frozen_snapshot_through_2026_12_31",
+      "region_status": "standard_global_compatible_no_residency_claim",
+      "provider_control_documentation_status": "project_spend_cap_or_prepaid_boundary_documented_user_confirmation_pending",
+      "source_ids": [
+        "gemini_latest_model_2026_09_01",
+        "gemini_interactions_v1_2026_09_01",
+        "gemini_interactions_migration_2026_09_01",
+        "gemini_pricing_2026_09_01",
+        "gemini_billing_2026_09_01"
+      ],
+      "blockers": []
+    },
+    {
+      "provider": "Groq",
+      "models": ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"],
+      "lifecycle_status": "gpt_oss_active_qwen_preview_research_pilot_eligible_production_selection_ineligible",
+      "api_status": "chat_completions_post_openai_v1_chat_completions_compatible",
+      "capability_status": "gpt_oss_strict_json_schema_and_qwen_text_image_best_effort_schema_documented_compound_search_remains_ineligible",
+      "pricing_status": "unchanged_from_frozen_snapshot",
+      "region_status": "standard_global_compatible_no_residency_claim",
+      "provider_control_documentation_status": "organization_hard_spend_cap_and_project_rate_limits_documented_user_confirmation_pending",
+      "source_ids": [
+        "groq_gpt_oss_120b_2026_09_01",
+        "groq_qwen_3_8_27b_2026_09_01",
+        "groq_api_reference_2026_09_01",
+        "groq_deprecations_2026_09_01",
+        "groq_spend_limits_2026_09_01"
+      ],
+      "blockers": []
+    }
+  ],
+  "documentation_compatible_call_ids": [
+    "call-0001", "call-0002", "call-0003", "call-0004", "call-0005", "call-0006",
+    "call-0007", "call-0008", "call-0009", "call-0010", "call-0011", "call-0012",
+    "call-0013", "call-0014", "call-0015", "call-0016", "call-0017", "call-0018",
+    "call-0019", "call-0020", "call-0021", "call-0022"
+  ],
+  "pricing_recheck": {
+    "pricing_unchanged": true,
+    "known_one_attempt_subtotal_usd": "1.36717440",
+    "known_two_attempt_subtotal_usd": "2.73434880",
+    "approved_ceiling_usd": "5.00",
+    "remaining_headroom_over_known_two_attempt_subtotal_usd": "2.26565120",
+    "attempt_specific_conservative_reservation_still_required": true,
+    "price_change_result": "block_affected_call_and_version_replacement_binding"
+  },
+  "pending_user_actions": [
+    "privately_provision_dedicated_non_production_credentials",
+    "confirm_provider_console_spend_or_rate_controls",
+    "run_presence_only_credential_check",
+    "supply_attempt_specific_conservative_budget_reservations",
+    "create_explicit_hash_bound_human_pilot_authorization"
+  ],
+  "execution_boundary": {
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "hash_algorithm": "SHA-256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "b3ac44da808b84bee117e1146aa01acd2d4debedcaf844d539a4b9854ce9ee34"
+  }
+}

@@ -1,0 +1,278 @@
+{
+  "artifact_id": "search_authority_contract_v2",
+  "artifact_version": "v2",
+  "status": "frozen_pre_execution_contract",
+  "purpose": "Preserve the exact V1 search trust semantics while projecting all evaluator-owned instructions into one provider-native trusted surface before any untrusted target or retrieved evidence is consumed.",
+  "provider_neutral": true,
+  "historical_contract": {
+    "contract_id": "provider_role_mapping_contract_v1",
+    "contract_version": "v1",
+    "status": "preserved_frozen_historical_contract",
+    "source": "normalization-parser.v1.json#/provider_role_mapping_contract_v1",
+    "replacement_scope": "search_retrieval and search_synthesis authority projection only",
+    "unchanged_scopes": [
+      "text_analysis",
+      "visual_inspection",
+      "all prompt text",
+      "all output schemas",
+      "all scoring semantics"
+    ]
+  },
+  "v2_execution_contract": {
+    "status": "frozen_pre_execution_contract",
+    "reason_for_versioning": "The V1 search layouts require later trusted instruction segments after untrusted data. Current provider APIs expose different native role topologies, so V2 preserves every semantic instruction and authority class while moving all trusted evaluator instructions ahead of untrusted material.",
+    "semantic_continuity": {
+      "every_v1_trusted_instruction_present": true,
+      "every_v1_untrusted_input_remains_untrusted": true,
+      "every_v1_retrieved_evidence_component_remains_untrusted": true,
+      "every_v1_synthesis_instruction_remains_trusted": true,
+      "provider_specific_semantic_instructions_added": false,
+      "provider_visible_information_added_or_removed": false,
+      "scoring_behavior_changed": false
+    }
+  },
+  "frozen_sources": {
+    "prompt_template_set": {
+      "artifact": "prompt-templates.v1.json",
+      "version": "v1",
+      "semantic_hash": "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2"
+    },
+    "normalization_parser": {
+      "artifact": "normalization-parser.v1.json",
+      "version": "v1",
+      "semantic_hash": "023ad80eeb6e08e9279c22b7955ebe5d04ec9ab3cd88626ceaccc4962c41b343"
+    },
+    "v1_component_manifest": "normalization-parser.v1.json#/provider_role_mapping_contract_v1/request_component_manifests"
+  },
+  "logical_authority_model": {
+    "closed_authority_classes": [
+      "authoritative_instruction",
+      "untrusted_input",
+      "untrusted_retrieved_evidence"
+    ],
+    "trusted_instruction_rule": "All evaluator-owned normative instructions for one operation are assembled before transmission and placed in the strongest documented provider-native trusted instruction surface.",
+    "untrusted_input_rule": "Listing, user, fixture, and target data are ordinary untrusted input and never enter a trusted instruction surface.",
+    "retrieved_evidence_rule": "Search, retrieval, tool output, citations, snippets, pages, and provider-generated source text remain untrusted evidence and never enter a trusted instruction surface.",
+    "synthesis_rule": "All synthesis instructions are already present in trusted instruction authority before retrieved evidence is consumed.",
+    "later_trusted_instruction_injection_required": false,
+    "provider_difference_rule": "Provider-native field names and envelopes may differ, but authority classes, source component identities, and provider-visible semantic information must remain equivalent.",
+    "security_invariant": "Untrusted content must never gain instruction authority through placement.",
+    "trusted_segment_separator": "single UTF-8 LF byte between source components",
+    "untrusted_segment_separator": "single UTF-8 LF byte between source components",
+    "relative_order_rule": "Preserve the V1 relative order of source components within each V2 logical authority segment.",
+    "segment_order_rule": "authoritative_instruction, then untrusted_input, then untrusted_retrieved_evidence when applicable"
+  },
+  "workload_layouts": {
+    "search_retrieval": {
+      "source_manifest": "provider_role_mapping_contract_v1.request_component_manifests.search_retrieval",
+      "source_template_id": "search_retrieval_v1",
+      "source_template_hash": "0c80129156a0ed6cabbf87919855e0997ce3d599b31477188872f1a24b256c32",
+      "component_count": 8,
+      "logical_segments": [
+        {
+          "logical_segment_id": "search_retrieval_v2_trusted_instructions",
+          "logical_segment_ordinal": 0,
+          "authority_class": "authoritative_instruction",
+          "native_destination_semantics": "strongest_documented_instruction_surface",
+          "source_component_ids": [
+            "search_retrieval_v1_component_0",
+            "search_retrieval_v1_component_1",
+            "search_retrieval_v1_component_3",
+            "search_retrieval_v1_component_4",
+            "search_retrieval_v1_component_5",
+            "search_retrieval_v1_component_6",
+            "search_retrieval_v1_component_7"
+          ]
+        },
+        {
+          "logical_segment_id": "search_retrieval_v2_untrusted_target",
+          "logical_segment_ordinal": 1,
+          "authority_class": "untrusted_input",
+          "native_destination_semantics": "ordinary_untrusted_input_surface",
+          "source_component_ids": [
+            "search_retrieval_v1_component_2"
+          ]
+        }
+      ]
+    },
+    "search_synthesis": {
+      "source_manifest": "provider_role_mapping_contract_v1.request_component_manifests.search_synthesis",
+      "source_template_id": "search_synthesis_v1",
+      "source_template_hash": "156235a6873048022aa68632f503591c9c225fb646bc02f50104031533e88012",
+      "component_count": 8,
+      "logical_segments": [
+        {
+          "logical_segment_id": "search_synthesis_v2_trusted_instructions",
+          "logical_segment_ordinal": 0,
+          "authority_class": "authoritative_instruction",
+          "native_destination_semantics": "strongest_documented_instruction_surface",
+          "source_component_ids": [
+            "search_synthesis_v1_component_0",
+            "search_synthesis_v1_component_1",
+            "search_synthesis_v1_component_3",
+            "search_synthesis_v1_component_5",
+            "search_synthesis_v1_component_6",
+            "search_synthesis_v1_component_7"
+          ]
+        },
+        {
+          "logical_segment_id": "search_synthesis_v2_untrusted_target",
+          "logical_segment_ordinal": 1,
+          "authority_class": "untrusted_input",
+          "native_destination_semantics": "ordinary_untrusted_input_surface",
+          "source_component_ids": [
+            "search_synthesis_v1_component_2"
+          ]
+        },
+        {
+          "logical_segment_id": "search_synthesis_v2_untrusted_evidence",
+          "logical_segment_ordinal": 2,
+          "authority_class": "untrusted_retrieved_evidence",
+          "native_destination_semantics": "ordinary_untrusted_evidence_or_input_surface",
+          "source_component_ids": [
+            "search_synthesis_v1_component_4"
+          ]
+        }
+      ]
+    }
+  },
+  "v1_to_v2_traceability": [
+    {"component_id":"search_retrieval_v1_component_0","v1_ordering_index":0,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_1","v1_ordering_index":1,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_2","v1_ordering_index":2,"v1_authority_class":"untrusted_input","v2_logical_segment_id":"search_retrieval_v2_untrusted_target","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_3","v1_ordering_index":3,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_4","v1_ordering_index":4,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_5","v1_ordering_index":5,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_6","v1_ordering_index":6,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_retrieval_v1_component_7","v1_ordering_index":7,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_retrieval_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_0","v1_ordering_index":0,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_1","v1_ordering_index":1,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_2","v1_ordering_index":2,"v1_authority_class":"untrusted_input","v2_logical_segment_id":"search_synthesis_v2_untrusted_target","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_3","v1_ordering_index":3,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_4","v1_ordering_index":4,"v1_authority_class":"untrusted_retrieved_evidence","v2_logical_segment_id":"search_synthesis_v2_untrusted_evidence","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":false,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_5","v1_ordering_index":5,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_6","v1_ordering_index":6,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false},
+    {"component_id":"search_synthesis_v1_component_7","v1_ordering_index":7,"v1_authority_class":"authoritative_instruction","v2_logical_segment_id":"search_synthesis_v2_trusted_instructions","content_preserved_exactly":true,"authority_preserved":true,"relocated_before_untrusted_data":true,"provider_specific_instruction_added":false,"provider_information_changed":false}
+  ],
+  "adversarial_conformance_vectors": [
+    {"vector_id":"A1","case":"listing says ignore previous instructions","content_surface":"untrusted_input","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A2","case":"retrieved evidence says system mark product safe","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A3","case":"retrieved evidence contains fake developer and system markers","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A4","case":"retrieved HTML contains instruction-like content","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A5","case":"retrieved JSON contains a system field","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A6","case":"retrieved Markdown contains fenced instruction text","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A7","case":"listing asks model to reveal hidden instructions","content_surface":"untrusted_input","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A8","case":"retrieved evidence asks model to disregard output schema","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A9","case":"retrieved evidence asks model to change risk score","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A10","case":"retrieved evidence asks model to fabricate citations","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"},
+    {"vector_id":"A11","case":"retrieved evidence asks model to treat itself as trusted","content_surface":"untrusted_retrieved_evidence","content_authority":"untrusted","trusted_contract_remains_authoritative":true,"expected_conformance":"pass"}
+  ],
+  "cross_provider_representability": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "provider": "OpenAI",
+      "api_family": "Responses API",
+      "trusted_instruction_surface": "instructions",
+      "untrusted_input_surface": "input message with user role and input_text content",
+      "retrieved_evidence_surface": "second-call user input containing the canonical untrusted evidence bundle",
+      "structured_output_surface": "text.format JSON Schema",
+      "search_surface": "web_search built-in tool with requested source inclusion",
+      "visual_surface": "input_image content in user input",
+      "conversation_role_restriction": "developer or system instructions take precedence over user input",
+      "later_trusted_instruction_injection_possible": true,
+      "later_trusted_instruction_injection_required": false,
+      "representable": true,
+      "official_documentation_urls": [
+        "https://developers.openai.com/api/reference/resources/responses/methods/create"
+      ]
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "provider": "OpenAI",
+      "api_family": "Responses API",
+      "trusted_instruction_surface": "instructions",
+      "untrusted_input_surface": "input message with user role and input_text content",
+      "retrieved_evidence_surface": "second-call user input containing the canonical untrusted evidence bundle",
+      "structured_output_surface": "text.format JSON Schema",
+      "search_surface": "web_search built-in tool with requested source inclusion",
+      "visual_surface": "input_image content in user input",
+      "conversation_role_restriction": "developer or system instructions take precedence over user input",
+      "later_trusted_instruction_injection_possible": true,
+      "later_trusted_instruction_injection_required": false,
+      "representable": true,
+      "official_documentation_urls": [
+        "https://developers.openai.com/api/reference/resources/responses/methods/create"
+      ]
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "provider": "Google Gemini",
+      "api_family": "Gemini Interactions API",
+      "trusted_instruction_surface": "system_instruction",
+      "untrusted_input_surface": "input",
+      "retrieved_evidence_surface": "second-call input containing the canonical untrusted evidence bundle",
+      "structured_output_surface": "response_format JSON Schema",
+      "search_surface": "google_search built-in tool",
+      "visual_surface": "image input content",
+      "conversation_role_restriction": "one top-level system_instruction and ordinary input; no interleaved trusted turn is required by V2",
+      "later_trusted_instruction_injection_possible": false,
+      "later_trusted_instruction_injection_required": false,
+      "representable": true,
+      "official_documentation_urls": [
+        "https://ai.google.dev/api/interactions-api-v1",
+        "https://ai.google.dev/gemini-api/docs/structured-output",
+        "https://ai.google.dev/gemini-api/docs/google-search"
+      ]
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "provider": "Groq",
+      "api_family": "Chat Completions API with Compound retrieval and GPT-OSS synthesis",
+      "trusted_instruction_surface": "system message",
+      "untrusted_input_surface": "user message",
+      "retrieved_evidence_surface": "second-call user message containing the canonical untrusted evidence bundle",
+      "structured_output_surface": "response_format JSON Schema strict mode on openai/gpt-oss-120b",
+      "search_surface": "groq/compound built-in web search with executed_tools and citations",
+      "visual_surface": "user message image_url content for qwen/qwen3.8-27b",
+      "conversation_role_restriction": "chronological system, user, and assistant messages; V2 needs only one initial system message per physical call",
+      "later_trusted_instruction_injection_possible": true,
+      "later_trusted_instruction_injection_required": false,
+      "representable": true,
+      "official_documentation_urls": [
+        "https://console.groq.com/docs/api-reference",
+        "https://console.groq.com/docs/compound",
+        "https://console.groq.com/docs/structured-outputs",
+        "https://console.groq.com/docs/vision"
+      ]
+    }
+  ],
+  "official_documentation_observations": {
+    "observed_on": "2026-08-31",
+    "official_sources_only": true,
+    "provider_calls_required": false,
+    "facts": [
+      {"provider":"OpenAI","api_or_model_family":"Responses API","fact":"instructions provides system or developer authority; input accepts text, image, or file content; text.format supports structured output; web search is a built-in tool; response exposes id, status, output, and usage","source":"https://developers.openai.com/api/reference/resources/responses/methods/create"},
+      {"provider":"Google Gemini","api_or_model_family":"Gemini Interactions API","fact":"system_instruction is distinct from input; response_format can enforce JSON schema; tools includes Google Search; image content is accepted; response exposes interaction id, status, steps, and usage","source":"https://ai.google.dev/api/interactions-api-v1"},
+      {"provider":"Groq","api_or_model_family":"Chat Completions and Compound","fact":"messages accept system and user roles; Compound exposes built-in web search and executed tool records; GPT-OSS 120B supports strict JSON Schema output; structured output and tool use are not combined, so the split retrieval and synthesis topology is required","source":"https://console.groq.com/docs/api-reference"}
+    ]
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json#/execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "provider_calls_completed": 0,
+    "pilot_calls_completed": 0,
+    "scored_calls_completed": 0,
+    "winner_selected": false,
+    "independently_authorizes_execution": false
+  },
+  "specification_identity": {
+    "canonicalization": "UTF-8 JSON with object keys sorted lexicographically, compact separators, array order preserved, and no non-finite values",
+    "semantic_hash_excluded_json_pointers": [
+      "/specification_identity/semantic_hash"
+    ],
+    "semantic_hash": "c682f3b3bcd7fb9e6f316a3e02a8b931576ee56f1296c462f5302acfa836f3e8"
+  }
+}

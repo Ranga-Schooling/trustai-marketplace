@@ -1,0 +1,1831 @@
+{
+  "schema_version": "1.0.0",
+  "output_schema_set_version": "v1",
+  "status": "pre_execution_draft",
+  "json_schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+  "provider_neutral": true,
+  "pilot_and_scored_shared": true,
+  "provider_calls_completed": 0,
+  "semantic_sources": {
+    "methodology_commit": "992913a9f2da4e36f6f1defc98439ce9cb21a4a2",
+    "experiment_commit": "201736a7284cd3052919e78545e539760b062444",
+    "pilot_fixture_commit": "f1842fced28992bd540d799a7f36aa4507cc44f0",
+    "original_prompt_template_freeze": "249d3e4d9875b5d409b2fcfc5ae39d4696d42397",
+    "prompt_template_base_commit": "a94c0797738fee0a963153228b069603ec22e73c",
+    "prompt_template_base_set_hash": "3ee97c298200d3df7177dd9c5a5f496c3d641e8bde21cce9bb6ea93461cc8253",
+    "current_prompt_template_set_hash": "9d6c5e43acb971b3ffb2a47b69f0def142d21c971717541e007f711404603df2"
+  },
+  "schema_canonicalization": {
+    "schema_canonicalization_id": "canonical_schema_json_v1",
+    "encoding": "UTF-8",
+    "object_key_order": "lexicographically sorted",
+    "array_order": "preserve declared order",
+    "separators": "compact comma and colon separators without insignificant whitespace",
+    "string_encoding": "standard JSON escaping with Unicode emitted directly except where JSON escaping is required",
+    "hash_algorithm": "SHA-256",
+    "per_schema_hash_scope": "Canonical serialization of the complete schema record excluding schema_sha256.",
+    "schema_set_hash_scope": {
+      "description": "Canonical serialization of an object with the exact keys below. schemas is the ordered array of objects containing only schema_id and schema_sha256. schema_set_sha256, status, and provider_calls_completed are excluded.",
+      "exact_keys": [
+        "schema_version",
+        "output_schema_set_version",
+        "json_schema_dialect",
+        "provider_neutral",
+        "pilot_and_scored_shared",
+        "semantic_sources",
+        "schema_canonicalization_id",
+        "schema_order",
+        "global_policies",
+        "validator_declarations",
+        "schemas"
+      ]
+    },
+    "semantic_identity_excludes": [
+      "timestamps",
+      "absolute filesystem paths",
+      "provider transport envelopes",
+      "credentials",
+      "execution status",
+      "execution counters"
+    ]
+  },
+  "schema_order": [
+    "text_output_schema_v1",
+    "retrieval_evidence_bundle_v1",
+    "search_output_schema_v1",
+    "visual_output_schema_v1"
+  ],
+  "global_policies": {
+    "strictness": {
+      "all_semantic_objects_additional_properties_false": true,
+      "reason": "Frozen H3 requires undeclared semantic fields to be detected before normalization can discard them.",
+      "forbidden_extra_field_examples": [
+        "risk_score",
+        "confidence_score",
+        "authenticity_score",
+        "fraud_probability",
+        "unexpected recommendation fields",
+        "provider metadata"
+      ],
+      "transport_metadata_boundary": "Provider request, model, token, latency, cost, and envelope metadata belongs in evaluation result records, not semantic output."
+    },
+    "enum_and_repair": {
+      "canonical_enum_casing": "exact lowercase machine values",
+      "case_folding_allowed": false,
+      "enum_repair_allowed": false,
+      "field_insertion_allowed": false,
+      "field_deletion_allowed": false,
+      "semantic_rewriting_allowed": false,
+      "inferred_missing_values_allowed": false,
+      "transport_envelope_extraction_allowed": true
+    },
+    "retrieval_ownership_boundary": {
+      "canonical_bundle_origin": "harness_assembled_from_captured_retrieval_trace_and_trace_backed_provider_or_retrieval_evidence",
+      "ownership_domains": {
+        "provider_or_retrieval_produced_untrusted_semantics": {
+          "material": [
+            "retrieval_status selected by the provider or retrieval stage",
+            "evidence_type selected by the provider or retrieval stage",
+            "trace-backed evidence content produced by the provider or retrieval stage"
+          ],
+          "authority": "untrusted semantic material; provider or retrieval origin does not make it authoritative provenance"
+        },
+        "provider_or_trace_derived_untrusted_source_display_data": {
+          "material": [
+            "source display name or title as returned",
+            "provider-returned URL or reference when exposed",
+            "provider citation or reference identifier when exposed"
+          ],
+          "authority": "untrusted source display or reference data; it never overrides harness-owned canonical provenance"
+        },
+        "harness_authoritative_provenance": {
+          "canonical_fields": [
+            "sources[].source_id",
+            "sources[].evidence_items[].evidence_id",
+            "sources[].url",
+            "sources[].source_type",
+            "sources[].retrieved_at"
+          ],
+          "additional_trace_authority": [
+            "provider citation to retrieval trace to canonical source mapping",
+            "observed retrieval or tool transport success or failure captured by trace; not retrieval_status selection",
+            "query and tool-call identity",
+            "redirect relationship",
+            "canonical trace ordering"
+          ],
+          "derivation": "captured retrieval or tool trace under frozen deterministic harness policies; never model prose"
+        }
+      },
+      "harness_enrichment": {
+        "allowed_only_for_explicit_harness_owned_provenance": true,
+        "not_semantic_repair_when_all": [
+          "the canonical value derives directly or deterministically from captured trace",
+          "field ownership is declared harness-side by this contract",
+          "the enrichment action is logged",
+          "before and after hashes are preserved",
+          "the provider did not own the canonical field"
+        ],
+        "provider_or_model_owned_semantic_values_never_covered": [
+          "retrieval_status",
+          "evidence_type",
+          "evidence content",
+          "claims",
+          "prices",
+          "risk fields",
+          "visual findings",
+          "uncertainties",
+          "conflicts",
+          "conclusions"
+        ]
+      },
+      "h3_boundary": {
+        "model_owned_final_outputs": "H3 examines the unfiltered strict parsed semantic payload before any normalization can discard extras.",
+        "retrieval_stage": "Canonical bundle construction is not insertion into a model-owned final semantic payload because canonical provenance fields are harness-owned.",
+        "provider_undeclared_semantic_fields_may_be_discarded": false,
+        "provider_retrieval_material_preserved_in_trace": true,
+        "harness_enrichment_restricted_to_declared_allowlist": true,
+        "enrichment_actions_must_be_logged": true
+      },
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_source_classification_policy_pending": true
+    },
+    "retrieval_evidence_content_policy": {
+      "allowed_canonical_content": [
+        "trace-captured raw excerpt",
+        "provider-returned search snippet tied to captured trace",
+        "deterministic structured extraction from trace-backed content"
+      ],
+      "free_form_model_summary_without_trace_support_allowed_as_canonical_evidence": false,
+      "model_summary_retention_location_if_needed": "trace or debug metadata only",
+      "content_remains_untrusted": true,
+      "enforcement": "harness construction invariant"
+    },
+    "final_search_id_ownership": {
+      "model_generated_semantic_fields": [
+        "claims[].claim_id",
+        "price_evidence[].price_evidence_id",
+        "uncertainties[].uncertainty_id",
+        "conflicts[].conflict_id"
+      ],
+      "harness_generation_or_repair_allowed": false,
+      "source_reference_policy": "The model selects only existing canonical source IDs from the validated retrieval evidence bundle; the harness validates membership and never repairs a broken reference."
+    },
+    "null_and_optional": {
+      "required_semantics": "required and non-null",
+      "genuinely_optional_semantics": "omit when absent",
+      "meaningful_zero_results": "use explicit empty arrays where the schema allows them",
+      "missing_required_field": "schema failure",
+      "provider_failure_representation": "do not manufacture a semantic result"
+    },
+    "evaluation_only_v1_decisions": {
+      "id_pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "id_max_length": 64,
+      "search_label_max_length": 500,
+      "search_prose_max_length": 2000,
+      "url_max_length": 2048,
+      "retrieval_content_max_length": 12000,
+      "scope": "New evaluation-owned search and retrieval fields only; these limits do not alter the production text contract."
+    },
+    "format_assertion": {
+      "format_assertion_required": true,
+      "asserted_formats": [
+        "uri",
+        "date-time"
+      ],
+      "canonical_validator_requirement": "The canonical validator must actively assert every declared format and must not rely on a library's default format behavior.",
+      "failure_result": "A value that fails an asserted format is a canonical schema validation failure."
+    },
+    "provider_adapter_boundary": {
+      "canonical_schema_role": "The provider-neutral semantic contracts used for evaluation; retrieval_evidence_bundle_v1 is a harness-assembled canonical bundle and untrusted synthesis input rather than a model-owned final semantic payload.",
+      "provider_native_schema_role": "A syntax-only translation when a provider requires a different schema representation.",
+      "adapters_may": [
+        "translate canonical schema syntax to provider-native syntax",
+        "unwrap provider transport envelopes",
+        "map provider citation IDs to trace-owned canonical source IDs",
+        "preserve provider retrieval evidence and references in captured trace for harness bundle construction"
+      ],
+      "adapters_must_not": [
+        "weaken required fields",
+        "permit undeclared extras",
+        "repair invalid enums",
+        "insert missing fields into model-owned semantic payloads",
+        "delete forbidden semantic fields",
+        "rewrite claims",
+        "rewrite prices",
+        "rewrite visual findings",
+        "fabricate citations",
+        "turn invalid semantic output into valid output"
+      ],
+      "model_output_canonical_validation_boundary": "The extracted raw model-owned semantic object must pass the canonical schema before semantic normalization or grading.",
+      "retrieval_bundle_canonical_validation_boundary": "Trace-backed retrieval material is preserved, explicit harness-owned provenance is attached under the logged ownership allowlist, and the resulting harness-assembled canonical bundle must then pass canonical schema and retrieval coherence validation.",
+      "harness_bundle_construction_is_semantic_repair": false
+    },
+    "safe_failure": {
+      "on_canonical_schema_failure": [
+        "preserve the raw semantic payload locally under the frozen privacy policy and record its hash",
+        "record application-owned validation error codes",
+        "preserve every failed attempt",
+        "retry only according to the separately frozen retry policy",
+        "perform no semantic repair",
+        "never promote malformed partial output to partial success"
+      ],
+      "exhausted_ordinary_run": "Fail the applicable hard gate and assign zero to every applicable quality criterion for that run.",
+      "provider_prose_exposure_allowed": false
+    },
+    "leakage_boundary": {
+      "schemas_may_contain_only": "provider-visible output-contract semantics or explicitly declared harness-owned provenance in the canonical retrieval bundle supplied as untrusted synthesis input",
+      "forbidden": [
+        "fixture IDs",
+        "expected outcomes",
+        "expected evidence",
+        "exact expected tiers",
+        "truth-sheet answers",
+        "grading anchors",
+        "hard-gate IDs",
+        "candidate or provider identity",
+        "winner information"
+      ]
+    }
+  },
+  "validator_declarations": {
+    "text_cross_field_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "text_output_schema_v1",
+      "rules": [
+        "No indicators or only low-severity indicators require risk_level low.",
+        "At least one medium-severity indicator and no high-severity indicator require risk_level medium.",
+        "Any high-severity indicator requires risk_level high.",
+        "Risk level low requires recommendation buy.",
+        "Risk level medium requires recommendation caution.",
+        "Risk level high requires recommendation avoid.",
+        "price_plausibility does not independently determine risk_level or recommendation."
+      ],
+      "separate_checks": [
+        "evidence-policy validation",
+        "summary and indicator semantic consistency",
+        "price explanation semantic consistency",
+        "human evidence-quality review"
+      ]
+    },
+    "retrieval_evidence_bundle_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "bundle_origin": "harness_assembled_canonical_bundle",
+      "ownership_requirements": {
+        "retrieval_status": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "source_id": "harness",
+        "url": "harness_retrieval_trace",
+        "source_type": "harness_under_future_frozen_source_classification_policy",
+        "retrieved_at": "harness_retrieval_or_response_capture",
+        "evidence_id": "harness",
+        "evidence_type": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "name": "provider_or_trace_derived_untrusted_data",
+        "evidence_content": "provider_or_retrieval_produced_trace_backed_untrusted_semantic_content"
+      },
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_source_classification_policy_pending": true,
+      "rules": [
+        "retrieval_status is selected by the provider or retrieval stage and must be completed, partial, or no_reliable_evidence",
+        "missing or invalid retrieval_status is a canonical schema failure; the harness never generates, infers, inserts, replaces, upgrades, downgrades, or repairs it",
+        "source_id values are generated deterministically by the harness from canonical trace ordering and are unique within the bundle",
+        "evidence_id values are generated deterministically by the harness from canonical source and evidence ordering and are unique within the bundle",
+        "evidence_type is selected by the provider or retrieval stage and must match the canonical enum",
+        "missing or invalid evidence_type is a canonical schema failure; the harness never generates, infers, maps, inserts, replaces, or repairs it",
+        "a schema-valid evidence_type must pass evidence_trace_coherence_validator_v1 against its trace-backed content before the item or bundle can be accepted for synthesis",
+        "completed or partial retrieval contains at least one source",
+        "no_reliable_evidence may contain zero sources",
+        "retrieved_at comes exclusively from harness retrieval or response capture and is canonical UTC RFC3339 date-time rather than model invention",
+        "every canonical source URL is the exact final trace-owned retrieved URL, or the trace-owned requested URL only when no final URL exists and trace establishes that source identity",
+        "source_type is assigned by the harness under the future frozen source-classification policy",
+        "provider-proposed canonical provenance is preserved only as untrusted trace metadata and never overrides harness authority",
+        "canonical evidence content is limited to a trace-captured raw excerpt, a provider-returned search snippet tied to trace, or a deterministic structured extraction from trace-backed content",
+        "a free-form model-written summary without trace-backed content cannot become canonical evidence content",
+        "the evidence bundle hash matches canonical serialized data",
+        "every source belongs to the actual captured retrieval trace"
+      ],
+      "construction_flow": [
+        "provider or search or tool retrieval",
+        "capture retrieval trace",
+        "preserve provider-produced retrieval_status, evidence_type, evidence content, and returned reference material",
+        "generate canonical source IDs",
+        "generate canonical evidence IDs",
+        "attach trace-owned canonical URL",
+        "attach trace-owned retrieved_at",
+        "attach canonical source_type under the frozen classification policy",
+        "construct canonical_retrieval_candidate as retrieval_evidence_bundle_v1",
+        "canonical schema validation produces schema_validated_retrieval_candidate",
+        "trace, reference, source-membership, and source-classification validation produces trace_validated_retrieval_candidate",
+        "evidence_trace_coherence_validator_v1 produces evidence_coherent_retrieval_candidate",
+        "objective_support_validator_v1 produces objective_support_result",
+        "retrieval_status_coherence_validator_v1 consumes original retrieval_status, objective_support_result, and frozen non-empty material set M and produces retrieval_status_validated_candidate",
+        "remaining independent policy validation",
+        "freeze and hash validated_canonical_retrieval_bundle",
+        "provide validated bundle as untrusted synthesis input"
+      ]
+    },
+    "evidence_trace_coherence_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "failure_category": "failed_evidence_trace_coherence",
+      "failure_category_scope": "A schema-valid evidence_type is materially inconsistent with its trace-backed evidence content or cannot be deterministically supported; this is distinct from canonical schema failure and the separate public-prose evidence policy.",
+      "validation_scope": "every canonical retrieval evidence item after canonical JSON Schema validation and before retrieval_status coherence validation, bundle freeze, or synthesis",
+      "ownership_boundary": {
+        "evidence_type_owner": "provider_or_retrieval_stage",
+        "semantic_trust": "untrusted",
+        "harness_allowed_outcomes": [
+          "accept",
+          "reject"
+        ],
+        "harness_generation_allowed": false,
+        "harness_insertion_allowed": false,
+        "harness_inference_allowed": false,
+        "harness_replacement_allowed": false,
+        "harness_case_repair_allowed": false,
+        "harness_invalid_value_mapping_allowed": false,
+        "harness_reclassification_allowed": false,
+        "harness_better_type_selection_allowed": false
+      },
+      "validator_inputs": [
+        "schema-valid evidence_type from the original provider or retrieval result",
+        "trace-backed canonical evidence content",
+        "captured retrieval trace",
+        "frozen retrieval objectives",
+        "frozen evidence-content policy",
+        "frozen evidence-type support rules"
+      ],
+      "evidence_type_support_rules": {
+        "identity": "Trace-backed content must materially identify the product, model, variant, or SKU.",
+        "status": "Trace-backed content must materially state lifecycle, release, current, discontinued, or equivalent product status.",
+        "specification": "Trace-backed content must materially state a product specification, feature, dimension, compatibility fact, or model-specific technical detail.",
+        "price": "Trace-backed content must contain a concrete price or amount, or deterministically extracted price evidence; merely mentioning the word price is insufficient.",
+        "availability": "Trace-backed content must materially state availability such as in stock, unavailable, preorder, sold, or an equivalent trace-backed availability state.",
+        "condition": "Trace-backed content must materially state item condition, wear, refurbishment, damage, or an equivalent condition fact.",
+        "warranty": "Trace-backed content must materially state warranty coverage, duration, exclusion, expiration, or an equivalent warranty fact.",
+        "bundle": "Trace-backed content must materially state package, bundle, included-item, or excluded-item information.",
+        "regional_context": "Trace-backed content must materially state region, currency, market, distribution, import, or equivalent regional context.",
+        "other_material": "Trace-backed content must be materially relevant to a frozen retrieval objective, fit no more specific evidence_type, and must not be irrelevant filler or untraceable model prose."
+      },
+      "deterministic_boundary": {
+        "allowed_methods": [
+          "deterministic structured extraction",
+          "captured trace metadata",
+          "frozen evidence-type rules",
+          "bounded content checks",
+          "future frozen parser or classification policies"
+        ],
+        "another_model_may_decide": false,
+        "provider_reputation_may_establish_support": false,
+        "looks_close_enough_acceptance_allowed": false,
+        "indeterminate_support_result": "fail_closed_for_canonical_evidence_inclusion",
+        "borderline_human_adjudication_policy": "The item remains excluded from validated canonical evidence and scored synthesis unless a future versioned policy resolves the case."
+      },
+      "rules": [
+        "evidence_type must already be schema-valid before evidence and trace coherence validation begins",
+        "evidence content must be trace-backed under the frozen evidence-content policy",
+        "trace-backed content must materially support the semantic class declared by evidence_type under the matching frozen support rule",
+        "content that does not materially support the declared evidence_type fails with failed_evidence_trace_coherence",
+        "the harness may reject but never replace, repair, reclassify, or choose a better evidence_type",
+        "source_type cannot establish or imply evidence_type; actual trace-backed content must support the declared evidence_type",
+        "failure remains attached to the original provider or retrieval attempt",
+        "a failed item or result is not promoted into the validated canonical retrieval bundle used for synthesis",
+        "the harness does not silently remove a failed item and recalculate, infer, or replace retrieval_status",
+        "retrieval_status remains the original provider or retrieval-selected value and the attempt fails the applicable validation path",
+        "any later retry is governed only by the future frozen retry policy"
+      ]
+    },
+    "objective_support_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "owner": "application_harness",
+      "provider_visible_output_shape_changed": false,
+      "validation_input_stage": "evidence_coherent_retrieval_candidate",
+      "validator_inputs": [
+        "evidence_coherent_retrieval_candidate",
+        "frozen objective manifest",
+        "validated source classifications",
+        "frozen target context",
+        "retrieval_objective_support_policy_v1",
+        "required deterministic extractor and matcher outputs"
+      ],
+      "objective_manifest_contract": {
+        "frozen_before_provider_execution": true,
+        "objective_type_values": [
+          "identity",
+          "status",
+          "specification",
+          "price",
+          "availability",
+          "condition",
+          "warranty",
+          "bundle",
+          "regional_context"
+        ],
+        "materiality_values": [
+          "material_required",
+          "non_material_supporting"
+        ],
+        "applicability_values": [
+          "applicable",
+          "not_applicable"
+        ],
+        "materiality_or_applicability_may_change_after_evidence": false,
+        "zero_applicable_material_objectives_result": "topology_preflight_failure"
+      },
+      "objective_support_values": [
+        "sufficient",
+        "insufficient",
+        "conflicting",
+        "not_applicable"
+      ],
+      "rules": [
+        "exactly one objective-support result is required for every pre-frozen objective",
+        "not_applicable may only echo applicability frozen before provider execution",
+        "an applicable objective with missing, unavailable, or unresolved evidence is insufficient only under the frozen deterministic support policy",
+        "provider, retrieval, tool, or transport failure without a valid semantic retrieval result is an attempt failure rather than an objective-support state",
+        "sufficient requires every frozen objective requirement to be mechanically satisfied",
+        "conflicting requires the frozen deterministic conflict predicate to establish a qualifying conflict",
+        "non_material_supporting objectives do not affect retrieval_status",
+        "other_material evidence contributes zero material-objective support in V1 unless a future frozen predicate explicitly enables it",
+        "the validator never consumes validated_canonical_retrieval_bundle as input"
+      ],
+      "output": "objective_support_result",
+      "retrieval_objective_support_policy_status": "pending_creation",
+      "source_classification_policy_status": "pending_creation",
+      "provider_calls_blocked_while_dependencies_pending": true
+    },
+    "retrieval_status_coherence_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "retrieval_status_ownership": {
+        "owner": "provider_or_retrieval_stage",
+        "semantic_trust": "untrusted",
+        "allowed_values": [
+          "completed",
+          "partial",
+          "no_reliable_evidence"
+        ],
+        "harness_role": "validate the selected status against canonical schema, captured trace, retained evidence, and frozen coherence rules",
+        "harness_generation_inference_replacement_or_repair_allowed": false,
+        "missing_or_invalid_result": "canonical_schema_failure"
+      },
+      "validator_inputs": [
+        "evidence_coherent_retrieval_candidate",
+        "objective_support_result",
+        "frozen non-empty material set M"
+      ],
+      "harness_classification_contract": {
+        "objective_classification_authority": "future deterministic harness operating on the frozen objective set, evidence-coherent retrieval input, validated source classifications, and frozen support policy; never model prose; these support classifications validate but do not select retrieval_status",
+        "source_classification_policy_status": "pending_creation",
+        "materiality_values": [
+          "material_required",
+          "non_material_supporting"
+        ],
+        "objective_applicability_values": [
+          "applicable",
+          "not_applicable"
+        ],
+        "objective_support_values": [
+          "sufficient",
+          "insufficient",
+          "conflicting",
+          "not_applicable"
+        ],
+        "materiality_owner": "frozen objective manifest and retrieval_objective_support_policy_v1",
+        "applicability_owner": "frozen applicability_rule_id evaluated before provider execution",
+        "objective_support_owner": "objective_support_validator_v1",
+        "materiality_or_applicability_may_change_after_evidence": false,
+        "missing_or_unavailable_or_unresolved_evidence_for_applicable_objective": "insufficient only under the frozen deterministic support policy",
+        "provider_or_tool_failure_without_valid_semantic_result": "attempt_failure"
+      },
+      "material_set_contract": {
+        "definition": "M is the non-empty set frozen before provider execution containing exactly objectives whose materiality is material_required and applicability is applicable.",
+        "non_empty_required": true,
+        "zero_material_set_result": "topology_preflight_failure before provider execution",
+        "non_material_supporting_objectives_affect_status": false,
+        "not_applicable_objectives_affect_status": false
+      },
+      "status_rules": {
+        "completed": {
+          "minimum_sources": 1,
+          "formula": "if and only if every objective in M is sufficient"
+        },
+        "partial": {
+          "minimum_sources": 1,
+          "formula": "if and only if at least one objective in M is sufficient and at least one objective in M is insufficient or conflicting",
+          "incomplete_support_values": [
+            "insufficient",
+            "conflicting"
+          ]
+        },
+        "no_reliable_evidence": {
+          "minimum_sources": 0,
+          "formula": "if and only if zero objectives in M are sufficient",
+          "populated_sources_allowed": true,
+          "retained_evidence_policy": "Retained evidence may be insufficient or conflicting for every objective in M while remaining trace-backed contextual input.",
+          "contradiction_failure": "Fail when any objective in M has objective_support sufficient while retrieval_status is no_reliable_evidence."
+        }
+      },
+      "status_formula_exhaustive_and_mutually_exclusive_when_M_non_empty": true,
+      "harness_replacement_status_generation_allowed": false,
+      "tool_and_transport_failure_boundary": {
+        "no_reliable_evidence_is_valid_only_when": "The provider or retrieval stage produced a canonical schema-valid semantic result and retained evidence and trace coherently support no_reliable_evidence.",
+        "pure_transport_failure_result": "attempt_failure",
+        "pure_tool_failure_result": "attempt_failure",
+        "page_fetch_failure_without_valid_semantic_result": "attempt_failure",
+        "timeout_without_valid_semantic_result": "attempt_failure",
+        "provider_search_unavailable_without_valid_semantic_result": "attempt_failure",
+        "failure_to_no_reliable_evidence_conversion_allowed": false
+      },
+      "semantic_boundary": "Retrieval-status coherence determines whether retrieval produced usable evidence for synthesis. It does not determine final identity, final comparison_status, market value, or a final price conclusion; the bundle remains untrusted synthesis input."
+    },
+    "search_cross_reference_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "search_output_schema_v1",
+      "ownership_requirements": {
+        "claim_id": "model",
+        "price_evidence_id": "model",
+        "uncertainty_id": "model",
+        "conflict_id": "model",
+        "source_references": "model_selects_from_existing_canonical_source_ids_in_validated_retrieval_bundle",
+        "harness_repairs_or_generates_model_owned_ids": false
+      },
+      "rules": [
+        "all evaluation-owned IDs are unique within their namespaces",
+        "every referenced source ID exists in the validated retrieval evidence bundle and the same final result",
+        "every final source record is an unchanged selected projection of a canonical source record in the validated retrieval evidence bundle",
+        "every price evidence source exists in the validated retrieval evidence bundle",
+        "claim_id, price_evidence_id, uncertainty_id, and conflict_id are required model-generated semantic fields and are never inserted or repaired by the harness",
+        "every conflict has at least two unique valid source IDs",
+        "resolved identity requires resolved_product_identity and at least one valid source ID",
+        "unresolved identity forbids resolved_product_identity and resolved_variant_or_sku",
+        "conflicting identity requires at least two unique valid source IDs and an identity or variant conflict referencing the conflicting evidence",
+        "current or discontinued current_status requires at least one valid supporting source ID",
+        "conflicting current_status requires at least two unique valid source IDs and a status conflict referencing the conflicting evidence",
+        "comparison_status established satisfies the established coherence specification",
+        "comparison_status partially_established satisfies the partial coherence specification",
+        "comparison_status not_established satisfies the not-established coherence specification",
+        "range minimum is less than or equal to range maximum",
+        "retrieval timestamps, URLs, and source types exactly match the canonical harness-owned values in the validated retrieval bundle and captured trace",
+        "no source is fabricated",
+        "material current claims have supporting source references"
+      ],
+      "identity_status_rules": {
+        "resolved": {
+          "required_fields": [
+            "resolved_product_identity"
+          ],
+          "minimum_source_ids": 1,
+          "source_reference_policy": "Every source_id resolves to a source in the same result.",
+          "resolved_variant_or_sku_policy": "Optional only when the exact variant or SKU cannot legitimately be established or is not applicable."
+        },
+        "unresolved": {
+          "forbidden_fields": [
+            "resolved_product_identity",
+            "resolved_variant_or_sku"
+          ],
+          "minimum_source_ids": 0,
+          "populated_source_ids_meaning": "Evidence was considered but was insufficient to resolve identity."
+        },
+        "conflicting": {
+          "forbidden_fields": [
+            "resolved_product_identity",
+            "resolved_variant_or_sku"
+          ],
+          "minimum_source_ids": 2,
+          "required_conflict_types_any_of": [
+            "identity",
+            "variant"
+          ],
+          "conflict_reference_policy": "The required conflict record references the conflicting valid source IDs."
+        }
+      },
+      "current_status_rules": {
+        "current": {
+          "minimum_source_ids": 1,
+          "support_requirement": "Referenced trace-backed evidence supports current status."
+        },
+        "discontinued": {
+          "minimum_source_ids": 1,
+          "support_requirement": "Referenced trace-backed evidence supports discontinued status."
+        },
+        "conflicting": {
+          "minimum_source_ids": 2,
+          "required_conflict_type": "status",
+          "conflict_reference_policy": "The required status conflict record references the conflicting valid source IDs."
+        },
+        "not_established": {
+          "minimum_source_ids": 0,
+          "populated_source_ids_meaning": "Evidence was considered but was insufficient to establish current or discontinued status.",
+          "adverse_inference_allowed": false
+        }
+      },
+      "identity_current_status_combination_policy": {
+        "states_are_distinct_questions": true,
+        "explicitly_allowed_combinations": [
+          "unresolved identity with not_established current status",
+          "resolved identity with not_established current status",
+          "conflicting identity with not_established current status"
+        ]
+      },
+      "comparison_status_rules": {
+        "established": {
+          "required_identity_status": "resolved",
+          "minimum_sources": 1,
+          "minimum_material_result": {
+            "any_of_non_empty": [
+              "claims",
+              "price_evidence"
+            ]
+          },
+          "source_policy": "Every material current conclusion has valid supporting source references.",
+          "conflict_policy": "No unresolved conflict makes the frozen requested comparison materially ambiguous.",
+          "sufficiency_policy": "Evidence is sufficient for the actual frozen comparison objective without unsupported precision."
+        },
+        "partially_established": {
+          "minimum_material_result": {
+            "any_of_non_empty": [
+              "claims",
+              "price_evidence"
+            ]
+          },
+          "minimum_incomplete_explanation": {
+            "any_of_non_empty": [
+              "uncertainties",
+              "conflicts"
+            ]
+          },
+          "support_policy": "At least one material requested conclusion is traceably established and at least one remains unresolved, insufficient, conflicting, or unavailable.",
+          "identity_policy": "Identity may be resolved, unresolved, or conflicting only when returned conclusions do not pretend that an unresolved exact target is established."
+        },
+        "not_established": {
+          "required_uncertainty_types_any_of": [
+            "insufficient_evidence",
+            "unresolved_identity"
+          ],
+          "price_evidence_may_be_empty": true,
+          "contextual_claims_allowed": true,
+          "unqualified_material_established_conclusion_allowed": false,
+          "sources_or_context_alone_imply_established": false
+        }
+      },
+      "semantic_boundary": "Citation entailment and claim quality remain human or semantic adjudication where deterministic checks are insufficient."
+    },
+    "visual_photo_reference_validator_v1": {
+      "status": "declaration_only_not_implemented",
+      "schema_id": "visual_output_schema_v1",
+      "rules": [
+        "every photo_number is less than or equal to the actual supplied image count"
+      ],
+      "separate_semantic_hard_gates": [
+        "unsupported authenticity claims",
+        "unsupported ownership or stolen-status claims",
+        "unsupported internal-condition claims",
+        "functionality guarantees",
+        "current market price or value claims",
+        "unsupported seller-intent claims"
+      ]
+    }
+  },
+  "schemas": [
+    {
+      "schema_id": "text_output_schema_v1",
+      "workload_or_stage": "text_risk_analysis",
+      "semantic_source": {
+        "basis": "Current TrustAI AIAnalysisResult plus frozen H1-H18 evaluation strictness.",
+        "references": [
+          "origin/main@9cdf5cc1870ed0f4cb891b63be60ae1c3d57fbe5:AIAnalysisResult",
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:H1-H18"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "text_cross_field_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:text_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "summary",
+          "risk_level",
+          "risk_indicators",
+          "price_assessment",
+          "price_plausibility",
+          "seller_questions",
+          "recommendation"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "risk_indicators": {
+            "type": "array",
+            "maxItems": 10,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "category",
+                "severity",
+                "explanation"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "explanation": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "price_assessment": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price_plausibility": {
+            "type": "string",
+            "enum": [
+              "plausible",
+              "suspicious",
+              "too_good_to_be_true"
+            ]
+          },
+          "seller_questions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "string"
+            }
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "buy",
+              "caution",
+              "avoid"
+            ]
+          }
+        }
+      },
+      "schema_sha256": "baec020db56ab334659a9f278a7383d7b3b4860275ae7276ad6a39bb1c26d37d"
+    },
+    {
+      "schema_id": "retrieval_evidence_bundle_v1",
+      "workload_or_stage": "grounded_product_price_research_retrieval",
+      "semantic_source": {
+        "basis": "Frozen grounded-search rubric and corrected retrieval-to-synthesis prompt contract.",
+        "references": [
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:grounded_search",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_retrieval_v1"
+        ]
+      },
+      "canonical_bundle_origin": "harness_assembled",
+      "ownership_model": {
+        "retrieval_status": "provider_or_retrieval_produced_untrusted_semantic_field",
+        "canonical_source": {
+          "source_id": "harness",
+          "url": "harness_retrieval_trace",
+          "source_type": "harness_under_future_frozen_source_classification_policy",
+          "retrieved_at": "harness_retrieval_or_response_capture",
+          "name": "provider_or_trace_derived_untrusted_data"
+        },
+        "canonical_evidence": {
+          "evidence_id": "harness",
+          "evidence_type": "provider_or_retrieval_produced_untrusted_semantic_field",
+          "content": "provider_or_retrieval_produced_trace_backed_untrusted_semantic_content"
+        },
+        "provider_proposed_provenance": "preserve as untrusted trace metadata when exposed; never use as canonical authority",
+        "authoritative_owner_count_per_field": 1
+      },
+      "harness_construction_invariants": {
+        "retrieval_status_policy": "The provider or retrieval stage selects retrieval_status; missing or invalid values fail canonical schema validation and the harness never generates, infers, inserts, replaces, upgrades, downgrades, or repairs the value.",
+        "source_id_policy": "Generate deterministically from canonical trace ordering; provider omission is allowed and provider invention is non-authoritative trace metadata.",
+        "evidence_id_policy": "Generate deterministically from canonical source and evidence ordering; provider omission is allowed and evidence_id is not a provider-quality criterion.",
+        "evidence_type_policy": "The provider or retrieval stage selects evidence_type; missing or invalid values fail canonical schema validation, a schema-valid value inconsistent with trace-backed content fails evidence_trace_coherence_validator_v1, and the harness never generates, infers, maps, inserts, replaces, repairs, reclassifies, or chooses a better value.",
+        "source_display_name_policy": "Use a provider-returned or trace-derived display name with representation-only normalization under a documented rule; the text remains untrusted.",
+        "url_policy": "Use the exact final trace-owned retrieved URL; when unavailable, use the trace-owned requested URL only where trace establishes source identity.",
+        "retrieved_at_policy": "Use harness retrieval or response capture serialized as canonical UTC RFC3339 date-time.",
+        "source_type_policy": "Assign under the future frozen source-classification policy; provider proposals are non-authoritative.",
+        "evidence_content_policy": "Allow only trace-captured raw excerpts, provider-returned snippets tied to trace, or deterministic structured extraction from trace-backed content.",
+        "free_form_untraceable_model_summary_allowed": false,
+        "all_enrichment_actions_logged": true,
+        "before_and_after_hashes_preserved": true
+      },
+      "construction_flow": [
+        "provider or search or tool retrieval",
+        "capture retrieval trace",
+        "preserve provider-produced retrieval_status, evidence_type, evidence content, and returned reference material",
+        "generate canonical source IDs",
+        "generate canonical evidence IDs",
+        "attach trace-owned canonical URL",
+        "attach trace-owned retrieved_at",
+        "attach canonical source_type under the frozen classification policy",
+        "construct canonical_retrieval_candidate as retrieval_evidence_bundle_v1",
+        "canonical schema validation produces schema_validated_retrieval_candidate",
+        "trace, reference, source-membership, and source-classification validation produces trace_validated_retrieval_candidate",
+        "evidence_trace_coherence_validator_v1 produces evidence_coherent_retrieval_candidate",
+        "objective_support_validator_v1 produces objective_support_result",
+        "retrieval_status_coherence_validator_v1 consumes original retrieval_status, objective_support_result, and frozen non-empty material set M and produces retrieval_status_validated_candidate",
+        "remaining independent policy validation",
+        "freeze and hash validated_canonical_retrieval_bundle",
+        "provide validated bundle as untrusted synthesis input"
+      ],
+      "h3_boundary": {
+        "canonical_bundle_construction_is_field_insertion_into_model_owned_final_payload": false,
+        "model_authored_undeclared_semantic_fields_may_be_discarded": false,
+        "provider_retrieval_material_preserved_in_trace": true,
+        "harness_enrichment_allowlist": [
+          "source_id",
+          "evidence_id",
+          "url",
+          "source_type",
+          "retrieved_at"
+        ]
+      },
+      "pre_execution_dependencies": {
+        "source_classification_policy_status": "pending_creation",
+        "provider_calls_blocked_while_pending": true
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "retrieval_evidence_bundle_validator_v1",
+        "evidence_trace_coherence_validator_v1",
+        "objective_support_validator_v1",
+        "retrieval_status_coherence_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:retrieval_evidence_bundle_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "retrieval_status",
+          "sources"
+        ],
+        "properties": {
+          "retrieval_status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "partial",
+              "no_reliable_evidence"
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_id",
+                "name",
+                "url",
+                "source_type",
+                "retrieved_at",
+                "evidence_items"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "source_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_active",
+                    "marketplace_completed",
+                    "reputable_secondary",
+                    "forum_or_social",
+                    "affiliate_or_seo",
+                    "scraped_aggregator",
+                    "other"
+                  ]
+                },
+                "retrieved_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "evidence_items": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "evidence_id",
+                      "evidence_type",
+                      "content"
+                    ],
+                    "properties": {
+                      "evidence_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                      },
+                      "evidence_type": {
+                        "type": "string",
+                        "enum": [
+                          "identity",
+                          "status",
+                          "specification",
+                          "price",
+                          "availability",
+                          "condition",
+                          "warranty",
+                          "bundle",
+                          "regional_context",
+                          "other_material"
+                        ]
+                      },
+                      "content": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 12000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "retrieval_status": {
+                  "enum": [
+                    "completed",
+                    "partial"
+                  ]
+                }
+              },
+              "required": [
+                "retrieval_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "sources": {
+                  "minItems": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema_sha256": "a823c58173370aa2eb5e87bf96decec6c5b3a413e96aefc41783968181932201"
+    },
+    {
+      "schema_id": "search_output_schema_v1",
+      "workload_or_stage": "grounded_product_price_research_synthesis",
+      "semantic_source": {
+        "basis": "Frozen grounded-search fixtures, rubric, and corrected synthesis prompt contract.",
+        "references": [
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:grounded_search",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:search_synthesis_v1"
+        ]
+      },
+      "ownership_model": {
+        "model_generated_semantic_ids": [
+          "claims[].claim_id",
+          "price_evidence[].price_evidence_id",
+          "uncertainties[].uncertainty_id",
+          "conflicts[].conflict_id"
+        ],
+        "harness_generation_or_repair_of_model_semantic_ids_allowed": false,
+        "source_references": "model selects only canonical source IDs already present in the validated retrieval evidence bundle",
+        "invented_source_reference_result": "cross_reference_validation_failure_without_repair",
+        "final_source_records": "model-selected unchanged projections of harness-owned canonical source records from the validated retrieval evidence bundle"
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "search_cross_reference_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:search_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "identity_resolution",
+          "comparison_status",
+          "claims",
+          "price_evidence",
+          "sources",
+          "uncertainties",
+          "conflicts"
+        ],
+        "properties": {
+          "identity_resolution": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "current_status",
+              "source_ids"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "resolved",
+                  "unresolved",
+                  "conflicting"
+                ]
+              },
+              "current_status": {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "discontinued",
+                  "not_established",
+                  "conflicting"
+                ]
+              },
+              "resolved_product_identity": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "resolved_variant_or_sku": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "source_ids": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "resolved"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "resolved_product_identity"
+                  ],
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "unresolved"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "resolved_product_identity"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "resolved_variant_or_sku"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "status": {
+                      "const": "conflicting"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 2
+                    }
+                  },
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "resolved_product_identity"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "resolved_variant_or_sku"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "current_status": {
+                      "enum": [
+                        "current",
+                        "discontinued"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "current_status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "current_status": {
+                      "const": "conflicting"
+                    }
+                  },
+                  "required": [
+                    "current_status"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "source_ids": {
+                      "minItems": 2
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "comparison_status": {
+            "type": "string",
+            "enum": [
+              "established",
+              "partially_established",
+              "not_established"
+            ]
+          },
+          "claims": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "claim_id",
+                "claim_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "claim_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "claim_type": {
+                  "type": "string",
+                  "enum": [
+                    "specification",
+                    "availability_detail",
+                    "offer_terms",
+                    "condition",
+                    "warranty",
+                    "bundle_contents",
+                    "regional_context",
+                    "currency_conversion",
+                    "other_material"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          },
+          "price_evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "price_evidence_id",
+                "source_id",
+                "price_value",
+                "currency",
+                "price_type",
+                "region",
+                "condition",
+                "availability",
+                "seller_type",
+                "tax_inclusion",
+                "import_status"
+              ],
+              "properties": {
+                "price_evidence_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "price_value": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "amount"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "exact"
+                        },
+                        "amount": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "minimum",
+                        "maximum"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "range"
+                        },
+                        "minimum": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "maximum": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      }
+                    }
+                  ]
+                },
+                "currency": {
+                  "type": "string",
+                  "pattern": "^[A-Z]{3}$"
+                },
+                "price_type": {
+                  "type": "string",
+                  "enum": [
+                    "msrp_or_list",
+                    "manufacturer_direct_offer",
+                    "retailer_regular_offer",
+                    "retailer_sale_offer",
+                    "active_marketplace_asking",
+                    "completed_or_sold_comparable",
+                    "refurbished_offer",
+                    "used_offer",
+                    "bundle_offer",
+                    "import_or_grey_market_offer"
+                  ]
+                },
+                "region": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "condition": {
+                  "type": "string",
+                  "enum": [
+                    "new",
+                    "manufacturer_refurbished",
+                    "retailer_refurbished",
+                    "used",
+                    "unknown"
+                  ]
+                },
+                "availability": {
+                  "type": "string",
+                  "enum": [
+                    "in_stock",
+                    "out_of_stock",
+                    "preorder",
+                    "limited",
+                    "listing_active",
+                    "sold_or_completed",
+                    "unknown"
+                  ]
+                },
+                "seller_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_seller",
+                    "refurbisher",
+                    "other",
+                    "unknown"
+                  ]
+                },
+                "tax_inclusion": {
+                  "type": "string",
+                  "enum": [
+                    "included",
+                    "excluded",
+                    "unknown",
+                    "not_applicable"
+                  ]
+                },
+                "import_status": {
+                  "type": "string",
+                  "enum": [
+                    "domestic",
+                    "import",
+                    "grey_market",
+                    "unknown"
+                  ]
+                },
+                "warranty_region": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "bundle_contents": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "offer_qualifications": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "context": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              }
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "source_id",
+                "name",
+                "url",
+                "source_type",
+                "retrieved_at"
+              ],
+              "properties": {
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "url": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2048,
+                  "format": "uri"
+                },
+                "source_type": {
+                  "type": "string",
+                  "enum": [
+                    "manufacturer",
+                    "authorized_retailer",
+                    "established_retailer",
+                    "marketplace_active",
+                    "marketplace_completed",
+                    "reputable_secondary",
+                    "forum_or_social",
+                    "affiliate_or_seo",
+                    "scraped_aggregator",
+                    "other"
+                  ]
+                },
+                "retrieved_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "uncertainties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "uncertainty_id",
+                "uncertainty_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "uncertainty_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "uncertainty_type": {
+                  "type": "string",
+                  "enum": [
+                    "unresolved_identity",
+                    "insufficient_evidence",
+                    "regional_ambiguity",
+                    "availability_unknown",
+                    "condition_mismatch",
+                    "bundle_mismatch",
+                    "price_disagreement",
+                    "other_material"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "conflict_id",
+                "conflict_type",
+                "statement",
+                "source_ids"
+              ],
+              "properties": {
+                "conflict_id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                "conflict_type": {
+                  "type": "string",
+                  "enum": [
+                    "identity",
+                    "variant",
+                    "status",
+                    "region",
+                    "condition",
+                    "bundle",
+                    "availability",
+                    "price"
+                  ]
+                },
+                "statement": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "source_ids": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "identity_resolution": {
+                  "properties": {
+                    "status": {
+                      "const": "resolved"
+                    }
+                  }
+                },
+                "sources": {
+                  "minItems": 1
+                }
+              },
+              "anyOf": [
+                {
+                  "properties": {
+                    "claims": {
+                      "minItems": 1
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "price_evidence": {
+                      "minItems": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "partially_established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "allOf": [
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "claims": {
+                          "minItems": 1
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "price_evidence": {
+                          "minItems": 1
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "uncertainties": {
+                          "minItems": 1
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "conflicts": {
+                          "minItems": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "comparison_status": {
+                  "const": "not_established"
+                }
+              },
+              "required": [
+                "comparison_status"
+              ]
+            },
+            "then": {
+              "properties": {
+                "uncertainties": {
+                  "contains": {
+                    "properties": {
+                      "uncertainty_type": {
+                        "enum": [
+                          "insufficient_evidence",
+                          "unresolved_identity"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "uncertainty_type"
+                    ]
+                  },
+                  "minContains": 1
+                }
+              }
+            }
+          }
+        ]
+      },
+      "schema_sha256": "d66cc128a778577c2860b74cf7670eb8fb7f9d7b144df52e7258276169142c05"
+    },
+    {
+      "schema_id": "visual_output_schema_v1",
+      "workload_or_stage": "visual_inspection",
+      "semantic_source": {
+        "basis": "Reviewed unmerged PR #99 VisualInspectionResult plus frozen visual evaluation requirements.",
+        "references": [
+          "unmerged_pr_99@08936a75366bedccbbdf36cf8802587330d8352b:VisualInspectionResult",
+          "methodology@992913a9f2da4e36f6f1defc98439ce9cb21a4a2:visual_inspection",
+          "prompt_templates@a94c0797738fee0a963153228b069603ec22e73c:visual_system_v1"
+        ]
+      },
+      "pilot_applicable": true,
+      "scored_applicable": true,
+      "required_future_validators": [
+        "visual_photo_reference_validator_v1"
+      ],
+      "schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "urn:trustai:ai-evaluation:visual_output_schema_v1",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "findings"
+        ],
+        "properties": {
+          "findings": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "category",
+                "observation",
+                "photo_numbers"
+              ],
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "visible_detail",
+                    "visible_damage",
+                    "visible_condition",
+                    "visible_text",
+                    "image_quality",
+                    "visibility_limitation"
+                  ]
+                },
+                "observation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500,
+                  "pattern": "\\S"
+                },
+                "photo_numbers": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "schema_sha256": "f085eb944710362f18add95bd9b64af8088edaa55cf1838ff4ec995ee0f3f5e3"
+    }
+  ],
+  "schema_set_sha256": "125809d08e911d51b4619002f02a969b03b8da5866bfab1b8346758c0bb9a6f4"
+}

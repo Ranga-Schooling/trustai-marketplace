@@ -1,0 +1,389 @@
+{
+  "artifact_id": "pricing_snapshot_v1",
+  "artifact_version": "v1",
+  "status": "blocked_incomplete_candidate_binding",
+  "purpose": "Record dated official price facts and a deterministic exact-unit calculation surface for current pilot candidates without selecting request configurations, inferring provider billing units, authorizing spend, or authorizing execution.",
+  "provider_neutral": true,
+  "currency": "USD",
+  "observed_on": "2026-08-31",
+  "source_protocol": {
+    "authority": "current official provider documentation",
+    "observation_date_required": true,
+    "provider_calls_used": false,
+    "credentials_used": false,
+    "same_day_recheck_before_pilot_required": true,
+    "price_change_result": "block and version a replacement snapshot before any affected call"
+  },
+  "official_sources": [
+    {
+      "source_id": "openai_api_pricing_2026_08_31",
+      "provider": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "standard short-context and long-context token rates for gpt-5.6-sol and gpt-5.6-terra",
+        "web search costs USD 10 per 1000 calls and search content tokens are billed at model rates",
+        "regional processing has a 10 percent uplift but an actual region is not selected here"
+      ]
+    },
+    {
+      "source_id": "openai_gpt_5_6_sol_model_2026_08_31",
+      "provider": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6-sol",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "model identity and standard rates",
+        "inputs above 272000 tokens use doubled input and one-and-a-half output pricing for the full request"
+      ]
+    },
+    {
+      "source_id": "openai_gpt_5_6_terra_model_2026_08_31",
+      "provider": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/models/gpt-5.6-terra",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "model identity and standard rates",
+        "inputs above 272000 tokens use doubled input and one-and-a-half output pricing for the full request"
+      ]
+    },
+    {
+      "source_id": "gemini_api_pricing_2026_08_31",
+      "provider": "Google Gemini",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "Gemini 3.7 Flash paid Standard input and output-including-thinking rates through 2026-12-31",
+        "paid Google Search grounding has 5000 free shared Gemini 3.x search requests per month then costs USD 14 per 1000 search queries",
+        "each customer request may issue more than one billable search query"
+      ]
+    },
+    {
+      "source_id": "groq_gpt_oss_120b_2026_08_31",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/model/openai/gpt-oss-120b",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "on-demand input cached-input and output token rates for openai/gpt-oss-120b"
+      ]
+    },
+    {
+      "source_id": "groq_qwen_3_8_27b_2026_08_31",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/model/qwen/qwen3.8-27b",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "Preview lifecycle",
+        "on-demand input and output token rates",
+        "each image counts as 2048 input tokens"
+      ]
+    },
+    {
+      "source_id": "groq_compound_2026_08_31",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/compound/systems/compound",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "GPT-OSS-120B token rates",
+        "Llama 4 Scout token rates are listed as pending",
+        "basic and advanced web search Visit Website and Code Execution tool rates",
+        "final price depends on the internal models and tools used"
+      ]
+    },
+    {
+      "source_id": "groq_deprecations_2026_08_31",
+      "provider": "Groq",
+      "url": "https://console.groq.com/docs/deprecations",
+      "observed_on": "2026-08-31",
+      "facts_used": [
+        "meta-llama/llama-4-scout-17b-16e-instruct was shut down for free and developer tiers on 2026-07-17"
+      ]
+    }
+  ],
+  "schedules": [
+    {
+      "schedule_id": "openai_gpt_5_6_sol_standard_short_context_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-sol",
+      "billing_mode": "paid_standard_global",
+      "context_regime": "input_tokens_at_most_272000",
+      "complete": true,
+      "source_ids": [
+        "openai_api_pricing_2026_08_31",
+        "openai_gpt_5_6_sol_model_2026_08_31"
+      ],
+      "rates": [
+        {"component": "uncached_input_tokens", "unit": "token", "usd_per_unit": "0.000004"},
+        {"component": "cached_input_tokens", "unit": "token", "usd_per_unit": "0.0000004"},
+        {"component": "cache_write_tokens", "unit": "token", "usd_per_unit": "0.000005"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.00002"},
+        {"component": "web_search_calls", "unit": "call", "usd_per_unit": "0.01"}
+      ],
+      "billing_state_requirements": [
+        "request configuration selects paid Standard global processing",
+        "adapter supplies mutually exclusive chargeable token quantities",
+        "search content tokens are included in the appropriate input-token quantity"
+      ],
+      "missing_facts": [],
+      "notes": ["Image input is charged through provider-reported input-token quantities; no image count to token conversion is invented here."]
+    },
+    {
+      "schedule_id": "openai_gpt_5_6_sol_standard_long_context_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-sol",
+      "billing_mode": "paid_standard_global",
+      "context_regime": "input_tokens_above_272000",
+      "complete": true,
+      "source_ids": [
+        "openai_api_pricing_2026_08_31",
+        "openai_gpt_5_6_sol_model_2026_08_31"
+      ],
+      "rates": [
+        {"component": "uncached_input_tokens", "unit": "token", "usd_per_unit": "0.000008"},
+        {"component": "cached_input_tokens", "unit": "token", "usd_per_unit": "0.0000008"},
+        {"component": "cache_write_tokens", "unit": "token", "usd_per_unit": "0.00001"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.00003"},
+        {"component": "web_search_calls", "unit": "call", "usd_per_unit": "0.01"}
+      ],
+      "billing_state_requirements": [
+        "request configuration selects paid Standard global processing",
+        "adapter establishes that input tokens exceed 272000",
+        "adapter supplies mutually exclusive chargeable token quantities"
+      ],
+      "missing_facts": [],
+      "notes": ["The long-context rate applies to the full request."]
+    },
+    {
+      "schedule_id": "openai_gpt_5_6_terra_standard_short_context_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-terra",
+      "billing_mode": "paid_standard_global",
+      "context_regime": "input_tokens_at_most_272000",
+      "complete": true,
+      "source_ids": [
+        "openai_api_pricing_2026_08_31",
+        "openai_gpt_5_6_terra_model_2026_08_31"
+      ],
+      "rates": [
+        {"component": "uncached_input_tokens", "unit": "token", "usd_per_unit": "0.000002"},
+        {"component": "cached_input_tokens", "unit": "token", "usd_per_unit": "0.0000002"},
+        {"component": "cache_write_tokens", "unit": "token", "usd_per_unit": "0.0000025"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.000012"},
+        {"component": "web_search_calls", "unit": "call", "usd_per_unit": "0.01"}
+      ],
+      "billing_state_requirements": [
+        "request configuration selects paid Standard global processing",
+        "adapter supplies mutually exclusive chargeable token quantities",
+        "search content tokens are included in the appropriate input-token quantity"
+      ],
+      "missing_facts": [],
+      "notes": ["Image input is charged through provider-reported input-token quantities; no image count to token conversion is invented here."]
+    },
+    {
+      "schedule_id": "openai_gpt_5_6_terra_standard_long_context_v1",
+      "provider": "OpenAI",
+      "model": "gpt-5.6-terra",
+      "billing_mode": "paid_standard_global",
+      "context_regime": "input_tokens_above_272000",
+      "complete": true,
+      "source_ids": [
+        "openai_api_pricing_2026_08_31",
+        "openai_gpt_5_6_terra_model_2026_08_31"
+      ],
+      "rates": [
+        {"component": "uncached_input_tokens", "unit": "token", "usd_per_unit": "0.000004"},
+        {"component": "cached_input_tokens", "unit": "token", "usd_per_unit": "0.0000004"},
+        {"component": "cache_write_tokens", "unit": "token", "usd_per_unit": "0.000005"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.000018"},
+        {"component": "web_search_calls", "unit": "call", "usd_per_unit": "0.01"}
+      ],
+      "billing_state_requirements": [
+        "request configuration selects paid Standard global processing",
+        "adapter establishes that input tokens exceed 272000",
+        "adapter supplies mutually exclusive chargeable token quantities"
+      ],
+      "missing_facts": [],
+      "notes": ["The long-context rate applies to the full request."]
+    },
+    {
+      "schedule_id": "gemini_3_7_flash_paid_standard_2026_v1",
+      "provider": "Google Gemini",
+      "model": "gemini-3.7-flash",
+      "billing_mode": "paid_standard_through_2026_12_31",
+      "context_regime": "all_supported_context",
+      "complete": true,
+      "source_ids": ["gemini_api_pricing_2026_08_31"],
+      "rates": [
+        {"component": "input_tokens", "unit": "token", "usd_per_unit": "0.00000075"},
+        {"component": "output_including_thinking_tokens", "unit": "token", "usd_per_unit": "0.00000375"},
+        {"component": "billable_google_search_queries", "unit": "query", "usd_per_unit": "0.014"}
+      ],
+      "billing_state_requirements": [
+        "request configuration selects paid Standard processing",
+        "adapter supplies output tokens with thinking included exactly once",
+        "billing-state binding supplies billable query count after the shared monthly free allowance"
+      ],
+      "missing_facts": [],
+      "notes": [
+        "Image input is charged at the same input-token rate.",
+        "Raw search-query count is not automatically billable-query count."
+      ]
+    },
+    {
+      "schedule_id": "groq_gpt_oss_120b_on_demand_v1",
+      "provider": "Groq",
+      "model": "openai/gpt-oss-120b",
+      "billing_mode": "on_demand",
+      "context_regime": "all_supported_context",
+      "complete": true,
+      "source_ids": ["groq_gpt_oss_120b_2026_08_31"],
+      "rates": [
+        {"component": "input_tokens", "unit": "token", "usd_per_unit": "0.00000015"},
+        {"component": "cached_input_tokens", "unit": "token", "usd_per_unit": "0.000000075"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.0000006"}
+      ],
+      "billing_state_requirements": ["adapter supplies mutually exclusive chargeable token quantities"],
+      "missing_facts": [],
+      "notes": ["This schedule does not add built-in tool charges; a tool-enabled topology requires its own complete schedule."]
+    },
+    {
+      "schedule_id": "groq_qwen_3_8_27b_on_demand_v1",
+      "provider": "Groq",
+      "model": "qwen/qwen3.8-27b",
+      "billing_mode": "on_demand_preview",
+      "context_regime": "all_supported_context",
+      "complete": true,
+      "source_ids": ["groq_qwen_3_8_27b_2026_08_31"],
+      "rates": [
+        {"component": "input_tokens", "unit": "token", "usd_per_unit": "0.0000008"},
+        {"component": "output_tokens", "unit": "token", "usd_per_unit": "0.000004"}
+      ],
+      "billing_state_requirements": [
+        "adapter supplies provider chargeable token quantities",
+        "each supplied image contributes 2048 input tokens exactly once"
+      ],
+      "missing_facts": [],
+      "notes": ["A complete price schedule does not remove the Preview lifecycle selection block."]
+    },
+    {
+      "schedule_id": "groq_compound_official_incomplete_v1",
+      "provider": "Groq",
+      "model": "groq/compound",
+      "billing_mode": "on_demand_compound",
+      "context_regime": "all_supported_context",
+      "complete": false,
+      "source_ids": [
+        "groq_compound_2026_08_31",
+        "groq_deprecations_2026_08_31"
+      ],
+      "rates": [
+        {"component": "gpt_oss_120b_input_tokens", "unit": "token", "usd_per_unit": "0.00000015"},
+        {"component": "gpt_oss_120b_output_tokens", "unit": "token", "usd_per_unit": "0.0000006"},
+        {"component": "basic_web_search_calls", "unit": "call", "usd_per_unit": "0.005"},
+        {"component": "advanced_web_search_calls", "unit": "call", "usd_per_unit": "0.008"},
+        {"component": "visit_website_calls", "unit": "call", "usd_per_unit": "0.001"},
+        {"component": "code_execution_seconds", "unit": "second", "usd_per_unit": "0.00005"}
+      ],
+      "billing_state_requirements": [
+        "exact internal model and tool usage must be exposed and captured",
+        "every internal component must have a complete official price"
+      ],
+      "missing_facts": [
+        "official Compound page leaves Llama 4 Scout token prices pending",
+        "official Compound component description conflicts with the developer-tier Llama 4 Scout shutdown",
+        "exact candidate search topology and native charge-quantity extraction are not frozen"
+      ],
+      "notes": ["The calculator must reject this schedule."]
+    }
+  ],
+  "candidate_bindings": [
+    {
+      "candidate_id": "openai_unified_premium_v1",
+      "workload_schedules": {
+        "text_risk_analysis": ["openai_gpt_5_6_sol_standard_short_context_v1", "openai_gpt_5_6_sol_standard_long_context_v1"],
+        "grounded_product_price_research": ["openai_gpt_5_6_sol_standard_short_context_v1", "openai_gpt_5_6_sol_standard_long_context_v1"],
+        "visual_inspection": ["openai_gpt_5_6_sol_standard_short_context_v1", "openai_gpt_5_6_sol_standard_long_context_v1"]
+      },
+      "selection_rule_status": "blocked_until_attempt_request_configuration_context_regime_and_region_are_bound",
+      "status": "blocked_request_configuration_and_region_binding",
+      "blockers": ["service tier and regional mode", "context regime", "provider usage extraction"]
+    },
+    {
+      "candidate_id": "openai_unified_balanced_v1",
+      "workload_schedules": {
+        "text_risk_analysis": ["openai_gpt_5_6_terra_standard_short_context_v1", "openai_gpt_5_6_terra_standard_long_context_v1"],
+        "grounded_product_price_research": ["openai_gpt_5_6_terra_standard_short_context_v1", "openai_gpt_5_6_terra_standard_long_context_v1"],
+        "visual_inspection": ["openai_gpt_5_6_terra_standard_short_context_v1", "openai_gpt_5_6_terra_standard_long_context_v1"]
+      },
+      "selection_rule_status": "blocked_until_attempt_request_configuration_context_regime_and_region_are_bound",
+      "status": "blocked_request_configuration_and_region_binding",
+      "blockers": ["service tier and regional mode", "context regime", "provider usage extraction"]
+    },
+    {
+      "candidate_id": "gemini_unified_v1",
+      "workload_schedules": {
+        "text_risk_analysis": ["gemini_3_7_flash_paid_standard_2026_v1"],
+        "grounded_product_price_research": ["gemini_3_7_flash_paid_standard_2026_v1"],
+        "visual_inspection": ["gemini_3_7_flash_paid_standard_2026_v1"]
+      },
+      "selection_rule_status": "blocked_until_attempt_request_configuration_billing_state_and_region_are_bound",
+      "status": "blocked_request_configuration_billing_state_and_region_binding",
+      "blockers": ["paid Standard selection", "shared monthly search allowance state", "provider usage extraction"]
+    },
+    {
+      "candidate_id": "groq_split_v1",
+      "workload_schedules": {
+        "text_risk_analysis": ["groq_gpt_oss_120b_on_demand_v1"],
+        "grounded_product_price_research": ["groq_compound_official_incomplete_v1"],
+        "visual_inspection": ["groq_qwen_3_8_27b_on_demand_v1"]
+      },
+      "selection_rule_status": "blocked_until_each_split_workload_topology_and_request_configuration_are_bound",
+      "status": "blocked_incomplete_compound_pricing_topology_lifecycle_and_region",
+      "blockers": ["Compound official pricing incomplete", "search topology", "Preview visual lifecycle", "Compound lacks regional endpoints"]
+    },
+    {
+      "candidate_id": "baseline_current_text_v1",
+      "workload_schedules": {
+        "text_risk_analysis": ["groq_gpt_oss_120b_on_demand_v1"]
+      },
+      "selection_rule_status": "blocked_until_attempt_request_configuration_and_region_are_bound",
+      "status": "blocked_request_configuration_and_region_binding",
+      "blockers": ["service tier", "provider usage extraction"]
+    }
+  ],
+  "incomplete_official_facts": [
+    "Groq Compound cannot receive a complete deterministic schedule from current official documentation because one stated internal model has pending prices and is separately documented as shut down for developer tiers.",
+    "Provider request configurations and execution region remain unselected, so no candidate schedule is bound.",
+    "Provider-native usage extraction is not yet frozen, so no runtime estimated-cost record may be emitted.",
+    "Gemini billable Google Search query count depends on shared monthly allowance state that is not yet bound."
+  ],
+  "calculation_contract": {
+    "calculation_id": "exact_decimal_cost_calculation_v1",
+    "input": "exact closed component inventory for one complete schedule",
+    "unit_count_type": "non_negative_integer_excluding_Boolean",
+    "rate_type": "finite_positive_exact_decimal_string",
+    "arithmetic": "Python Decimal exact multiplication and addition",
+    "floating_point_allowed": false,
+    "rounding": "none",
+    "missing_component_default": "forbidden; explicit zero required",
+    "unknown_component_result": "fail_closed",
+    "incomplete_schedule_result": "fail_closed",
+    "free_allowance_inference_allowed": false,
+    "usage_inference_allowed": false,
+    "provider_configuration_selection_allowed": false
+  },
+  "execution_boundary": {
+    "authoritative_execution_gate": "experiment.v1.json execution_gate",
+    "execution_state": "blocked_pre_execution",
+    "provider_calls_allowed": false,
+    "pilot_calls_allowed": false,
+    "scored_calls_allowed": false,
+    "this_artifact_independently_authorizes_execution": false
+  },
+  "provider_calls_completed": 0,
+  "winner_selected": false,
+  "specification_identity": {
+    "hash_algorithm": "SHA-256",
+    "hash_input": "canonical_compact_utf8_json_with_semantic_hash_replaced_by_null",
+    "semantic_hash": "0467643eafbe55e6e2215c9ad0e0576dac2d0d157a94418eef23382b0ec09282"
+  }
+}

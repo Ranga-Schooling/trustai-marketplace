@@ -238,6 +238,9 @@ __marimo__/
 **node_modules**
 
 # Databases
+
+# Local Capstone live-validation reservation/result state (never source data)
+.capstone-live-validation/
 *.db
 *.sqlite
 *.sqlite3
