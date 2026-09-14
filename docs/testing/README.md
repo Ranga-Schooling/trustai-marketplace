@@ -57,8 +57,8 @@ below.
 Automated text-analysis behavior uses `MockProvider` where appropriate so it
 remains deterministic and credential-free. Visual Inspection provider tests
 inject a mocked HTTP transport. The automated suite makes no live OpenAI
-requests and requires no provider credential, matching CLAUDE.md's CI
-constraint.
+requests and requires no provider credential, matching the repository's CI
+policy.
 
 ## Running the frontend tests and build
 
@@ -113,11 +113,19 @@ TrustAI does not persist uploaded photos or Visual Inspection findings. This is
 an application-persistence boundary, not a claim that framework multipart
 handling can never use request-scoped temporary spooling before normalization.
 
-### Pending credentialed Visual Inspection evaluation
+### Bounded production Visual evidence and remaining evaluation
 
-No credentialed OpenAI Visual Inspection evaluation has been completed. Once
-an authorized project credential is available, use only synthetic or
-team-owned non-sensitive photos and evaluate at least these controlled cases:
+A controlled September 4 production browser workflow exercised one consented
+synthetic-image Visual Inspection through the deployed application. It observed
+a successful advisory result, preserved separation from the core Trust score
+and recommendation, and found no Visual result after History navigation and
+reopen. The application did not expose private provider configuration or raw
+provider bodies, so this is bounded application-level evidence rather than
+comprehensive live-provider/model coverage. See the
+[final production validation](../capstone/FINAL_PRODUCTION_VALIDATION.md).
+
+Broader controlled coverage remains future work. If it is undertaken, use only
+synthetic or team-owned non-sensitive photos and evaluate at least these cases:
 
 1. **Visible damage:** a normal object with a clear scratch or other visible
    damage. Expect a photo-grounded observation with no authenticity, ownership,
@@ -148,9 +156,10 @@ are added to the database, logs expose no filenames, Base64, or provider prose,
 and the provider-retention disclosure remains accurate. One successful
 well-lit image is not sufficient evidence of provider adherence.
 
-Automated Visual Inspection coverage uses mocked provider transport.
-Credentialed OpenAI behavior remains pending validation and must not be
-represented as proven until this controlled evaluation is completed.
+Automated Visual Inspection coverage continues to use mocked provider
+transport, requires no provider credential, and makes no live provider request.
+The one production workflow must not be generalized into evidence for every
+supported image, failure mode, provider or model.
 
 ## Running the full stack locally
 
@@ -192,8 +201,9 @@ walkthrough that exercises the stories currently implemented on `main`:
    for the exact signal list).
 3. **Account** — edit name and/or email from the nav, confirm the change
    persists after reloading.
-4. **History** — not yet functional; `GET /analyses` and
-   `GET /analyses/{id}` (US-4.1) are the one remaining backend stub.
+4. **History** — open the newest-first history list, select a saved analysis,
+   and verify the owner-scoped detail view. Failed analyses remain visible and
+   can be retried individually without sharing retry state with another item.
 
 ## Backend-only smoke test (no Docker)
 

@@ -2,7 +2,7 @@
 
 ## Document status and evidence standard
 
-This report describes TrustAI Marketplace at the final Capstone release,
+This report's primary production-validation baseline is TrustAI Marketplace
 `v1.20.0`, whose immutable source commit is
 `5ebc757ba66ff647944602245c18bedf6631680e`. It is a synthesis of the
 implemented system, its engineering rationale, and the evidence used to assess
@@ -10,6 +10,13 @@ it. Current source and tests establish implementation; a release identifies an
 immutable source state; and a successful deployment workflow establishes image
 identity and its configured health checks. None of those, by itself, proves a
 complete public-browser journey or a real provider transaction.
+
+The final application release used for submission is `v1.21.0` at
+`9eb7253e47cd54dd7a3084ce47c0df1747d16948`. It retains the `v1.20.0`
+application and adds the D-22 cross-origin and per-user provider-spend
+hardening described in the D-22 hardening addendum below. Historical
+`v1.20.0` CI and production-validation results remain attached to that older
+immutable baseline rather than being rewritten as `v1.21.0` evidence.
 
 The repository also contains chronological records written before the final
 release. In particular, [ADR-001](../decisions/ADR-001-deployment-platform.md)
@@ -25,7 +32,8 @@ The terms used below are deliberately distinct:
 - **planned** means an intention appears in a backlog, decision record, or
   design artifact;
 - **implemented** means the behavior is present in source and tests;
-- **released** means the source is included in the immutable `v1.20.0` tag;
+- **baseline-released** means the source is included in the immutable
+  `v1.20.0` validation tag; the D-22 addendum is included in `v1.21.0`;
 - **deployment-health verified** means GitHub Actions activated the release
   images and passed the configured container-local health path; and
 - **production E2E verified** requires separate, sanitized evidence from the
@@ -487,7 +495,11 @@ and waits for application health. Branch controls and required CI are described
 in ADR-002. These are observable controls, not a claim that the environment is
 invulnerable.
 
-Cross-origin access and provider spend are both bounded by configuration
+#### `v1.21.0` hardening addendum — D-22
+
+The following controls were added after the `v1.20.0` validation baseline and
+are part of the final `v1.21.0` application release. Cross-origin access and
+provider spend are both bounded by configuration
 (D-22). Allowed browser origins come from `CORS_ALLOW_ORIGINS` and default to
 the local development origins; the deployed frontend shares the API's origin
 and needs no entry. `POST /analyses` and the retry route enforce a per-user
@@ -756,7 +768,8 @@ evidence.
 |---|---|---|
 | What was delivered and deliberately deferred? | IMPLEMENTED/RELEASED traceability | [Backlog](../BACKLOG.md), [Changelog](../../CHANGELOG.md) |
 | Why were key boundaries chosen? | DOCUMENTED chronology | [Design notes](../DESIGN_NOTES.md), [ADRs](../decisions/) |
-| What is the final release? | VERIFIED | [`v1.20.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.20.0) |
+| What is the final application release? | VERIFIED | [`v1.21.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.21.0) |
+| What is the production-validation baseline? | VERIFIED | [`v1.20.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.20.0), [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |
 | Did automated gates pass? | VERIFIED | [CI run 33678086754](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33678086754) |
 | Did the released stack pass configured deployment health? | VERIFIED, container-local boundary | [Deployment run 33687682316](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/33687682316) |
 | Is the public browser critical path verified? | VERIFIED, 2026-09-04 | [Final Production Validation](FINAL_PRODUCTION_VALIDATION.md) |

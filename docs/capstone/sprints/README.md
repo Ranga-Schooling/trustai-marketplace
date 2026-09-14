@@ -319,10 +319,18 @@ It was not merged wholesale into production; selected production conclusions
 entered through the smaller #107 path.
 
 Semantic releases advanced from `v1.16.5` to `v1.20.0` on September 2. The
-final tag points to `5ebc757ba66ff647944602245c18bedf6631680e`.
+September 2 validation tag points to
+`5ebc757ba66ff647944602245c18bedf6631680e`.
 The release CI recorded 70 contract tests, 449 backend tests at 96.49%
 coverage, 76 frontend tests, and a successful frontend build; deployment
 health is documented separately in the [production-validation record](../FINAL_PRODUCTION_VALIDATION.md).
+
+The final application release used for submission is
+[`v1.21.0`](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.21.0)
+at `9eb7253e47cd54dd7a3084ce47c0df1747d16948`. It adds the D-22
+cross-origin and per-user provider-spend bounds to the `v1.20.0` application
+baseline. Documentation-only PRs #116 and #117 landed after the September 13
+submission and do not represent another application release.
 
 The [September 3 record](../meetings/05_TrustAI_Final_Production_Validation_Evidence_Closeout_and_Presentation_Readiness_Meeting_2026-09-03.pdf)
 marks the transition from broad feature development to evidence closeout,
@@ -339,10 +347,11 @@ remain distinct from repository-preserved provider/browser evidence.
 | Sprint 3, August 10–23 | `v1.7.2`–`v1.15.5` | History, SSM, integration/contract and frontend tests, HTTPS, provider abstraction, preview/price work, backup and operational hardening |
 | Final week, August 24–31 | `v1.16.0`–`v1.16.4` | Admin/security/deployment/session hardening |
 | Post-plan convergence, September 2 | `v1.16.5`–`v1.20.0` | Recovery, themes/mobile, Visual Inspection, retry isolation, strict validation, Terra integration, final CI and deployment health |
+| Submission hardening, September 12 | `v1.21.0` | D-22 cross-origin and per-user provider-spend bounds; final application release used for submission |
 
 Across the release history, 145 commits are reachable from `v1.20.0`, 79
 merged pull requests targeted `main`, and 41 semantic-release tags were
-created. These counts establish a substantial reviewed delivery trail; they do
+created. These counts establish a substantial delivery trail; they do
 not substitute for missing ceremony evidence or prove contemporaneous
 task-board maintenance.
 
@@ -358,7 +367,7 @@ task-board maintenance.
 | Backend would be organized as microservices | July 15 still treated packaging as unresolved; the final product uses one modular FastAPI API service with PostgreSQL and a separate React frontend. |
 | Groq was favored for cost | A provider abstraction was delivered; after separate evaluation, the production OpenAI adapter defaulted to GPT-5.6 Terra in the September release. |
 | Image analysis was post-MVP/stretch | Visual Inspection was delivered after the planned August endpoint in `v1.19.0`, capability-gated and application-transient. |
-| Code freeze and submission would complete by August 28/31 | Release-critical work continued through September 2; `v1.20.0` is the defensible final repository boundary. Submission remains a separate OPEN event. |
+| Code freeze and submission would complete by August 28/31 | Release-critical work continued through September 12; `v1.21.0` is the final application release used for submission. Team records report submission on September 13; see the [submission closeout](../SUBMISSION_CLOSEOUT.md). |
 
 ## Ceremony and artifact status
 
@@ -370,7 +379,6 @@ task-board maintenance.
 | Later sprint recovery/planning | **CONFIRMED** | August 6 documents recovery, overlapping work, deployment direction, and Trello drift. |
 | Complete Sprint 1–3 review series | **UNVERIFIED** | No complete formal review record set is present. |
 | Complete retrospective series | **UNVERIFIED — project convention** | Only the Sprint 0 review/retrospective is directly documented; the Handbook does not mandate retrospectives. |
-| Sprint-end application demos | **PARTIAL** | Sprint 1 and Sprint 2 recordings are linked under [Sprint demonstration recordings](#sprint-demonstration-recordings); Sprints 0 and 3 were not recorded. |
-| Final Trello state | **CONFIRMED** | The [canonical board](https://trello.com/b/wUqCGA2T) was reconciled against `v1.20.0` and is readable without signing in. |
-| Final presentation/submission | **OPEN** | Planning and rehearsal discussions exist; completion evidence does not yet. |
-
+| Sprint-end application demos | **PARTIAL** | Sprint 1 and Sprint 2 recordings are linked under [Sprint demonstration recordings](#sprint-demonstration-recordings). No verified Sprint 0 or Sprint 3 recording is available in the project evidence. |
+| Final Trello state | **CONFIRMED** | The [canonical board](https://trello.com/b/wUqCGA2T) is readable without signing in, with retrospective closeout items identified separately from contemporaneous sprint records. |
+| Final presentation/submission | **COMPLETED** | The final presentation was completed at 19:58 and is linked in the [submission closeout](../SUBMISSION_CLOSEOUT.md); the project and presentation were submitted through Quantic on September 13 at approximately 14:25 PDT. |

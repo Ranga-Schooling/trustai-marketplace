@@ -1,6 +1,6 @@
 # Architecture Documentation
 
-This directory will contain the approved architecture artifacts for TrustAI Marketplace, including:
+This directory contains the approved architecture artifacts for TrustAI Marketplace, including:
 
 - system context diagram
 - container and component diagrams
