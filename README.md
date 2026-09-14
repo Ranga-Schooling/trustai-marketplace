@@ -12,6 +12,7 @@ AI-assisted decision support for online marketplace buyers. Paste a listing or i
 | **Final Capstone presentation** | [Final Capstone Presentation (19:58) — Google Drive](https://drive.google.com/file/d/12FEx0J6LJ7DSQhFx62VkCf6raG5ijkon/view?usp=sharing). For the original 4K-quality video, download the file from Google Drive; browser playback may use a lower-resolution stream. |
 | **Agile task board** | [Trello — TrustAI Marketplace Sprint Board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) |
 | **Design and testing report** | [docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md](docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md) |
+| **AI disclosure** | [docs/capstone/AI_DISCLOSURE.md](docs/capstone/AI_DISCLOSURE.md) |
 | **Capstone documentation portal** | [docs/capstone/README.md](docs/capstone/README.md) |
 | **Sprint history and demo recordings** | [docs/capstone/sprints/README.md](docs/capstone/sprints/README.md) |
 | **Team meeting records** | [docs/capstone/meetings/README.md](docs/capstone/meetings/README.md) |

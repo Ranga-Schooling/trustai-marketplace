@@ -58,6 +58,7 @@ The implemented story-level traceability is in the
 | Area | Primary evidence | What it establishes |
 |---|---|---|
 | Submission closeout | [Submission closeout](SUBMISSION_CLOSEOUT.md) | Final presentation identity, access, reported submission chronology, Agreement privacy boundary and post-submission documentation changes |
+| AI disclosure | [AI disclosure](AI_DISCLOSURE.md) | Project-level AI-assisted development scopes, review automation, product-model boundaries and privacy-safe reference handling |
 | Requirements and delivery | [Backlog](../BACKLOG.md) | User stories, acceptance criteria, implementation pointers, and deliberate deferrals |
 | Project evolution | [Project timeline](PROJECT_TIMELINE.md) | Chronological separation of planning, implementation, hardening, and release |
 | Architecture and decisions | [Design notes](../DESIGN_NOTES.md), [architecture artifacts](../architecture/), [ADRs](../decisions/) | Architectural boundaries, decisions, alternatives, and historical context |
