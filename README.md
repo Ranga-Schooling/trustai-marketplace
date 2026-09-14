@@ -9,8 +9,10 @@ AI-assisted decision support for online marketplace buyers. Paste a listing or i
 | | |
 |---|---|
 | **Live application** | **https://trustai.mandalawi.ca** |
+| **Final Capstone presentation** | [Final Capstone Presentation (19:58) — Google Drive](https://drive.google.com/file/d/12FEx0J6LJ7DSQhFx62VkCf6raG5ijkon/view?usp=sharing). For the original 4K-quality video, download the file from Google Drive; browser playback may use a lower-resolution stream. |
 | **Agile task board** | [Trello — TrustAI Marketplace Sprint Board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) |
 | **Design and testing report** | [docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md](docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md) |
+| **Capstone documentation portal** | [docs/capstone/README.md](docs/capstone/README.md) |
 | **Sprint history and demo recordings** | [docs/capstone/sprints/README.md](docs/capstone/sprints/README.md) |
 | **Team meeting records** | [docs/capstone/meetings/README.md](docs/capstone/meetings/README.md) |
 | **Full documentation** | [docs/README.md](docs/README.md) |
@@ -29,7 +31,7 @@ Built by a five-person team as the Quantic MSSE capstone project.
 
 **Visual Inspection**
 - Optionally add one to three JPEG, PNG or WebP photos to a completed analysis for photo-grounded observations
-- Explicit consent before upload; images are validated, normalised and stripped of metadata; photos and findings are never stored
+- Explicit consent before upload; images are validated, normalised and stripped of metadata; photos and findings are not persisted by the TrustAI application, while provider-side handling follows the applicable provider policy
 
 **Accounts and history**
 - Registration, sign-in, profile editing and account deletion
@@ -73,13 +75,13 @@ Browser ── HTTPS ──▶ Caddy (TLS, Let's Encrypt)
 |---|---|---|
 | Risk is categorical, never model-generated as a number | `AIAnalysisResult` has no numeric field; pinned by `test_contract.py` (D-05) | LLM-produced scores are uncalibrated and drift between runs |
 | Deterministic Trust score | `compute_risk_score` in `services/scoring.py`, disjoint tier bands 0–33 / 34–66 / 67–100 (D-09) | The number can never contradict the risk level it derives from |
-| Provider abstraction | `AIProvider` protocol, selected by `AI_PROVIDER` | Swap providers without touching the API contract; tests run with no network or API key |
+| Provider abstraction | `AIProvider` protocol, selected by `AI_PROVIDER` | Swap providers without touching the API contract; automated provider tests use controlled transports and make no live provider requests |
 | Fail-closed output validation | `services/ai_response_validation.py` | Malformed model output is rejected rather than repaired or guessed at |
 | Ownership on every query | `Depends(get_current_user)` plus `.filter(Listing.user_id == user.id)` | One user can never read another user's analysis by guessing an ID |
 | Persist before analyse | Listing committed before the provider call | A provider outage never loses user input |
 | SSRF-guarded URL preview | `services/listing_fetch.py` resolves and validates every redirect hop, then pins the connection to that IP | Stops a pasted URL reaching internal infrastructure |
 | Bounded public API | `CORS_ALLOW_ORIGINS` allow-list and a rolling 24-hour per-user analysis quota (D-22) | Protects provider spend on a publicly reachable deployment |
-| Keyless deployment | GitHub Actions → ECR → Systems Manager Run Command | No inbound SSH and no SSH keys stored in GitHub |
+| SSH-keyless deployment | GitHub Actions → ECR → Systems Manager Run Command | No inbound SSH and no SSH keys stored in GitHub; AWS workflow credentials remain managed as GitHub Actions secrets |
 
 Full rationale: [design and testing report](docs/capstone/CAPSTONE_DESIGN_AND_TESTING.md) · [decision log](docs/DESIGN_NOTES.md) · [ADRs](docs/decisions/)
 
@@ -97,7 +99,7 @@ Release [`v1.21.0`](https://github.com/Ranga-Schooling/trustai-marketplace/relea
 | Frontend (Vitest) | **76 passed** across 9 files |
 | Frontend build | Passed |
 
-Tests are layered as unit, acceptance, integration and contract suites. CI runs the application against a deterministic mock provider, and provider adapters are tested against mocked transports, so no test needs network access or a real API key. See the [testing guide](docs/testing/README.md).
+Tests are layered as unit, acceptance, integration and contract suites. CI runs the application against a deterministic mock provider, and provider adapters are tested against mocked transports, so the automated suite needs no provider credential and makes no live provider request. See the [testing guide](docs/testing/README.md).
 
 ---
 
@@ -182,7 +184,7 @@ docker-compose.yml     Local development stack
 - **Scrum** across Sprint 0–3 and a final release phase, planned and tracked on the [Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board)
 - **Sprint demonstrations** recorded for Sprint 1 and Sprint 2 — [linked in the sprint history](docs/capstone/sprints/README.md#sprint-demonstration-recordings)
 - **Meeting records** from kickoff on 1 July 2026 through 3 September 2026 — [indexed here](docs/capstone/meetings/README.md)
-- **Every change through a reviewed pull request** — `main` is protected by a ruleset requiring one approving review, passing checks and linear history; see [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) and [ADR-002](docs/decisions/ADR-002-branch-protection-ruleset.md)
+- **Pull requests and automated gates** — changes are integrated through pull requests and required CI. The current `main` ruleset requires an approving review, code-owner review, resolved conversations, required checks and linear history. See [GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md) and [ADR-002](docs/decisions/ADR-002-branch-protection-ruleset.md)
 - **Decisions recorded as they were made** — numbered D-01 onward in the [decision log](docs/DESIGN_NOTES.md), with platform-level choices as [ADRs](docs/decisions/)
 
 ### Team

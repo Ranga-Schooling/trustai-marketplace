@@ -1,5 +1,10 @@
 # TrustAI Marketplace — team boilerplate
 
+> **Historical artifact — superseded.** This file records the project's initial
+> implementation skeleton. Its stub descriptions, ownership labels, names and
+> test expectations are not the current application state. Start with the
+> current [README](README.md) and [Capstone documentation](docs/capstone/README.md).
+
 This is the starting skeleton for the TrustAI Marketplace capstone. The
 architecture, module boundaries, API contract, CI pipeline and acceptance
 tests are in place; the implementations are yours. Every stub cites its

@@ -1,9 +1,16 @@
 # TrustAI Marketplace — Git Workflow
 
-**Audience:** whole team 
-**Status:** agreed for team use — please follow from the next task onward
+**Audience:** whole team
+**Status:** team working agreement, with current repository controls verified
+on September 13, 2026
 
 This document defines how we branch, review, and merge. The goal is a simple, consistent process that protects `main`.
+
+Sections 1–5 preserve the team's working agreement. As of September 13, the
+repository settings enable squash merging and automatic branch deletion, while
+the active `main` ruleset requires pull requests, one approving review,
+code-owner review, resolved conversations, strict `backend`, `frontend`, and
+`gitStream.cm` checks, and linear history.
 
 ---
 
@@ -155,11 +162,14 @@ GitHub Actions runs on:
 Current checks:
 
 - Backend: `pytest`
-- Frontend: production build
+- Frontend: tests and production build
+- gitStream policy checks
 
 **Do not merge with failing CI.**
 
-Deployment hosting (for example GitHub Pages, Render, or a VPS) will be decided and documented separately. This workflow only requires that changes reach `main` through review + CI.
+Production deployment is documented separately in
+[`deploy/README.md`](../deploy/README.md) and the
+[CI/CD pipeline guide](ci-cd/zero-trust-pipeline.md).
 
 ---
 
@@ -184,6 +194,9 @@ Deployment hosting (for example GitHub Pages, Render, or a VPS) will be decided 
 | CI | Must be green |
 | Merge | Squash and merge |
 
-These rules are also enforced by GitHub branch protection on `main` (require pull requests, 1 approving review, green CI, squash and merge, and automatic branch deletion after merge).
+As verified on September 13, these controls are reflected in the active
+`main` ruleset and repository settings: pull requests, one approving review,
+code-owner review, resolved conversations, strict required checks, linear
+history, squash merging, and automatic branch deletion.
 
 ---

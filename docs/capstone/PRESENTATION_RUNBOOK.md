@@ -2,25 +2,32 @@
 
 ## Status, purpose, and authority
 
-**Status:** READY WITH CONFIRMATIONS for team rehearsal. This runbook is not
-evidence that the presentation has been recorded, hosted, or submitted.
+**Historical status at September 3:** READY WITH CONFIRMATIONS for team
+rehearsal. The sections below preserve the presentation plan as it stood before
+final recording.
 
-This is the rehearsal-ready source of truth for the final Quantic MSSE
-Capstone presentation. It targets a clear, natural **17:30** group recording
+**Final update, September 13:** the final presentation was completed at 19:58
+and hosted on Google Drive. The project and presentation were submitted through
+Quantic at approximately 14:25 PDT. See the
+[submission closeout](SUBMISSION_CLOSEOUT.md) for the final project status.
+
+This was the rehearsal-ready source of truth for the final Quantic MSSE
+Capstone presentation. It targeted a clear, natural **17:30** group recording
 that demonstrates the released product, explains the most important
 engineering decisions, and stays inside the verified evidence boundary.
 
 | Presentation identity | Value |
 |---|---|
 | Product | TrustAI Marketplace |
-| Final release | `v1.20.0` |
-| Immutable release commit | `5ebc757ba66ff647944602245c18bedf6631680e` |
+| Production-validation baseline used by this runbook | `v1.20.0` at `5ebc757ba66ff647944602245c18bedf6631680e` |
+| Final application release used for submission | `v1.21.0` at `9eb7253e47cd54dd7a3084ce47c0df1747d16948` |
 | Production application | [https://trustai.mandalawi.ca](https://trustai.mandalawi.ca) |
 | Target duration | 17:30 |
 | Rehearsal band | 17:00-18:00 |
 | Required final duration | 15:00-20:00 |
 | Recording format | One video; MP4 strongly recommended, MOV accepted |
-| Submission state | **OPEN** |
+| Submission state | **SUBMITTED** — September 13, approximately 14:25 PDT |
+| Final recording | [Final Capstone Presentation (19:58) — Google Drive](https://drive.google.com/file/d/12FEx0J6LJ7DSQhFx62VkCf6raG5ijkon/view?usp=sharing). For the original 4K-quality video, download the file from Google Drive; browser playback may use a lower-resolution stream. |
 
 The source hierarchy for this runbook is:
 
@@ -753,7 +760,11 @@ speech, missing/illegible ID, duration outside 15-20 minutes, unusable audio or
 screen, absent deployed-system demonstration, exposed secret/personal data, or
 a video/access failure that cannot be corrected without changing the file.
 
-## Score-5 coverage matrix
+## Pre-recording score-5 coverage matrix
+
+This matrix records the rehearsal state before the final recording. It is
+preserved as planning evidence; the later recording and reported submission are
+recorded in the [submission closeout](SUBMISSION_CLOSEOUT.md).
 
 | Score-5 criterion | Planned timestamp / section | Evidence shown | Ready state |
 |---|---|---|---|
@@ -767,9 +778,9 @@ a video/access failure that cannot be corrected without changing the file.
 No score-5 criterion is omitted from the plan. Human/capture-dependent criteria
 cannot become PASS until the recording is reviewed.
 
-## Handbook presentation compliance matrix
+## Pre-recording Handbook presentation compliance matrix
 
-| Control | Runbook provision | Current state |
+| Control | Runbook provision | Pre-recording state |
 |---|---|---|
 | One recorded presentation with screen capture and voiceover | One coordinated recording, one controller, one final file | **READY; recording OPEN** |
 | Summarize solution | 1:15-2:15 opening | **READY** |
@@ -782,9 +793,14 @@ cannot become PASS until the recording is reviewed.
 | Google Drive anyone-link access | Post-recording upload and logged-out test | **OPEN until file exists** |
 | One group submitter | Recording-role table | **CONFIRM BEFORE RECORDING** |
 
-## Open confirmations and external closure
+## Pre-recording confirmations and final outcome
 
-These are real external gaps, not documentation defects:
+The numbered items below are the pre-recording checklist as it stood when this
+runbook was prepared. The signed Agreement was later handled privately through
+the Quantic submission, the recording was completed and hosted, and the project
+and presentation were submitted on September 13. The final outcome is recorded
+separately in the [submission closeout](SUBMISSION_CLOSEOUT.md), while the
+checklist below is retained as the pre-recording plan.
 
 1. **Agreement:** the exact five-member roster and official name spellings are
    confirmed; locate the final Group Project Agreement and verify that it
@@ -797,7 +813,8 @@ These are real external gaps, not documentation defects:
    are ready immediately before recording.
 5. **Sprint demos:** Sprint 1 and Sprint 2 recordings exist and are linked in
    the [sprint history](sprints/README.md#sprint-demonstration-recordings);
-   Sprints 0 and 3 were not recorded. Do not reconstruct or relabel one.
+   no verified Sprint 0 or Sprint 3 recording is available in the project
+   evidence. Do not reconstruct or relabel one.
 6. **GitHub sharing:** `quantic-grader` is a repository collaborator — done.
 7. **Trello access:** the board is readable without signing in — done.
 8. **Backup limitation:** production backup/restore remains open under issue
@@ -808,10 +825,12 @@ These are real external gaps, not documentation defects:
 10. **Submission:** one designated member submits the final accessible links
     and signed final agreement page through Quantic.
 
-## Final rehearsal decision
+## Historical final rehearsal decision
 
-The package is **READY WITH CONFIRMATIONS** for team rehearsal. It becomes
-ready for final recording only when the Agreement/signature check, all-member
+At this pre-recording checkpoint the package was **READY WITH CONFIRMATIONS**
+for team rehearsal. It would become ready for final recording only when the
+Agreement/signature check, all-member
 attendance, recording roles, presentation-safe demo state, and one complete
-uninterrupted dress rehearsal are confirmed. It becomes presentation-complete
-only after the final file passes the post-recording QA and access checks.
+uninterrupted dress rehearsal were confirmed. The final presentation and
+submission state is recorded in the
+[submission closeout](SUBMISSION_CLOSEOUT.md).

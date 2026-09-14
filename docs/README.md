@@ -6,6 +6,7 @@ Product, engineering, delivery and process documentation for TrustAI Marketplace
 
 | Looking for | Read |
 |---|---|
+| Final submission closeout and presentation | [capstone/SUBMISSION_CLOSEOUT.md](capstone/SUBMISSION_CLOSEOUT.md) |
 | Design and testing report — architecture, patterns, deployment options and cost, testing strategy | [capstone/CAPSTONE_DESIGN_AND_TESTING.md](capstone/CAPSTONE_DESIGN_AND_TESTING.md) |
 | Project documentation index | [capstone/README.md](capstone/README.md) |
 | User stories, acceptance criteria and delivery status | [BACKLOG.md](BACKLOG.md) |

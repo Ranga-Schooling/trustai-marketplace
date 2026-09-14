@@ -21,12 +21,16 @@ hidden condition, or a verified current market price.
 
 | Item | Evidence status | Location |
 |---|---|---|
-| Final production release | **VERIFIED** — `v1.20.0` | [GitHub release](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.20.0) |
-| Immutable release commit | **VERIFIED** — `5ebc757ba66ff647944602245c18bedf6631680e` | [Commit](https://github.com/Ranga-Schooling/trustai-marketplace/commit/5ebc757ba66ff647944602245c18bedf6631680e) |
+| Final application release used for submission | **VERIFIED** — `v1.21.0` | [GitHub release](https://github.com/Ranga-Schooling/trustai-marketplace/releases/tag/v1.21.0) |
+| Immutable application-release commit | **VERIFIED** — `9eb7253e47cd54dd7a3084ce47c0df1747d16948` | [Commit](https://github.com/Ranga-Schooling/trustai-marketplace/commit/9eb7253e47cd54dd7a3084ce47c0df1747d16948) |
+| Historical production-validation baseline | **VERIFIED** — `v1.20.0` | [Final production validation](FINAL_PRODUCTION_VALIDATION.md) |
 | Source repository | **VERIFIED PUBLIC** | [Ranga-Schooling/trustai-marketplace](https://github.com/Ranga-Schooling/trustai-marketplace) |
+| Quantic repository access | **VERIFIED** — `quantic-grader` has read access | [Source repository](https://github.com/Ranga-Schooling/trustai-marketplace) |
 | Documented production URL | **VERIFIED** — logged-out HTTPS/browser reachability checked on 2026-09-04 | [https://trustai.mandalawi.ca](https://trustai.mandalawi.ca) |
 | Agile task board | **VERIFIED** — readable without signing in | [TrustAI Marketplace Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) |
 | Sprint demonstrations | **VERIFIED** — Sprint 1 and Sprint 2 recordings | [Sprint demonstration recordings](sprints/README.md#sprint-demonstration-recordings) |
+| Final presentation | **COMPLETED** — 19:58 | [Final Capstone Presentation (19:58) — Google Drive](https://drive.google.com/file/d/12FEx0J6LJ7DSQhFx62VkCf6raG5ijkon/view?usp=sharing). For the original 4K-quality video, download the file from Google Drive; browser playback may use a lower-resolution stream. |
+| Submission closeout | **SUBMITTED** — September 13 | [Submission closeout](SUBMISSION_CLOSEOUT.md) |
 
 ## Delivered product evidence
 
@@ -53,6 +57,7 @@ The implemented story-level traceability is in the
 
 | Area | Primary evidence | What it establishes |
 |---|---|---|
+| Submission closeout | [Submission closeout](SUBMISSION_CLOSEOUT.md) | Final presentation identity, access, reported submission chronology, Agreement privacy boundary and post-submission documentation changes |
 | Requirements and delivery | [Backlog](../BACKLOG.md) | User stories, acceptance criteria, implementation pointers, and deliberate deferrals |
 | Project evolution | [Project timeline](PROJECT_TIMELINE.md) | Chronological separation of planning, implementation, hardening, and release |
 | Architecture and decisions | [Design notes](../DESIGN_NOTES.md), [architecture artifacts](../architecture/), [ADRs](../decisions/) | Architectural boundaries, decisions, alternatives, and historical context |
@@ -60,17 +65,18 @@ The implemented story-level traceability is in the
 | Testing | [Testing guide](../testing/README.md), [CI workflow](../../.github/workflows/ci.yml) | Test layers, commands, deterministic provider isolation, and the 85% coverage gate |
 | CI/CD and deployment | [Pipeline guide](../ci-cd/zero-trust-pipeline.md), [deploy workflow](../../.github/workflows/deploy.yml), [production Compose](../../deploy/docker-compose.yml) | ECR images, SSM deployment, immutable commit tags, migrations, HTTPS, and health checks |
 | Production validation | [Final production validation](FINAL_PRODUCTION_VALIDATION.md) | Release, CI, deployment, public-browser reachability, Terra-labelled text results, history, Visual Inspection, and remaining evidence boundaries |
-| Final presentation plan | [Presentation runbook](PRESENTATION_RUNBOOK.md) | Five-person roles, exact 17:30 timing, deployed demo sequence, fallbacks, rehearsal, Handbook controls, and post-recording QA |
+| Final presentation | [Presentation runbook](PRESENTATION_RUNBOOK.md), [submission closeout](SUBMISSION_CLOSEOUT.md) | Five-person rehearsal plan and the later final recording/submission state |
 | AI/model decision | [D-21](../DESIGN_NOTES.md), [research PR #103](https://github.com/Ranga-Schooling/trustai-marketplace/pull/103) | Why Terra was selected for the Capstone production workload; research history remains separate from production |
 | Team meetings | [Meeting index](meetings/README.md) | Six authoritative PDFs covering seven dated meetings, with source-grounded chronology and evidence boundaries |
 | Sprint/process evidence | [Sprint history](sprints/README.md), [Git workflow](../GIT_WORKFLOW.md) | July planning baseline, actual Git/PR/release progression, carryover, and the Sprint 1 and Sprint 2 demonstration recordings |
-| Agile task board | [Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) | Done, active, deferred and cancelled work reconciled against `v1.20.0` |
+| Agile task board | [Trello board](https://trello.com/b/wUqCGA2T/trustai-marketplace-sprint-retrospective-board) | Public final board covering delivered, deferred, superseded and cancelled work, with retrospective closeout items clearly identified |
 
 The backlog, design notes, architecture artifacts, ADRs, and testing guide are
 chronological engineering records and contain some planning or pre-release
 state. They are preserved rather than rewritten. Use this portal and the
-[final production validation](FINAL_PRODUCTION_VALIDATION.md) record for the
-final-release synthesis, while retaining ADR-001 as evidence of the original
+[submission closeout](SUBMISSION_CLOSEOUT.md) for the current submission state,
+and the [final production validation](FINAL_PRODUCTION_VALIDATION.md) for the
+historical `v1.20.0` validation boundary. ADR-001 remains evidence of the original
 Render decision before the implementation later evolved to AWS. The final AWS
 path is recorded retrospectively in
 [ADR-003](../decisions/ADR-003-aws-ec2-deployment.md).
@@ -87,6 +93,12 @@ and AWS Systems Manager activates the selected commit without inbound SSH.
 The initial Render decision in ADR-001 is retained as historical evidence. The
 implemented AWS architecture is documented by ADR-003, the current Compose and
 workflow definitions, and the CI/CD guide.
+
+The final application release, `v1.21.0`, added the D-22 cross-origin and
+per-user provider-spend bounds after the `v1.20.0` production-validation
+baseline. Documentation-only PRs #116 and #117 landed after the September 13
+submission; current `main` may therefore be newer without representing a newer
+application release.
 
 ## Testing and release evidence
 
@@ -106,6 +118,13 @@ do not, by themselves, prove a live provider transaction or complete browser
 E2E walkthrough. A separate September 4 controlled browser check recorded the
 live application-level text, history, and Visual outcomes in the
 [production validation record](FINAL_PRODUCTION_VALIDATION.md).
+
+For final application release `v1.21.0`,
+[CI run 34706000817](https://github.com/Ranga-Schooling/trustai-marketplace/actions/runs/34706000817)
+recorded 70 contract tests, 457 backend tests at 96.52% coverage, 76 frontend
+tests across 9 files, and a successful frontend production build. This later
+run establishes the automated state of the D-22-hardened release; it does not
+rewrite the earlier production-validation observations as `v1.21.0` evidence.
 
 ## Known limitations and deferred work
 
